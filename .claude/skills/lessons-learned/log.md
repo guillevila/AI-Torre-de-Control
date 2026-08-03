@@ -131,3 +131,39 @@ avance que este proyecto existe para evitar. Cuando haya que apartarse del
 diseño por este motivo, dejarlo escrito en el ADR y en `PROJECT_STATUS.md`.
 
 **Contexto:** Siempre que se implemente un diseño hecho por otro, o una maqueta.
+
+---
+
+## 2026-08-03 23:10 — Una protección que no se ha disparado nunca no es una protección
+
+**Error o aprendizaje:** El proyecto tenía cinco hooks configurados, uno de ellos
+de seguridad (bloquear borrados irreversibles y el acceso a ficheros con
+credenciales). **Los cinco llevaban rotos desde el principio** y nadie lo sabía,
+por tres motivos acumulados:
+
+1. Cuatro estaban escritos en Bash y uno en Python. **Ninguno de los dos estaba
+   disponible** en el equipo.
+2. `settings.json` los declaraba en un formato plano, sin el anidamiento `hooks`
+   que exige el esquema. Aunque bash hubiera existido, no se habrían cargado.
+3. El de seguridad salía con código **1**, que Claude Code trata como error **no
+   bloqueante**. Aunque se hubiera ejecutado, no habría bloqueado nada.
+
+**Causa raíz:** Un hook que falla lo hace en silencio, por diseño — para que un
+fallo suyo no interrumpa el trabajo. Eso está bien, pero convierte «configurado»
+en indistinguible de «funcionando». Nadie comprueba una alarma que nunca ha
+sonado.
+
+**Lección:**
+1. **Toda protección se prueba disparándola.** Un hook de bloqueo se verifica
+   dándole una entrada que DEBE bloquear y comprobando el código de salida, y
+   otra que NO debe bloquear para asegurar que no estorba.
+2. **No dar por hecho que un intérprete existe.** Bash y Python no están
+   garantizados en Windows. Si el proyecto ya exige Node para funcionar, los
+   hooks se escriben en Node.
+3. **Invocarlos en forma directa** (`"command": "node", "args": [...]`) en lugar
+   de a través de un shell: elimina toda una clase de fallos de entorno.
+4. Al heredar configuración de una plantilla, **verificar que hace lo que dice**
+   antes de confiar en ella. Especialmente si es de seguridad.
+
+**Contexto:** Siempre, con cualquier automatismo o protección: hooks, reglas de
+CI, validadores. Vale también para las reglas de permisos.

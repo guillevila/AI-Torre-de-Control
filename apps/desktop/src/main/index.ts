@@ -28,6 +28,20 @@ import { SettingsStore } from './settings/settings-store.js'
  * miran al mismo sitio.
  */
 app.setName('AI Torre de Control')
+
+/**
+ * Identidad de la aplicación ante Windows.
+ *
+ * Sin esto, Windows atribuye las notificaciones a «electron.app.Electron»: el
+ * aviso sale con el nombre y el icono genéricos de Electron, se mezcla con los
+ * de cualquier otra aplicación Electron del sistema, y el usuario no puede
+ * configurarlo por separado en Configuración → Notificaciones.
+ *
+ * Hay que llamarlo ANTES de que la aplicación esté lista. En macOS y Linux es
+ * una operación sin efecto.
+ */
+app.setAppUserModelId('net.alsari.torre-de-control')
+
 const userDataOverride = process.env['TORRE_USER_DATA']
 app.setPath('userData', userDataOverride ?? join(app.getPath('appData'), 'ai-torre-de-control'))
 

@@ -7,6 +7,7 @@ import { Sidebar, type Section } from './components/Sidebar.js'
 import { TaskDetail } from './components/TaskDetail.js'
 import { Toast } from './components/Toast.js'
 import { TopBar, type ViewMode } from './components/TopBar.js'
+import { useClock } from './hooks/useClock.js'
 import { useHotkeys } from './hooks/useHotkeys.js'
 import { useSettings } from './hooks/useSettings.js'
 import { useRecentActivity, useTaskHistory, useTasks } from './hooks/useTasks.js'
@@ -53,6 +54,11 @@ export function App() {
   const [appliedPreferences, setAppliedPreferences] = useState(false)
 
   const searchRef = useRef<HTMLInputElement>(null)
+
+  // Hace avanzar los cronómetros y los «hace 3 min» sin esperar a que cambie
+  // ninguna tarea. Su valor no se usa directamente: basta con que provoque el
+  // redibujado periódico.
+  useClock()
 
   // Los ajustes deciden dónde arranca la aplicación, pero solo la primera vez:
   // después manda lo que el usuario esté mirando.

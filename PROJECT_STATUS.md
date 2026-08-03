@@ -83,14 +83,23 @@ la aplicación de verdad, todos en verde a 3 de agosto de 2026:
 - El aspecto general coincide con el documento de diseño: papel cálido,
   tipografías correctas, contadores, planta de oficina por zonas y ficha lateral.
 
+**Comprobado contra el propio Windows:**
+
+- **La notificación llega al sistema operativo.** Se disparó una real (sin
+  interceptar) y Windows registró la entrega bajo la identidad propia de la
+  aplicación, `net.alsari.torre-de-control`. Windows solo crea esa entrada
+  cuando **entrega** un aviso de verdad.
+- Antes de arreglarlo, la aplicación no declaraba identidad y los avisos salían
+  como «electron.app.Electron»: con el nombre y el icono genéricos de Electron,
+  mezclados con los de cualquier otra aplicación del mismo tipo y sin poder
+  configurarlos por separado.
+
 **Pendiente de que lo veas tú:**
 
-- Que la **notificación aparezca visualmente** en tu Windows. Está comprobado que
-  la aplicación se la pide al sistema con el texto correcto, pero el aviso se
-  intercepta en las pruebas para no llenarte el escritorio. **Esto es lo único
-  importante que te toca confirmar a ti.**
-- Si la aplicación **se entiende de un vistazo** cuando la usas de verdad. Eso no
-  lo puede comprobar ningún test.
+- Que el aviso **te resulte útil** cuando estás a otra cosa: que se vea, que se
+  entienda de un vistazo y que no moleste. Eso es criterio tuyo, no técnico.
+- Si la aplicación **se entiende en menos de diez segundos** cuando la usas de
+  verdad. Eso no lo puede comprobar ningún test.
 
 ---
 

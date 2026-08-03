@@ -10,6 +10,29 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Corregido
+
+- **La aplicación no declaraba su identidad ante Windows.** Las notificaciones
+  se atribuían a «electron.app.Electron»: nombre e icono genéricos, mezcladas
+  con las de cualquier otra aplicación Electron y sin poder configurarlas por
+  separado. Ahora se identifica como `net.alsari.torre-de-control`, y está
+  comprobado contra el propio Windows que el aviso se entrega.
+- **Los cinco hooks del proyecto llevaban rotos desde el principio.** Estaban
+  escritos en Bash y Python, que no están disponibles en el equipo; se
+  declaraban con un formato que el esquema de Claude Code no reconoce; y el de
+  seguridad salía con un código que **no bloquea**. Reescritos en Node, en forma
+  de ejecución directa sin shell, y con el código de salida correcto. 15 pruebas
+  confirman que bloquea lo que debe y deja pasar lo que debe.
+- **La rama principal se llamaba `master` pero los protocolos decían `main`.**
+  Documentación alineada con la realidad.
+- Los cronómetros y los «hace 3 min» estaban congelados hasta que cambiaba
+  alguna tarea. Ahora avanzan solos, como pide el diseño.
+
+### Añadido
+
+- Permisos de `pnpm` en `.claude/settings.json`, para no preguntar por comandos
+  del día a día del proyecto.
+
 ---
 
 ## [0.2.0] — 2026-08-03 — El diseño, construido
