@@ -1,142 +1,244 @@
-import type { Task, TaskStatus } from '@torre/contracts'
-import { ALLOWED_TRANSITIONS, PROVIDER_LABELS, STATUS_LABELS } from '@torre/domain'
-import { duration, fullDateTime } from '../utils/format.js'
-import { Provenance, StatusPill } from './StatusPill.js'
+import { useState } from 'react'
+import type { StatusHistoryEntry, Task, TaskStatus } from '@torre/contracts'
+import {
+  ALLOWED_TRANSITIONS,
+  SOURCE_DESCRIPTIONS,
+  SOURCE_LABELS,
+  STATUS_GLYPHS,
+  STATUS_LABELS,
+} from '@torre/domain'
+import { dayAndClock, elapsed, fullDateTime, relativeTime } from '../utils/format.js'
+import { ConfidenceBars, PlatformChip, StatusBadge, StatusPill } from './Indicators.js'
 import { CopyableCommand } from './CopyableCommand.js'
 
 interface TaskDetailProps {
   task: Task
+  history: StatusHistoryEntry[]
   onClose: () => void
   onChangeStatus: (id: string, status: TaskStatus) => void
   onOpenExternal: (id: string) => void
-  onArchive: (id: string) => void
   onEdit: (task: Task) => void
+  onDelete: (id: string) => void
 }
 
+/** Correcciones rápidas que se ofrecen siempre que sean transiciones válidas. */
+const QUICK_FIXES: readonly TaskStatus[] = ['running', 'waiting_user', 'completed', 'archived']
+
 /**
- * Ficha completa de una tarea.
+ * Ficha de la tarea: panel lateral de 480 px sobre la vista actual.
  *
- * Es lo que se abre al pulsar un trabajador en la oficina y al pulsar el título
- * en la vista operativa: la misma ficha desde los dos sitios.
+ * Es una capa, no un destino: se abre desde cualquier vista y al cerrarla sigues
+ * exactamente donde estabas.
+ *
+ * En el centro está el historial de estados (D19). Es la prueba de honestidad
+ * del sistema: si la aplicación afirma algo, aquí se ve de dónde vino.
  */
 export function TaskDetail({
   task,
+  history,
   onClose,
   onChangeStatus,
   onOpenExternal,
-  onArchive,
   onEdit,
+  onDelete,
 }: TaskDetailProps) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const allowed = ALLOWED_TRANSITIONS[task.status]
+
   return (
-    <div className="overlay" role="dialog" aria-modal="true" aria-label="Ficha de la tarea">
-      <aside className="panel panel--detail" data-testid="task-detail">
-        <header className="panel__head">
-          <div>
-            <h2 className="panel__title">{task.title}</h2>
-            <div className="panel__subtitle">
-              <StatusPill status={task.status} />
-              <span className="tag">{PROVIDER_LABELS[task.provider]}</span>
+    <div className="overlay overlay--right" role="dialog" aria-modal="true" aria-label="Ficha de la tarea">
+      <aside className="detail" data-testid="task-detail">
+        <header className="detail__head">
+          <div className="detail__heading">
+            <StatusBadge status={task.status} />
+            <div className="detail__titles">
+              <h2 className="detail__title">{task.title}</h2>
+              <div className="detail__meta">
+                <PlatformChip provider={task.provider} />
+              </div>
             </div>
+            <button type="button" className="btn btn--icon" onClick={onClose} aria-label="Cerrar">
+              ✕
+            </button>
           </div>
-          <button type="button" className="btn btn--icon" onClick={onClose} aria-label="Cerrar">
-            ×
-          </button>
-        </header>
 
-        <Provenance source={task.statusSource} confidence={task.statusConfidence} />
-
-        <dl className="datalist">
-          <div>
-            <dt>Creada</dt>
-            <dd>{fullDateTime(task.createdAt)}</dd>
-          </div>
-          <div>
-            <dt>Empezó</dt>
-            <dd>{fullDateTime(task.startedAt)}</dd>
-          </div>
-          <div>
-            <dt>Última señal</dt>
-            <dd>{fullDateTime(task.lastActivityAt)}</dd>
-          </div>
-          <div>
-            <dt>Terminó</dt>
-            <dd>{fullDateTime(task.finishedAt)}</dd>
-          </div>
-          <div>
-            <dt>Duración</dt>
-            <dd>{duration(task.startedAt, task.finishedAt ?? task.lastActivityAt)}</dd>
-          </div>
-          <div>
-            <dt>Sesión externa</dt>
-            <dd>{task.externalSessionId ?? '—'}</dd>
-          </div>
-          <div className="datalist__wide">
-            <dt>Carpeta</dt>
-            <dd>{task.projectPath ?? '—'}</dd>
-          </div>
-          <div className="datalist__wide">
-            <dt>Enlace</dt>
-            <dd className="datalist__url">{task.externalUrl ?? '— sin enlace guardado —'}</dd>
-          </div>
-        </dl>
-
-        {task.notes && (
-          <section className="notes">
-            <h3 className="notes__title">Tus notas</h3>
-            <p className="notes__body">{task.notes}</p>
-          </section>
-        )}
-
-        <section className="detail-actions">
-          <label className="field">
-            <span className="field__label">Cambiar estado a mano</span>
-            <select
-              className="select"
-              value=""
-              data-testid="detail-status-select"
-              onChange={(event) => {
-                const value = event.target.value as TaskStatus | ''
-                if (value) onChangeStatus(task.id, value)
-              }}
-            >
-              <option value="">Elige un estado nuevo…</option>
-              {ALLOWED_TRANSITIONS[task.status].map((status) => (
-                <option key={status} value={status}>
-                  {STATUS_LABELS[status]}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div className="detail-actions__buttons">
+          <div className="detail__primary">
             <button
               type="button"
-              className="btn btn--primary"
+              className="btn btn--primary btn--grow"
               disabled={!task.externalUrl}
-              onClick={() => onOpenExternal(task.id)}
               data-testid="detail-open-external"
+              onClick={() => onOpenExternal(task.id)}
             >
-              Abrir conversación
-            </button>
-            <button type="button" className="btn btn--ghost" onClick={() => onEdit(task)}>
-              Editar
+              Abrir conversación ↗
             </button>
             {task.status !== 'archived' && (
-              <button type="button" className="btn btn--ghost" onClick={() => onArchive(task.id)}>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                data-testid="detail-archive"
+                onClick={() => onChangeStatus(task.id, 'archived')}
+              >
                 Archivar
               </button>
             )}
           </div>
-        </section>
+        </header>
 
-        <section className="dev-hint">
-          <h3 className="notes__title">Simular un evento para esta tarea</h3>
-          <p className="dev-hint__text">
-            Desde una terminal en la carpeta del proyecto, para comprobar que los avisos
-            automáticos funcionan:
-          </p>
-          <CopyableCommand command={`pnpm evento ${task.id} completed`} />
-        </section>
+        <div className="detail__body">
+          <section className="statebox" data-status={task.status}>
+            <div className="statebox__top">
+              <StatusPill status={task.status} />
+              <ConfidenceBars confidence={task.statusConfidence} />
+            </div>
+
+            <p className="statebox__source">
+              <strong>{SOURCE_LABELS[task.statusSource]}</strong> —{' '}
+              {SOURCE_DESCRIPTIONS[task.statusSource]}.
+            </p>
+
+            {task.status === 'unknown' && (
+              <p className="statebox__warn" data-testid="unknown-explanation">
+                No puedo confirmar este estado. La última señal fue{' '}
+                {relativeTime(task.lastActivityAt)}. No supongo que siga trabajando.
+              </p>
+            )}
+
+            <div className="statebox__fix">
+              <span className="statebox__fix-label">Corregir a mano:</span>
+              {QUICK_FIXES.filter((status) => allowed.includes(status)).map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  className="fix"
+                  data-status={status}
+                  data-testid={`fix-${status}`}
+                  onClick={() => onChangeStatus(task.id, status)}
+                >
+                  {STATUS_GLYPHS[status]} {STATUS_LABELS[status]}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <dl className="times">
+            <div>
+              <dt>Inicio</dt>
+              <dd>{fullDateTime(task.startedAt)}</dd>
+            </div>
+            <div>
+              <dt>En marcha</dt>
+              <dd className="mono">{elapsed(task.startedAt, task.finishedAt)}</dd>
+            </div>
+            <div>
+              <dt>Última señal</dt>
+              <dd>{relativeTime(task.lastActivityAt)}</dd>
+            </div>
+            <div>
+              <dt>Fin</dt>
+              <dd>{fullDateTime(task.finishedAt)}</dd>
+            </div>
+          </dl>
+
+          <section className="facts">
+            <div className="fact fact--wide">
+              <span className="overline">Enlace externo</span>
+              <span className="fact__value mono fact__url">
+                {task.externalUrl ?? '— sin enlace guardado —'}
+              </span>
+            </div>
+            <div className="fact">
+              <span className="overline">Sesión</span>
+              <span className="fact__value mono">{task.externalSessionId ?? '—'}</span>
+            </div>
+            <div className="fact">
+              <span className="overline">Carpeta</span>
+              <span className="fact__value mono fact__url">{task.projectPath ?? '—'}</span>
+            </div>
+            <div className="fact fact--wide">
+              <span className="overline">Notas</span>
+              <p className="notes">{task.notes ?? '—'}</p>
+            </div>
+          </section>
+
+          <section className="history">
+            <div className="overline">Historial de estados</div>
+            {history.length === 0 ? (
+              <p className="history__empty">
+                Todavía no hay cambios registrados. La próxima vez que esta tarea cambie de estado,
+                quedará aquí anotado de dónde vino.
+              </p>
+            ) : (
+              <ol className="history__list" data-testid="history-list">
+                {history.map((entry) => (
+                  <li className="history__item" key={entry.id} data-status={entry.toStatus}>
+                    <span className="history__time mono">{dayAndClock(entry.at)}</span>
+                    <span className="history__track" aria-hidden="true">
+                      <span className="history__dot" />
+                    </span>
+                    <span className="history__text">
+                      <span className="history__glyph" aria-hidden="true">
+                        {STATUS_GLYPHS[entry.toStatus]}
+                      </span>{' '}
+                      {STATUS_LABELS[entry.toStatus]}
+                      <span className="history__from">
+                        {entry.fromStatus
+                          ? ` · desde ${STATUS_LABELS[entry.fromStatus]}`
+                          : ' · al registrarla'}{' '}
+                        · {SOURCE_LABELS[entry.source]}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+
+          <section className="dev-hint">
+            <div className="overline">Simular un evento para esta tarea</div>
+            <p className="dev-hint__text">
+              Desde una terminal en la carpeta del proyecto, para comprobar que los avisos
+              automáticos funcionan:
+            </p>
+            <CopyableCommand command={`pnpm evento ${task.id} completed`} />
+          </section>
+        </div>
+
+        <footer className="detail__foot">
+          <button type="button" className="btn btn--ghost" onClick={() => onEdit(task)}>
+            Editar
+          </button>
+          <span className="detail__spacer" />
+          {confirmingDelete ? (
+            <>
+              <span className="detail__confirm">¿Seguro? No se puede deshacer.</span>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={() => setConfirmingDelete(false)}
+              >
+                No
+              </button>
+              <button
+                type="button"
+                className="btn btn--danger"
+                data-testid="confirm-delete"
+                onClick={() => onDelete(task.id)}
+              >
+                Eliminar
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="btn btn--danger"
+              data-testid="delete-task"
+              onClick={() => setConfirmingDelete(true)}
+            >
+              Eliminar…
+            </button>
+          )}
+        </footer>
       </aside>
     </div>
   )

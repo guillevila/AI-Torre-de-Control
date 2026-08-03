@@ -1,16 +1,31 @@
-import { useMemo, useState } from 'react'
-import type { Task, TaskStatus } from '@torre/contracts'
-import { EMPTY_FILTERS, filterTasks, summarise, type TaskFilters } from '@torre/domain'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { DevInfo, StatusConfidence, Task, TaskStatus } from '@torre/contracts'
+import { filterTasks, summarise, type TaskFilters } from '@torre/domain'
 import { DevPanel } from './components/DevPanel.js'
-import { Filters } from './components/Filters.js'
+import { QuickAdd } from './components/QuickAdd.js'
+import { Sidebar, type Section } from './components/Sidebar.js'
 import { TaskDetail } from './components/TaskDetail.js'
-import { TaskForm } from './components/TaskForm.js'
-import { useTasks } from './hooks/useTasks.js'
+import { Toast } from './components/Toast.js'
+import { TopBar, type ViewMode } from './components/TopBar.js'
+import { useHotkeys } from './hooks/useHotkeys.js'
+import { useSettings } from './hooks/useSettings.js'
+import { useRecentActivity, useTaskHistory, useTasks } from './hooks/useTasks.js'
+import { AttentionView } from './views/AttentionView.js'
+import { HistoryView } from './views/HistoryView.js'
 import { OfficeView } from './views/office/OfficeView.js'
-import { OperationsView } from './views/operations/OperationsView.js'
+import { SettingsView } from './views/SettingsView.js'
+import { TasksView } from './views/TasksView.js'
+import { TowerView } from './views/TowerView.js'
 
-type ViewMode = 'operations' | 'office'
 type Dialog = { kind: 'create' } | { kind: 'edit'; task: Task } | { kind: 'dev' } | null
+
+const TITLES: Record<Section, { title: string; subtitle: string }> = {
+  tower: { title: 'Torre de control', subtitle: 'Qué está pasando ahora mismo' },
+  attention: { title: 'Centro de atención', subtitle: 'Lo que espera una decisión tuya' },
+  tasks: { title: 'Tareas', subtitle: 'Todo lo delegado, agrupado por urgencia' },
+  history: { title: 'Historial', subtitle: 'Lo que ya has retirado de la vista activa' },
+  settings: { title: 'Ajustes', subtitle: 'Avisos, datos y privacidad' },
+}
 
 export function App() {
   const {
@@ -21,185 +36,244 @@ export function App() {
     createTask,
     updateTask,
     changeStatus,
-    archiveTask,
+    deleteTask,
     openExternal,
   } = useTasks()
+  const { settings, loaded: settingsLoaded, update: updateSettings } = useSettings()
 
+  const [section, setSection] = useState<Section>('tower')
   const [view, setView] = useState<ViewMode>('operations')
-  const [filters, setFilters] = useState<TaskFilters>(EMPTY_FILTERS)
+  const [search, setSearch] = useState('')
+  const [confidence, setConfidence] = useState<StatusConfidence | 'all'>('all')
+  const [showArchived, setShowArchived] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [dialog, setDialog] = useState<Dialog>(null)
+  const [toast, setToast] = useState<{ message: string; tone: 'neutral' | 'error' } | null>(null)
+  const [devInfo, setDevInfo] = useState<DevInfo | null>(null)
+  const [appliedPreferences, setAppliedPreferences] = useState(false)
 
-  // Las DOS vistas reciben exactamente esta lista. No hay forma de que enseñen
-  // conjuntos distintos de tareas (D10).
+  const searchRef = useRef<HTMLInputElement>(null)
+
+  // Los ajustes deciden dónde arranca la aplicación, pero solo la primera vez:
+  // después manda lo que el usuario esté mirando.
+  useEffect(() => {
+    if (!settingsLoaded || appliedPreferences) return
+    setSection(settings.startSection)
+    setView(settings.startView)
+    setAppliedPreferences(true)
+  }, [settingsLoaded, appliedPreferences, settings.startSection, settings.startView])
+
+  useEffect(() => {
+    void window.torre.getDevInfo().then((result) => {
+      if (result.ok) setDevInfo(result.data)
+    })
+  }, [tasks.length])
+
+  const filters: TaskFilters = useMemo(
+    () => ({ search, provider: 'all', confidence, showArchived }),
+    [search, confidence, showArchived],
+  )
+
+  // TODAS las vistas reciben exactamente esta lista. No hay forma de que
+  // enseñen conjuntos distintos de tareas (D10).
   const visibleTasks = useMemo(() => filterTasks(tasks, filters), [tasks, filters])
+  const summary = useMemo(() => summarise(tasks), [tasks])
 
   // La ficha se deriva de la lista, no se copia: si la tarea cambia de estado
-  // mientras está abierta, la ficha se actualiza sola.
+  // mientras está abierta, la ficha y su historial se actualizan solos.
   const selectedTask = useMemo(
     () => (selectedId ? (tasks.find((task) => task.id === selectedId) ?? null) : null),
     [tasks, selectedId],
   )
+  const history = useTaskHistory(selectedId, selectedTask?.updatedAt)
+  const activity = useRecentActivity(10, tasks)
 
-  const summary = useMemo(() => summarise(tasks), [tasks])
+  const closeLayers = useCallback(() => {
+    setDialog(null)
+    setSelectedId(null)
+  }, [])
 
-  const handleChangeStatus = (id: string, status: TaskStatus) => {
-    void changeStatus({ id, status, source: 'manual', confidence: 'high' })
-  }
+  useHotkeys({
+    onNew: useCallback(() => setDialog({ kind: 'create' }), []),
+    onEscape: closeLayers,
+    onSearch: useCallback(() => {
+      setSection('tasks')
+      searchRef.current?.focus()
+    }, []),
+  })
 
-  const handleCreate = (values: Record<string, unknown>) => {
-    void createTask(values).then((task) => {
-      if (task) setDialog(null)
-    })
-  }
+  const handleChangeStatus = useCallback(
+    (id: string, status: TaskStatus) => {
+      void changeStatus({ id, status, source: 'manual', confidence: 'high' })
+    },
+    [changeStatus],
+  )
 
-  const handleUpdate = (values: Record<string, unknown>) => {
-    void updateTask(values).then((task) => {
-      if (task) setDialog(null)
-    })
-  }
+  const handleOpenExternal = useCallback((id: string) => void openExternal(id), [openExternal])
+
+  const handleExport = useCallback(async () => {
+    const result = await window.torre.exportCsv()
+    if (!result.ok) {
+      setToast({ message: result.error, tone: 'error' })
+      return
+    }
+    if (result.data.written) {
+      setToast({
+        message: `${result.data.rows} ${result.data.rows === 1 ? 'tarea exportada' : 'tareas exportadas'} a ${result.data.path}`,
+        tone: 'neutral',
+      })
+    }
+  }, [])
+
+  const handleOpenFolder = useCallback(async () => {
+    const result = await window.torre.openDataFolder()
+    if (!result.ok) setToast({ message: result.error, tone: 'error' })
+  }, [])
+
+  const showSwitch = section === 'tower' || section === 'tasks'
+  const officeMode = showSwitch && view === 'office'
 
   return (
     <div className="app">
-      <header className="topbar">
-        <div className="topbar__brand">
-          <span className="topbar__mark" aria-hidden="true" />
-          <h1 className="topbar__title">AI Torre de Control</h1>
-        </div>
-
-        <div className="summary" data-testid="summary">
-          <SummaryChip
-            label="te esperan"
-            value={summary.attention}
-            tone="attention"
-            testId="summary-attention"
-          />
-          <SummaryChip label="trabajando" value={summary.active} tone="active" testId="summary-active" />
-          <SummaryChip
-            label="sin contacto"
-            value={summary.unknown}
-            tone="unknown"
-            testId="summary-unknown"
-          />
-          <SummaryChip
-            label="terminadas"
-            value={summary.completed}
-            tone="completed"
-            testId="summary-completed"
-          />
-        </div>
-
-        <div className="topbar__actions">
-          <div className="switch" role="tablist" aria-label="Cambiar de vista">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={view === 'operations'}
-              className="switch__option"
-              data-active={view === 'operations'}
-              data-testid="view-operations"
-              onClick={() => setView('operations')}
-            >
-              Operativa
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={view === 'office'}
-              className="switch__option"
-              data-active={view === 'office'}
-              data-testid="view-office"
-              onClick={() => setView('office')}
-            >
-              Oficina
-            </button>
-          </div>
-
-          <button
-            type="button"
-            className="btn btn--primary"
-            data-testid="new-task"
-            onClick={() => setDialog({ kind: 'create' })}
-          >
-            Nueva tarea
-          </button>
-
-          <button
-            type="button"
-            className="btn btn--ghost"
-            data-testid="open-dev-panel"
-            onClick={() => setDialog({ kind: 'dev' })}
-            title="Ver dónde escucha el receptor local de eventos"
-          >
-            Eventos
-          </button>
-        </div>
-      </header>
-
-      {error && (
-        <div className="alert" role="alert" data-testid="error-banner">
-          <span>{error}</span>
-          <button type="button" className="btn btn--icon" onClick={clearError} aria-label="Cerrar aviso">
-            ×
-          </button>
-        </div>
-      )}
-
-      <Filters filters={filters} onChange={setFilters} />
+      <Sidebar
+        section={section}
+        onNavigate={setSection}
+        onNew={() => setDialog({ kind: 'create' })}
+        attentionCount={summary.attention}
+        devInfo={devInfo}
+      />
 
       <main className="main">
-        {loading ? (
-          <p className="muted">Cargando tus tareas…</p>
-        ) : view === 'operations' ? (
-          <OperationsView
-            tasks={visibleTasks}
-            onChangeStatus={handleChangeStatus}
-            onOpenExternal={(id) => void openExternal(id)}
-            onArchive={(id) => void archiveTask(id)}
-            onSelect={(task) => setSelectedId(task.id)}
-          />
-        ) : (
-          <OfficeView tasks={visibleTasks} onSelect={(task) => setSelectedId(task.id)} />
+        <TopBar
+          ref={searchRef}
+          title={TITLES[section].title}
+          subtitle={
+            officeMode
+              ? 'La planta de la oficina: la posición de cada trabajador es su estado'
+              : TITLES[section].subtitle
+          }
+          showSwitch={showSwitch}
+          view={view}
+          onView={setView}
+          search={search}
+          onSearch={setSearch}
+        />
+
+        {error && (
+          <div className="banner" role="alert" data-testid="error-banner">
+            <span>{error}</span>
+            <button type="button" className="btn btn--icon" onClick={clearError} aria-label="Cerrar aviso">
+              ✕
+            </button>
+          </div>
+        )}
+
+        <div className="content">
+          {loading ? (
+            <div className="skeletons" aria-label="Cargando">
+              {[0, 1, 2].map((index) => (
+                <span className="skeleton" key={index} />
+              ))}
+            </div>
+          ) : officeMode ? (
+            <OfficeView tasks={visibleTasks} onSelect={(task) => setSelectedId(task.id)} />
+          ) : section === 'tower' ? (
+            <TowerView
+              tasks={visibleTasks}
+              activity={activity}
+              onOpen={(task) => setSelectedId(task.id)}
+              onGoAttention={() => setSection('attention')}
+              onGoOffice={() => {
+                setSection('tower')
+                setView('office')
+              }}
+            />
+          ) : section === 'attention' ? (
+            <AttentionView
+              tasks={visibleTasks}
+              onOpen={(task) => setSelectedId(task.id)}
+              onOpenExternal={handleOpenExternal}
+              onChangeStatus={handleChangeStatus}
+            />
+          ) : section === 'tasks' ? (
+            <TasksView
+              tasks={visibleTasks}
+              confidence={confidence}
+              onConfidence={setConfidence}
+              showArchived={showArchived}
+              onShowArchived={setShowArchived}
+              totalBeforeFilter={tasks.length}
+              onOpen={(task) => setSelectedId(task.id)}
+              onOpenExternal={handleOpenExternal}
+              onNew={() => setDialog({ kind: 'create' })}
+            />
+          ) : section === 'history' ? (
+            <HistoryView
+              tasks={tasks}
+              onOpen={(task) => setSelectedId(task.id)}
+              onOpenExternal={handleOpenExternal}
+            />
+          ) : (
+            <SettingsView
+              settings={settings}
+              onUpdate={(patch) => void updateSettings(patch)}
+              devInfo={devInfo}
+              onOpenFolder={() => void handleOpenFolder()}
+              onExportCsv={() => void handleExport()}
+            />
+          )}
+        </div>
+
+        {section === 'settings' && (
+          <button
+            type="button"
+            className="devlink"
+            data-testid="open-dev-panel"
+            onClick={() => setDialog({ kind: 'dev' })}
+          >
+            Ver el receptor local de eventos
+          </button>
         )}
       </main>
 
       {selectedTask && (
         <TaskDetail
           task={selectedTask}
+          history={history}
           onClose={() => setSelectedId(null)}
           onChangeStatus={handleChangeStatus}
-          onOpenExternal={(id) => void openExternal(id)}
-          onArchive={(id) => void archiveTask(id)}
+          onOpenExternal={handleOpenExternal}
           onEdit={(task) => {
             setSelectedId(null)
             setDialog({ kind: 'edit', task })
+          }}
+          onDelete={(id) => {
+            void deleteTask(id).then(() => {
+              setSelectedId(null)
+              setToast({ message: 'Tarea eliminada.', tone: 'neutral' })
+            })
           }}
         />
       )}
 
       {dialog?.kind === 'create' && (
-        <TaskForm onSubmit={handleCreate} onCancel={() => setDialog(null)} />
+        <QuickAdd
+          onSubmit={(values) => void createTask(values).then((task) => task && setDialog(null))}
+          onCancel={() => setDialog(null)}
+        />
       )}
       {dialog?.kind === 'edit' && (
-        <TaskForm task={dialog.task} onSubmit={handleUpdate} onCancel={() => setDialog(null)} />
+        <QuickAdd
+          editing={dialog.task}
+          onSubmit={(values) => void updateTask(values).then((task) => task && setDialog(null))}
+          onCancel={() => setDialog(null)}
+        />
       )}
       {dialog?.kind === 'dev' && <DevPanel onClose={() => setDialog(null)} />}
+
+      {toast && (
+        <Toast message={toast.message} tone={toast.tone} onDismiss={() => setToast(null)} />
+      )}
     </div>
-  )
-}
-
-interface SummaryChipProps {
-  label: string
-  value: number
-  tone: string
-  testId: string
-}
-
-function SummaryChip({ label, value, tone, testId }: SummaryChipProps) {
-  return (
-    <span className="summary__chip" data-tone={tone} data-testid={testId}>
-      <strong className="summary__value">{value}</strong>
-      <span className="summary__label">{label}</span>
-    </span>
   )
 }

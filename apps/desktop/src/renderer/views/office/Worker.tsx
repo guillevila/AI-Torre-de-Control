@@ -1,80 +1,69 @@
-import type { Task, TaskStatus } from '@torre/contracts'
-import { PROVIDER_LABELS, STATUS_LABELS } from '@torre/domain'
-import { relativeTime } from '../../utils/format.js'
-
-/**
- * Glifo corto que acompaña a cada puesto.
- *
- * Se usa junto al color, nunca en su lugar: quien no distinga bien los colores
- * tiene que poder leer el estado igual.
- */
-const GLYPHS: Record<TaskStatus, string> = {
-  running: '···',
-  waiting_user: '!',
-  completed: '✓',
-  failed: '×',
-  unknown: '?',
-  queued: '⏱',
-  draft: '·',
-  archived: '—',
-}
+import type { Task } from '@torre/contracts'
+import { PROVIDER_COLORS, PROVIDER_LABELS, STATUS_GLYPHS, STATUS_LABELS } from '@torre/domain'
+import { WorkPulse } from '../../components/Indicators.js'
 
 interface WorkerProps {
   task: Task
+  /** Posición absoluta dentro de la planta, en porcentaje. */
+  left: number
+  top: number
   onSelect: (task: Task) => void
 }
 
 /**
  * Un trabajador = una tarea delegada.
  *
- * El dibujo cambia con el estado: quien espera respuesta levanta la mano, quien
- * ha terminado deja el encargo sobre la mesa, y quien ha perdido el contacto
- * aparece desvaído. Es la misma información de la vista operativa contada de
- * otra forma.
+ * Figura geométrica sin rostro (opción A del diseño): legible a 20 px, y
+ * trivial de portar a un motor gráfico más adelante porque cada trabajador es
+ * solo `{id, plataforma, estado, x, y}`.
+ *
+ * El color es la plataforma. El diseño original usaba el «rol» de la tarea,
+ * pero ese campo quedó como decisión abierta (O7), así que se usa el dato que
+ * sí existe y cumple la misma función.
  */
-export function Worker({ task, onSelect }: WorkerProps) {
-  const waving = task.status === 'waiting_user'
-  const delivered = task.status === 'completed' || task.status === 'failed'
+export function Worker({ task, left, top, onSelect }: WorkerProps) {
+  const color = PROVIDER_COLORS[task.provider]
+  const { status } = task
 
   return (
-    <button
-      type="button"
+    <div
       className="worker"
-      data-status={task.status}
+      data-status={status}
+      data-task-id={task.id}
       data-testid="office-worker"
-      onClick={() => onSelect(task)}
-      title={`${task.title} — ${STATUS_LABELS[task.status]}`}
-      aria-label={`${task.title}. Estado: ${STATUS_LABELS[task.status]}. Abrir ficha.`}
+      style={{ left: `${left}%`, top: `${top}%` }}
     >
-      <span className="worker__badge" aria-hidden="true">
-        {GLYPHS[task.status]}
-      </span>
+      {/* Contrarrotación: la planta está inclinada, las personas no. */}
+      <div className="worker__upright">
+        {status === 'waiting_user' && (
+          <span className="bubble bubble--wait" data-testid="worker-bubble">
+            ▲ ?
+          </span>
+        )}
+        {status === 'completed' && <span className="bubble bubble--done">▤ Informe</span>}
+        {status === 'failed' && <span className="bubble bubble--fail">✕ Error</span>}
+        {status === 'unknown' && <span className="bubble bubble--unknown">? Sin señal</span>}
+        {status === 'running' && <WorkPulse />}
+        {status === 'queued' && <span className="bubble bubble--queued">◔ En cola</span>}
 
-      <svg viewBox="0 0 72 78" className="worker__svg" aria-hidden="true" focusable="false">
-        {/* Cabeza */}
-        <circle className="worker__head" cx="36" cy="24" r="11" />
-        {/* Torso */}
-        <path className="worker__body" d="M20 54 q16 -20 32 0 z" />
-        {/* Brazo: levantado si la tarea reclama al usuario */}
-        <path
-          className="worker__arm"
-          d={waving ? 'M50 48 L59 22' : 'M50 48 L58 56'}
-          strokeLinecap="round"
-        />
-        {/* Mesa */}
-        <rect className="worker__desk" x="6" y="56" width="60" height="7" rx="3" />
-        <rect className="worker__desk-leg" x="12" y="63" width="4" height="12" rx="2" />
-        <rect className="worker__desk-leg" x="56" y="63" width="4" height="12" rx="2" />
-        {/* Encargo entregado sobre la mesa */}
-        {delivered && <rect className="worker__parcel" x="44" y="46" width="16" height="10" rx="2" />}
-        {/* Pantalla del puesto */}
-        {!delivered && <rect className="worker__screen" x="10" y="42" width="18" height="14" rx="2" />}
-      </svg>
+        <button
+          type="button"
+          className="worker__figure"
+          onClick={() => onSelect(task)}
+          title={`${task.title} — ${STATUS_LABELS[status]}`}
+          aria-label={`${task.title}. ${PROVIDER_LABELS[task.provider]}. Estado: ${STATUS_LABELS[status]}. Abrir ficha.`}
+        >
+          <span className="worker__head" style={{ borderColor: color }} />
+          <span className="worker__body" style={{ background: color }} />
+        </button>
 
-      <span className="worker__name">{task.title}</span>
-      <span className="worker__meta">
-        {PROVIDER_LABELS[task.provider]} · {relativeTime(task.lastActivityAt)}
-      </span>
-    </button>
+        <button type="button" className="worker__tag" onClick={() => onSelect(task)} tabIndex={-1}>
+          <span className="worker__tag-glyph" aria-hidden="true">
+            {STATUS_GLYPHS[status]}
+          </span>
+          <span className="worker__tag-title">{task.title}</span>
+        </button>
+      </div>
+    </div>
   )
 }
