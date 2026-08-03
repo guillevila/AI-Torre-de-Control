@@ -79,47 +79,90 @@ jobs:
       - name: Recordatorio sobre el estado del CI
         run: |
           echo "════════════════════════════════════════════════════════════════"
-          echo " Este CI comprueba DOCUMENTACIÓN, no funcionamiento del producto."
-          echo " Un check verde aquí NO significa que el producto funcione ni que"
-          echo " esté testeado. Cuando el proyecto tenga código, añade tests reales"
-          echo " en el job 'tests' de abajo (está desactivado a propósito)."
+          echo " Este job comprueba DOCUMENTACIÓN, no funcionamiento del producto."
+          echo " Que el producto funcione lo comprueban los jobs 'calidad' e"
+          echo " 'interfaz', que sí ejecutan tests reales sobre el código."
           echo "════════════════════════════════════════════════════════════════"
 
   # ════════════════════════════════════════════════════════════════════════
-  #  TESTS DEL PRODUCTO  (DESACTIVADO hasta que exista stack técnico)
+  #  TESTS DEL PRODUCTO
   #
-  #  Mientras esté así, NO hay verificación automática de que el producto
-  #  funcione — y eso queda dicho honestamente. Cuando el proyecto tenga código:
-  #    1. Borra la línea `if: false` de abajo para activarlo.
-  #    2. Descomenta el bloque del lenguaje que uses (Node o Python).
-  #    3. Pon los comandos reales de instalar, compilar y testear.
-  #  Pídeselo a Claude: "Activa el job de tests del CI para nuestro stack".
+  #  Este job SÍ comprueba que el código funciona: tipos, tests unitarios y
+  #  que la aplicación se construye. Si está en verde, esas tres cosas son
+  #  ciertas. No comprueba la experiencia de uso real — de eso se encarga el
+  #  job 'interfaz'.
   # ════════════════════════════════════════════════════════════════════════
-  tests:
-    name: Tests del producto (pendiente de configurar)
+  calidad:
+    name: Tipos, tests unitarios y build
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    if: false   # ← BORRA esta línea cuando haya tests reales que ejecutar.
     steps:
       - name: Checkout del código
         uses: actions/checkout@v4
 
-      # --- Node.js (descomenta si tu proyecto usa Node/JavaScript) ---
-      # - uses: actions/setup-node@v4
-      #   with:
-      #     node-version: '20'
-      # - run: npm install
-      # - run: npm run build
-      # - run: npm test
+      - name: Instalar pnpm
+        uses: pnpm/action-setup@v4
 
-      # --- Python (descomenta si tu proyecto usa Python) ---
-      # - uses: actions/setup-python@v5
-      #   with:
-      #     python-version: '3.12'
-      # - run: pip install -r requirements.txt
-      # - run: python -m pytest
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
 
-      - name: Sin tests configurados
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Comprobar tipos (TypeScript estricto)
+        run: pnpm -r typecheck
+
+      - name: Tests unitarios
+        run: pnpm test
+
+      - name: Build de producción
+        run: pnpm build
+
+  # ════════════════════════════════════════════════════════════════════════
+  #  PRUEBA DE INTERFAZ
+  #
+  #  Arranca la aplicación Electron de verdad y recorre la vertical completa:
+  #  crear tarea, cambiar estado, evento local por HTTP, notificación, y que
+  #  los datos sigan ahí tras reiniciar. Necesita una pantalla virtual (xvfb)
+  #  porque los runners de GitHub no tienen entorno gráfico.
+  # ════════════════════════════════════════════════════════════════════════
+  interfaz:
+    name: Prueba de interfaz (Electron)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Instalar pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Instalar dependencias de sistema de Electron
         run: |
-          echo "Este job está desactivado porque el proyecto aún no tiene tests."
-          exit 1
+          sudo apt-get update
+          sudo apt-get install -y xvfb libnss3 libatk1.0-0 libatk-bridge2.0-0 \
+            libcups2 libdrm2 libgbm1 libasound2t64 libxkbcommon0 libxcomposite1 \
+            libxdamage1 libxfixes3 libxrandr2 libpango-1.0-0 libcairo2
+
+      - name: Ejecutar la prueba de interfaz
+        run: xvfb-run --auto-servernum pnpm test:e2e
+
+      - name: Guardar el rastro si algo falla
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultados-prueba-interfaz
+          path: apps/desktop/test-results/
+          retention-days: 7
