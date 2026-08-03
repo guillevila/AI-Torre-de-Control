@@ -12,6 +12,69 @@
 
 ---
 
+## [0.2.0] — 2026-08-03 — El diseño, construido
+
+> Se adopta íntegro el sistema de diseño «Oficina de papel». La aplicación pasa
+> de dos vistas a seis pantallas y gana identidad propia.
+> Estado: sigue siendo 🛠️ **Prototipo funcional**.
+> Detalle en [sprints/sprint-002.md](sprints/sprint-002.md) y
+> [ADR-006](decisiones/ADR-006-sistema-de-diseno.md).
+
+### Añadido
+
+**Identidad visual**
+- Paleta «Oficina de papel» completa, con los nombres de token del documento de
+  diseño.
+- Instrument Serif, Instrument Sans y JetBrains Mono **empaquetadas dentro de la
+  aplicación** (190 KB, licencia SIL OFL). No se pide nada a internet.
+- Glifo geométrico propio por estado, de modo que el color nunca vaya solo.
+
+**Pantallas nuevas**
+- **Torre de control**: cinco contadores, panel de atención, tareas en marcha y
+  actividad reciente.
+- **Centro de atención**: la cola de decisión, ordenada por lo que cuesta más
+  caro ignorar.
+- **Tareas**: secciones colapsables por urgencia y filtro por confianza.
+- **Historial**: lo archivado, con su duración.
+- **Ajustes**: avisos, pérdida de contacto, arranque, integraciones y datos.
+- **Oficina por zonas**: despacho, mesa de entregas, zona de trabajo,
+  incidencias y recepción. La posición de cada trabajador **es** su estado.
+
+**Funcionalidad**
+- **Historial de estados por tarea** (decisión D19), con migración v2 de la base
+  de datos. Visible en la ficha y en la actividad reciente.
+- **Alta rápida con `⌘N`** y detección de la plataforma desde el dominio del
+  enlace.
+- **Ajustes que funcionan de verdad**: silenciar cada tipo de aviso, elegir
+  sección y vista de arranque, y fijar cuándo una tarea pasa a «sin confirmar».
+- **Barrido automático a «sin confirmar»** para las tareas automáticas que
+  llevan demasiado tiempo sin señal. Nunca toca lo que fijaste tú a mano.
+- **Exportar a CSV** y **abrir la carpeta de datos** desde Ajustes.
+- **Eliminar una tarea**, con confirmación en dos pasos.
+- Plataforma **Cowork** añadida al modelo.
+
+### Cambiado
+
+- La ficha pasa de ventana modal a **panel lateral de 480 px**, con el historial
+  en el centro.
+- Los estados se renombran a un lenguaje más directo: «Sin confirmar» en lugar
+  de «Sin contacto», «Con error» en lugar de «Ha fallado».
+- 147 tests unitarios (eran 105) y 3 pruebas de interfaz (eran 2).
+
+### Corregido
+
+- La planta de oficina sacaba una barra de desplazamiento horizontal por la
+  proyección del plano inclinado.
+
+### Deliberadamente NO construido
+
+Del diseño quedaron fuera el campo «rol» (decisión abierta O7), el estado
+«revisada» (O8) y los ajustes de sonido, contador en el icono, tamaño de texto,
+ventana interna y caducidad del historial. **No se dibujan interruptores que no
+hagan nada.**
+
+---
+
 ## [0.1.0] — 2026-08-03 — Primera vertical funcional de AI Torre de Control
 
 > El proyecto deja de ser documentación y pasa a ser una aplicación que funciona.

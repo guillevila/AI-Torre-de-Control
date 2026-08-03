@@ -17,7 +17,7 @@ donde ves las tres a la vez**, con un enlace para volver a cada conversación.
 
 | Sí hace | No hace |
 |---|---|
-| Registra tareas y su estado | Ejecutar prompts por ti |
+| Registra tareas y su estado, con su historial | Ejecutar prompts por ti |
 | Avisa cuando algo termina o te necesita | Guardar tus conversaciones |
 | Te devuelve a la conversación original de un clic | Consumir APIs de pago de OpenAI, Anthropic ni nadie |
 | Recibe avisos automáticos de herramientas locales | Enviar tus datos a ningún servidor |
@@ -41,12 +41,19 @@ pnpm dev         # abrir la aplicación
 
 Se abre una ventana. A partir de ahí:
 
-1. **Nueva tarea** → ponle un título, elige dónde se está ejecutando y pega el
-   enlace de la conversación.
-2. La tarea aparece en la pantalla, agrupada según lo que reclame tu atención.
-3. Cambia su estado con el desplegable de la tarjeta.
-4. Pulsa **Oficina** en la barra superior: las mismas tareas, ahora como
-   personas trabajando en sus puestos. Pulsa a cualquiera para ver su ficha.
+1. Pulsa **⌘N** (o *Nueva tarea*). Escribe qué has encargado y **pega el enlace**
+   de la conversación: la plataforma se rellena sola.
+2. La tarea aparece agrupada según lo que reclame tu atención.
+3. Pulsa el **⋯** de una tarea para abrir su ficha: ahí cambias el estado a mano,
+   y ahí está su historial completo de cambios.
+4. Pulsa **Oficina** arriba: las mismas tareas, ahora como personas en una
+   planta. **La posición es el estado** — quien te espera está de pie en tu
+   puerta, lo terminado está junto a la mesa de entregas, y quien perdió el
+   contacto se queda quieto con el contorno roto.
+
+Cinco sitios en la barra izquierda: **Torre de control** (qué pasa ahora),
+**Centro de atención** (qué espera algo tuyo), **Tareas**, **Historial** y
+**Ajustes**.
 
 ### Simular un aviso automático
 
@@ -81,7 +88,9 @@ La pantalla se actualiza sola y salta una notificación de escritorio.
 apps/desktop        La aplicación Electron
   src/main            Proceso con acceso al sistema: base de datos, eventos, avisos
   src/preload         Puente seguro y mínimo hacia la interfaz
-  src/renderer        La interfaz (React): vista operativa y vista oficina
+  src/renderer        La interfaz (React): cinco pantallas y la planta de oficina
+    assets/fonts        Las tipografías, empaquetadas dentro
+    styles/tokens.css   El sistema de diseño, token a token
 packages/contracts  Tipos y validaciones compartidas
 packages/domain     Las reglas: máquina de estados, agrupaciones, decisiones de aviso
 scripts             Utilidades de desarrollo

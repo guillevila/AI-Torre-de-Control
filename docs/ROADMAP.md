@@ -29,7 +29,7 @@ arrancarla con comandos. Eso depende de la decisión abierta O1.
 
 ## Próximos sprints
 
-### Sprint actual — 001: Primera vertical funcional ✅
+### Sprint 001 — Primera vertical funcional ✅
 
 Terminado el 3 de agosto de 2026. Detalle en
 [sprints/sprint-001.md](sprints/sprint-001.md).
@@ -37,6 +37,15 @@ Terminado el 3 de agosto de 2026. Detalle en
 Aplicación de escritorio funcionando: crear tareas, cambiar estados, guardar en
 disco, recibir eventos locales, notificar, abrir conversaciones, y dos vistas
 conectadas al mismo estado.
+
+### Sprint actual — 002: El diseño, construido ✅
+
+Terminado el 3 de agosto de 2026. Detalle en
+[sprints/sprint-002.md](sprints/sprint-002.md).
+
+Se adopta íntegro el sistema de diseño «Oficina de papel»: identidad visual
+propia, cinco destinos, planta de oficina por zonas, historial de estados,
+alta rápida con `⌘N`, ajustes reales y exportación a CSV.
 
 ### Sprint 002 — Primera integración real ⛔ bloqueado
 
@@ -68,18 +77,21 @@ Si se elige Claude Code, el trabajo sería:
 
 ## Backlog (ordenado por prioridad)
 
-- [ ] **Exportar e importar los datos** — hoy no hay copia de seguridad posible
-      salvo copiar el fichero a mano. Es el riesgo abierto más molesto.
-- [ ] **Detectar tareas abandonadas** — una tarea «trabajando» que lleva seis
-      horas sin señal probablemente ya no lo está. Debería pasar a `unknown`
-      sola (decisión D9).
+- [x] ~~Exportar los datos~~ — hecho en el Sprint 002: **Exportar en CSV** desde
+      Ajustes.
+- [x] ~~Detectar tareas abandonadas~~ — hecho en el Sprint 002: barrido
+      automático a «sin confirmar», configurable.
+- [x] ~~Historial de cambios de estado por tarea~~ — hecho en el Sprint 002
+      (decisión D19).
+- [x] ~~Atajos de teclado~~ — hecho en el Sprint 002: `⌘N` para registrar,
+      `⌘K` para buscar, `Esc` para cerrar capas.
+- [ ] **Importar datos** desde un CSV exportado, para poder restaurar.
+- [ ] **Copia de seguridad automática** del fichero de base de datos.
 - [ ] **Registro de errores en fichero** — imprescindible para depurar
       integraciones reales cuando fallen.
-- [ ] **Historial de cambios de estado por tarea** — hoy solo se guarda el
-      estado actual, no por dónde pasó.
-- [ ] **Atajos de teclado** para crear tarea y cambiar de vista.
 - [ ] **Agrupar por carpeta de proyecto**, útil cuando varias tareas pertenecen
       al mismo trabajo.
+- [ ] **Resolver O7 y O8** (campo «rol» y estado «revisada») con uso real detrás.
 
 ---
 

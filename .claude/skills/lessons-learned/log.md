@@ -80,3 +80,54 @@ si aparecen con toda la aplicación escrita encima.
 
 **Contexto:** Siempre. Especialmente antes de escribir en `PROJECT_STATUS.md` que
 algo «funciona».
+
+---
+
+## 2026-08-03 22:30 — Un diseño se verifica mirándolo, no compilándolo
+
+**Error o aprendizaje:** Al implementar el sistema de diseño completo, los tests
+pasaban en verde y los tipos estaban limpios, pero la pantalla tenía tres
+defectos que ninguna prueba automática podía detectar: la planta de oficina
+sacaba una barra de desplazamiento horizontal, el nombre de la aplicación se
+partía en dos líneas, y dos integraciones distintas se veían con la misma
+etiqueta truncada.
+
+**Causa raíz:** Un test comprueba que el dato correcto está en el sitio correcto.
+No comprueba que se **vea** bien. Dar por bueno un rediseño porque los tests
+pasan es confundir «no está roto» con «está bien hecho».
+
+**Lección:**
+1. Al implementar un diseño, **hacer capturas de todas las pantallas y mirarlas
+   una a una** contra el documento original. Se puede automatizar con Playwright
+   sobre la aplicación real; cuesta un rato y encuentra lo que los tests no ven.
+2. Cuando un fallo aparente venga del script de captura y no de la aplicación,
+   comprobarlo antes de «arreglar» algo que funcionaba: el conmutador que
+   conservaba la vista entre secciones parecía un fallo y era el comportamiento
+   que pedía el diseño.
+
+**Contexto:** Siempre que se implemente o modifique interfaz. No sustituye a los
+tests: los complementa.
+
+---
+
+## 2026-08-03 22:40 — Un diseño se copia entero, salvo lo que mentiría
+
+**Error o aprendizaje:** El documento de diseño incluía una pantalla de Ajustes
+con interruptores de sonido, contador en el icono, tamaño de texto y caducidad
+del historial, y una lista de integraciones marcadas como «Hook instalado».
+Copiarlo literalmente habría sido copiar bien el diseño y traicionar el producto.
+
+**Causa raíz:** Un documento de diseño describe el destino, no el estado actual.
+Sus pantallas están pobladas de datos y capacidades que aún no existen.
+
+**Lección:** Al implementar un diseño, distinguir dos cosas que parecen la misma:
+- **Lo que aún no está construido pero se puede construir** → se construye
+  (ajustes de avisos, exportar CSV, abrir carpeta).
+- **Lo que no está construido y no toca ahora** → **no se dibuja**, y se dice en
+  su lugar lo que hay de verdad («Próximamente», «nada se borra solo»).
+
+Un interruptor que no está conectado a nada es exactamente la falsa sensación de
+avance que este proyecto existe para evitar. Cuando haya que apartarse del
+diseño por este motivo, dejarlo escrito en el ADR y en `PROJECT_STATUS.md`.
+
+**Contexto:** Siempre que se implemente un diseño hecho por otro, o una maqueta.

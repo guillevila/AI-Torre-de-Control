@@ -61,3 +61,4 @@ Claude creará el archivo con el formato correcto.
 | [003](ADR-003-modelo-de-estados.md) | Modelo normalizado de estados con fuente y confianza | ✅ Aceptada | 2026-08-03 |
 | [004](ADR-004-monorepo.md) | Monorepo con dominio aislado y adaptadores futuros | ✅ Aceptada | 2026-08-03 |
 | [005](ADR-005-clave-receptor-local.md) | Clave local además de escuchar solo en 127.0.0.1 | ✅ Aceptada | 2026-08-03 |
+| [006](ADR-006-sistema-de-diseno.md) | Sistema de diseño «Oficina de papel» completo | ✅ Aceptada | 2026-08-03 |

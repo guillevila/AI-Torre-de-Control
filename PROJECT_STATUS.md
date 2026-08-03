@@ -39,18 +39,23 @@ comandos. Hasta eso, no es una herramienta que puedas usar cómodamente cada dí
 
 > Lista SOLO lo que has probado tú mismo y funciona de verdad.
 
-**Comprobado automáticamente** — 105 tests unitarios y 2 pruebas que arrancan
+**Comprobado automáticamente** — 147 tests unitarios y 3 pruebas que arrancan
 la aplicación de verdad, todos en verde a 3 de agosto de 2026:
 
 - **Instalar y arrancar.** `pnpm install` termina en segundos sin compilar nada.
   `pnpm dev` abre la aplicación.
-- **Crear una tarea** con título, plataforma, enlace, sesión, carpeta y notas.
-  Los datos incorrectos se rechazan con un mensaje en lenguaje normal.
-- **Cambiar el estado a mano**, tanto desde la tarjeta como desde la ficha.
-  Solo se ofrecen los cambios que tienen sentido desde el estado actual.
+- **Registrar una tarea en segundos** con `⌘N` desde cualquier pantalla. Al pegar
+  el enlace, **la plataforma se deduce sola** del dominio. Los datos incorrectos
+  se rechazan con un mensaje en lenguaje normal.
+- **Cinco pantallas**: Torre de control, Centro de atención, Tareas, Historial y
+  Ajustes, más el conmutador Operativa ⇄ Oficina.
+- **Cambiar el estado a mano** desde la ficha. Solo se ofrecen los cambios que
+  tienen sentido desde el estado actual.
 - **Guardar en disco de verdad.** Cierras la aplicación, la vuelves a abrir y
-  todo sigue exactamente igual. Esto está comprobado cerrando y reabriendo la
-  aplicación en la prueba automática, no solo en teoría.
+  todo sigue exactamente igual. Comprobado cerrando y reabriendo la aplicación
+  en la prueba automática, no solo en teoría.
+- **Historial de estados por tarea.** Cada cambio deja constancia de dónde vino,
+  adónde fue, quién lo dijo y cuándo. Se ve en la ficha y sobrevive al reinicio.
 - **Recibir un evento local** por su canal definitivo: HTTP a `127.0.0.1` con
   clave local. Un evento válido cambia el estado y **la pantalla se actualiza
   sola**, sin recargar.
@@ -60,24 +65,32 @@ la aplicación de verdad, todos en verde a 3 de agosto de 2026:
 - **Avisar al sistema operativo** cuando una tarea pasa a *te espera*,
   *terminada* o *fallida*, con el texto correcto y **sin repetir** el mismo
   aviso dos veces.
+- **Silenciar cada tipo de aviso** desde Ajustes, y que se respete de verdad.
+- **Pasar a «sin confirmar»** las tareas automáticas que llevan demasiado tiempo
+  sin señal, sin tocar nunca lo que fijaste tú a mano.
 - **Abrir la conversación externa** de un clic. Comprobado que la aplicación
   pide abrir exactamente la dirección guardada, y que solo acepta `http` y
   `https`.
-- **Las dos vistas muestran el mismo estado.** Comprobado cambiando el estado en
-  la vista operativa y verificando que el trabajador de la oficina cambia con
-  ella.
-- **Archivar** tareas y filtrar por texto, plataforma y grupo.
-- **La ficha completa** se abre igual desde la vista operativa que pulsando un
-  trabajador en la oficina.
+- **La lista y la oficina muestran el mismo estado.** Comprobado cambiando el
+  estado en la lista y verificando que el trabajador de la oficina se mueve con
+  él.
+- **Exportar todas las tareas a CSV**, con las fórmulas neutralizadas para que
+  abrir el fichero en Excel no ejecute nada.
+- **Archivar, editar y eliminar** tareas, y filtrar por texto y por confianza.
 
-**Construido y revisado, pendiente de que lo veas tú:**
+**Comprobado mirándolo, con capturas de las ocho pantallas:**
 
-- El **aspecto visual** de las dos pantallas. Las pruebas comprueban que los
-  datos correctos están ahí, no que se vean bonitos.
-- Que la **notificación aparezca visualmente** en tu Windows. Está comprobado
-  que la aplicación se la pide al sistema con el texto correcto, pero el aviso
-  se intercepta en las pruebas para no llenarte el escritorio. **Esto es lo
-  único importante que te toca confirmar a ti.**
+- El aspecto general coincide con el documento de diseño: papel cálido,
+  tipografías correctas, contadores, planta de oficina por zonas y ficha lateral.
+
+**Pendiente de que lo veas tú:**
+
+- Que la **notificación aparezca visualmente** en tu Windows. Está comprobado que
+  la aplicación se la pide al sistema con el texto correcto, pero el aviso se
+  intercepta en las pruebas para no llenarte el escritorio. **Esto es lo único
+  importante que te toca confirmar a ti.**
+- Si la aplicación **se entiende de un vistazo** cuando la usas de verdad. Eso no
+  lo puede comprobar ningún test.
 
 ---
 
@@ -94,6 +107,16 @@ la aplicación de verdad, todos en verde a 3 de agosto de 2026:
   con `pnpm dev` desde una terminal. Depende de decidir para qué sistema
   operativo se empaqueta primero (decisión abierta O1).
 
+**Del diseño, deliberadamente sin construir:**
+
+- **Campo «rol»** en las tareas (decisión abierta O7). En la oficina, el color
+  del trabajador es su **plataforma**, no su rol.
+- **Estado «revisada»** entre terminada y archivada (decisión abierta O8).
+- **Ajustes de sonido, contador en el icono de la app, tamaño de texto, ventana
+  interna y caducidad del historial.** Aparecían en el diseño; no están
+  construidos, así que **no se dibujan**. Un interruptor que no hace nada es
+  justo la falsa sensación de avance que este proyecto evita.
+
 **Fuera de alcance de este sprint, por decisión:**
 
 - Extensión de navegador.
@@ -108,10 +131,11 @@ la aplicación de verdad, todos en verde a 3 de agosto de 2026:
 
 - Solo se ha probado en **Windows 11**. Debería funcionar en macOS y Linux, pero
   no está comprobado.
-- No hay **copia de seguridad** de la base de datos. Si pierdes el ordenador,
-  pierdes el histórico.
+- No hay **copia de seguridad automática**. Ya puedes exportar a CSV desde
+  Ajustes o copiar el fichero `torre.db`, pero hay que acordarse de hacerlo.
 - No hay **registro de errores en fichero**: si algo falla, el detalle solo
   aparece en la consola.
+- **No hay modo oscuro.** El sistema de diseño es de modo claro.
 - El rendimiento con **muchísimas tareas** no se ha medido. Sobra para decenas o
   cientos; no sé qué pasa con decenas de miles.
 
@@ -134,19 +158,24 @@ pnpm dev
 Debe abrirse una ventana oscura con el título *AI Torre de Control*.
 
 **2. Crear tres tareas de plataformas distintas.**
-Pulsa **Nueva tarea**. Ponle título, elige la herramienta, pega un enlace
-cualquiera que empiece por `https://` y créala. Repítelo con otras dos
-plataformas. Elige estados iniciales distintos: una *Trabajando*, otra *En cola*.
+Pulsa **⌘N** (o *Nueva tarea*). Escribe el título y **pega un enlace** de
+ChatGPT o de Claude: verás que la plataforma se rellena sola. Repítelo con otras
+dos. Deja una como *Borrador* para ver la diferencia.
 
-**3. Cambiar estados a mano.**
-En una tarjeta, usa el desplegable *Cambiar estado…* y pon **Te espera**.
-→ Debe subir al grupo de arriba, *Necesitan tu atención*, y **debe aparecer una
-notificación de Windows**. Este es el punto que necesito que confirmes.
+**3. Cambiar un estado a mano.**
+Pulsa el **⋯** de una tarea para abrir su ficha, y en *Corregir a mano* elige
+**Te espera**.
+→ Debe subir a lo alto, el contador *Centro de atención* de la izquierda debe
+marcar uno más, y **debe aparecer una notificación de Windows**. Este es el
+punto que necesito que confirmes.
+→ Mira también el **Historial de estados** al final de la ficha: debe haber
+aparecido una línea nueva.
 
 **4. Ver la oficina.**
-Pulsa **Oficina** arriba. Verás una persona por tarea, con el color y el símbolo
-de su estado, y quien te espera con la mano levantada. Pulsa a cualquiera: se
-abre su ficha completa.
+Pulsa **Oficina** arriba. Quien te espera está **de pie en la puerta de tu
+despacho** con la mano levantada; quien trabaja está en su puesto con las barras
+latiendo; lo terminado, junto a la mesa de entregas; los errores, abajo a la
+izquierda. Pulsa a cualquiera: se abre su ficha.
 
 **5. Recibir un evento automático simulado.**
 Abre la ficha de una tarea y copia el comando que aparece abajo del todo (botón
@@ -167,10 +196,14 @@ Pulsa **Abrir conversación** en cualquier tarea con enlace.
 Cierra la aplicación del todo. Vuelve a ejecutar `pnpm dev`.
 → Las tres tareas deben seguir ahí, con los estados que dejaste.
 
+**8. Probar los ajustes y la exportación.**
+Ve a **Ajustes**: silencia *Cuando una tarea termina* y comprueba que ya no
+avisa. Pulsa **Exportar en CSV** y ábrelo con Excel.
+
 **Para ver los tests por ti mismo:**
 
 ```bash
-pnpm test        # 105 tests de las reglas, la base de datos y la seguridad
+pnpm test        # 147 tests de las reglas, la base de datos y la seguridad
 pnpm test:e2e    # abre la aplicación de verdad y recorre todo el flujo
 ```
 
@@ -178,6 +211,12 @@ pnpm test:e2e    # abre la aplicación de verdad y recorre todo el flujo
 
 ## 5. 🔚 Última decisión tomada
 
+- **2026-08-03** — Adoptar **íntegro** el sistema de diseño «Oficina de papel»
+  encargado a Claude Designer, y construirlo funcional (Sprint 002). Detalle en
+  [docs/sprints/sprint-002.md](docs/sprints/sprint-002.md) y
+  [ADR-006](docs/decisiones/ADR-006-sistema-de-diseno.md).
+- **2026-08-03** — Aprobar el **historial de estados** como decisión cerrada D19,
+  y dejar el campo «rol» (O7) y el estado «revisada» (O8) como abiertas.
 - **2026-08-03** — Construir la primera vertical funcional completa (Sprint 001)
   antes de intentar ninguna integración real. Detalle en
   [docs/sprints/sprint-001.md](docs/sprints/sprint-001.md).
@@ -200,6 +239,10 @@ pnpm test:e2e    # abre la aplicación de verdad y recorre todo el flujo
 - **O1 — ¿Qué sistema operativo se empaqueta primero?** Decide: tú. Bloquea que
   la aplicación se pueda instalar como un programa normal.
   *Si solo la vas a usar tú, la respuesta es Windows.*
+- **O7 — ¿Las tareas llevarán un campo «rol»?** y **O8 — ¿hará falta un estado
+  «revisada»?** Decides: tú, pero **no todavía**. Las dos vienen del diseño y
+  quedaron fuera a propósito. Úsala unos días y sabrás si las echas de menos o
+  si solo serían un campo más que rellenar.
 
 ---
 
@@ -207,7 +250,7 @@ pnpm test:e2e    # abre la aplicación de verdad y recorre todo el flujo
 
 | Riesgo | Impacto | Estado |
 |---|---|---|
-| **Sin copia de seguridad.** Si se pierde el ordenador, se pierde el histórico de tareas | Medio | Abierto. Se resuelve con una exportación sencilla o copiando el fichero `.db` |
+| **Sin copia de seguridad automática.** Si se pierde el ordenador, se pierde el histórico | Bajo | Mitigado: ya se puede exportar a CSV desde Ajustes y abrir la carpeta para copiar el fichero. Falta que sea automático |
 | **Solo probado en Windows.** macOS y Linux sin verificar | Bajo | Abierto. Se cierra cuando se decida O1 |
 | **Las integraciones web serán frágiles.** ChatGPT o Claude pueden cambiar su interfaz y romper los detectores | Alto (a futuro) | Mitigado por diseño: estado `unknown`, nivel de confianza y corrección manual siempre disponible |
 | **Instalar hooks tocará configuración global de Claude Code** | Medio (a futuro) | No se ha tocado nada. Cuando llegue, se pedirá confirmación explícita y se hará copia de seguridad (D13) |
@@ -223,7 +266,8 @@ pnpm test:e2e    # abre la aplicación de verdad y recorre todo el flujo
 - [ ] 🔴 **Bajo** — Recién empezado / sin probar / mucha incertidumbre todavía.
 
 **Por qué medio y no alto.** Todo lo listado como «funciona» está comprobado con
-pruebas automáticas que se ejecutan sobre la aplicación real, no supuesto. Pero
+pruebas automáticas que se ejecutan sobre la aplicación real, y el aspecto se ha
+revisado con capturas de las ocho pantallas contra el documento de diseño. Pero
 quedan dos zonas grises honestas: **nadie la ha usado todavía en el día a día**,
 y **el dueño del proyecto aún no ha visto la notificación aparecer en su
 pantalla**. En cuanto confirmes el paso 3 del apartado «Cómo probarlo» y la uses
@@ -231,5 +275,5 @@ un par de días, esto pasa a alto.
 
 ---
 
-*Última actualización: 3 de agosto de 2026 por Claude (Sprint 001).*
+*Última actualización: 3 de agosto de 2026 por Claude (Sprint 002).*
 *Mantiene: Claude (con validación del dueño del proyecto).*

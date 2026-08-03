@@ -3,7 +3,7 @@
 > Documento vivo. Claude lo actualiza cuando cambia algo técnico relevante.
 > Si quieres saber cómo está construido el proyecto, lee esto.
 
-**Última actualización:** 2026-08-03 — primera vertical funcional (Sprint 001)
+**Última actualización:** 2026-08-03 — sistema de diseño completo (Sprint 002)
 **Mantenedor:** Claude (con validación del dueño del proyecto)
 
 ---
@@ -104,14 +104,16 @@ ai-torre-de-control/
 │     │  ├─ services/task-service.ts   Orquestador
 │     │  ├─ system/open-external.ts    Apertura validada de enlaces
 │     │  └─ ipc/handlers.ts            Canales hacia la interfaz
-│     ├─ src/preload/index.ts       Puente seguro (7 operaciones, ni una más)
+│     │  └─ settings/               Ajustes locales en JSON
+│     ├─ src/preload/index.ts       Puente seguro (14 operaciones, ni una más)
 │     ├─ src/renderer/              Interfaz React
-│     │  ├─ App.tsx                 Estado de pantalla y composición
+│     │  ├─ App.tsx                 Sección, capas y composición
 │     │  ├─ hooks/useTasks.ts       ÚNICA fuente de datos de la interfaz
-│     │  ├─ views/operations/       Vista operativa
-│     │  ├─ views/office/           Vista oficina
-│     │  ├─ components/             Formulario, tarjeta, filtros, ficha, panel
-│     │  └─ styles/app.css
+│     │  ├─ views/                  Torre · Atención · Tareas · Historial · Ajustes
+│     │  ├─ views/office/           La planta de oficina por zonas
+│     │  ├─ components/             Barra lateral, cabecera, ficha, alta rápida
+│     │  ├─ assets/fonts/           Las tres tipografías, empaquetadas
+│     │  └─ styles/                 tokens.css (el sistema de diseño) + app.css
 │     ├─ e2e/                       Prueba de interfaz
 │     └─ scripts/launch.mjs         Arrancador (neutraliza ELECTRON_RUN_AS_NODE)
 ├─ packages/
@@ -151,6 +153,32 @@ Un único fichero SQLite en la carpeta de datos del usuario:
 
 **No existe ninguna columna capaz de guardar el contenido de una conversación**
 (decisión D5). Hay un test automático que falla si alguna vez apareciera una.
+
+### Tabla `task_status_history` (decisión D19)
+
+Una fila por cada cambio de estado. Es la prueba de honestidad del sistema: si
+la aplicación afirma algo, aquí se ve de dónde vino.
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `id` | INTEGER | Autonumérico |
+| `task_id` | TEXT | Clave foránea con borrado en cascada |
+| `from_status` | TEXT | `NULL` cuando la línea es la creación de la tarea |
+| `to_status` | TEXT | Estado nuevo |
+| `source` | TEXT | Quién lo dijo |
+| `confidence` | TEXT | Con cuánta certeza |
+| `at` | TEXT | ISO-8601 |
+
+Solo se anota lo que **cambia de verdad**: repetir el mismo estado no genera
+línea. Las tareas anteriores a la migración v2 no tienen historial retroactivo,
+y es correcto: inventarlo sería lo contrario de lo que esta tabla garantiza.
+
+### Fichero `settings.json`
+
+Junto a la base de datos. Contiene solo preferencias que hacen algo: qué avisos
+están activos, cuándo una tarea automática pasa a «sin confirmar», y con qué
+sección y vista arranca la aplicación. Si está corrupto se vuelve a los valores
+por defecto sin molestar.
 
 ### Migraciones
 
@@ -226,9 +254,21 @@ cerrado.
 arranca y no se reescribe. `finishedAt` se fija al acabar y se borra si se
 reabre.
 
-**Agrupaciones compartidas.** Qué cuenta como «necesita atención» se decide en
-un solo sitio (`packages/domain/src/selectors.ts`). Las dos vistas llaman ahí,
+**Agrupaciones compartidas.** Qué cuenta como «necesita atención», en qué zona
+de la oficina va cada estado y en qué orden se apilan las secciones se decide en
+un solo sitio (`packages/domain/src/selectors.ts`). Todas las vistas llaman ahí,
 así que es imposible que muestren cosas distintas (decisión D10).
+
+**Barrido a «sin confirmar».** Cada minuto se revisa si alguna tarea automática
+lleva demasiado tiempo sin señal y, si es así, pasa a `unknown` con confianza
+baja (D9). **Nunca toca lo que el usuario fijó a mano**: sin integraciones
+instaladas, lo contrario marcaría como dudoso todo lo que registras media hora
+después de registrarlo.
+
+**Colores por plataforma, no por rol.** El diseño usaba el «rol» de la tarea
+para colorear a cada trabajador de la oficina, pero ese campo quedó como
+decisión abierta (O7). Se usa la plataforma, que ya existe y cumple la misma
+función.
 
 ---
 
