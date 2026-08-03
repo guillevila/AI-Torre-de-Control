@@ -65,6 +65,7 @@ export type StatusConfidence = z.infer<typeof statusConfidenceSchema>
 export const PROVIDERS = [
   'claude_code',
   'claude_web',
+  'cowork',
   'chatgpt',
   'codex',
   'gemini',

@@ -76,6 +76,7 @@ El stack puede revisarse después del MVP únicamente si aparecen problemas demo
 | D16 | Electron, React, TypeScript y SQLite serán el stack del MVP                                                                       | Permiten construir la aplicación, la lógica local y futuras extensiones principalmente con un mismo lenguaje |
 | D17 | La aplicación escuchará eventos exclusivamente en localhost                                                                       | No debe exponer el monitor a la red local ni a internet                                                      |
 | D18 | Ninguna integración debe enviar mensajes, aceptar permisos ni ejecutar acciones sensibles en nombre del usuario durante el MVP    | La primera versión solo observa y registra estados                                                           |
+| D19 | Cada tarea guardará el historial completo de sus cambios de estado, no solo el estado actual                                      | Es la prueba de honestidad del sistema: permite ver cuándo se perdió el contacto, quién dijo qué y cuánto lleva algo esperando. Aprobada el 3 de agosto de 2026 |
 
 ---
 
@@ -89,8 +90,15 @@ El stack puede revisarse después del MVP únicamente si aparecen problemas demo
 | O4 | ¿Qué estilo visual tendrá la oficina: pixel art, isométrico, ilustrado o minimalista? | Dueño del proyecto | Antes de la fase visual avanzada                     |
 | O5 | ¿Se necesitará sincronización entre ordenadores en el futuro?                         | Dueño del proyecto | Después de validar el MVP local                      |
 | O6 | ¿El producto terminará siendo una herramienta interna o se ofrecerá a terceros?       | Dueño del proyecto | Después de validar el uso personal                   |
+| O7 | ¿Las tareas tendrán un campo «rol» (analista, diseñador, contable…)?                  | Dueño del proyecto | Cuando el uso real diga si aporta o solo estorba al registrar |
+| O8 | ¿Hará falta un estado «revisada» entre terminada y archivada?                         | Dueño del proyecto | Cuando el uso real diga si archivar directamente basta |
 
 Estas decisiones no bloquean la construcción de la primera vertical local.
+
+**Sobre O7 y O8.** Ambas aparecen en el diseño visual aprobado el 3 de agosto de
+2026 y quedaron deliberadamente fuera del modelo de datos. Mientras no se
+decidan, la oficina usa la **plataforma** —no el rol— para colorear y agrupar a
+los trabajadores, y una tarea terminada pasa directamente a archivada.
 
 ---
 
