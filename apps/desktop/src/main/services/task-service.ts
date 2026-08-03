@@ -1,9 +1,13 @@
 import { randomUUID } from 'node:crypto'
 import {
   changeStatusInputSchema,
+  DEFAULT_SETTINGS,
   localEventSchema,
   taskIdSchema,
   type EventIngestResult,
+  type RecentActivityEntry,
+  type Settings,
+  type StatusHistoryEntry,
   type Task,
   type TaskStatus,
 } from '@torre/contracts'
@@ -28,10 +32,19 @@ export interface TaskServiceDeps {
   /** Inyectables para que los tests no dependan del reloj ni del azar. */
   now?: () => string
   newId?: () => string
+  /** Ajustes vigentes. Se lee en cada uso para que los cambios apliquen ya. */
+  settings?: () => Settings
   /** Se llama cuando un cambio merece interrumpir al usuario. */
   onNotify?: (task: Task, previousStatus: TaskStatus) => void
   /** Se llama tras cualquier cambio, con la lista completa ya actualizada. */
   onChange?: (tasks: Task[]) => void
+}
+
+/** Estados que se avisan, y el ajuste que los gobierna. */
+const NOTIFY_SETTING: Partial<Record<TaskStatus, keyof Settings>> = {
+  waiting_user: 'notifyWaitingUser',
+  completed: 'notifyCompleted',
+  failed: 'notifyFailed',
 }
 
 /**
@@ -40,12 +53,13 @@ export interface TaskServiceDeps {
  * Ni la interfaz ni el receptor de eventos hablan con la base de datos ni con la
  * máquina de estados directamente. Este servicio es el único que sabe coserlo
  * todo: validar la entrada, pedir la decisión al dominio, guardar el resultado,
- * avisar si toca y publicar el estado nuevo.
+ * dejar constancia en el historial, avisar si toca y publicar el estado nuevo.
  */
 export class TaskService {
   private readonly repository: TaskRepository
   private readonly now: () => string
   private readonly newId: () => string
+  private readonly settings: () => Settings
   private readonly onNotify: (task: Task, previousStatus: TaskStatus) => void
   private readonly onChange: (tasks: Task[]) => void
 
@@ -53,6 +67,7 @@ export class TaskService {
     this.repository = deps.repository
     this.now = deps.now ?? (() => new Date().toISOString())
     this.newId = deps.newId ?? (() => randomUUID())
+    this.settings = deps.settings ?? (() => DEFAULT_SETTINGS)
     this.onNotify = deps.onNotify ?? (() => {})
     this.onChange = deps.onChange ?? (() => {})
   }
@@ -65,6 +80,15 @@ export class TaskService {
     return this.repository.findById(id)
   }
 
+  history(rawId: unknown): StatusHistoryEntry[] {
+    const id = taskIdSchema.parse(rawId)
+    return this.repository.historyFor(id)
+  }
+
+  recentActivity(limit: number): RecentActivityEntry[] {
+    return this.repository.recentActivity(limit)
+  }
+
   create(rawInput: unknown): Task {
     let task: Task
     try {
@@ -72,7 +96,17 @@ export class TaskService {
     } catch (error) {
       throw new TaskServiceError(describeValidationError(error))
     }
+
     this.repository.save(task)
+    // Primera línea del historial: de la nada al estado con el que nace.
+    this.repository.appendHistory({
+      taskId: task.id,
+      fromStatus: null,
+      toStatus: task.status,
+      source: task.statusSource,
+      confidence: task.statusConfidence,
+      at: task.createdAt,
+    })
     this.publish()
     return task
   }
@@ -98,24 +132,16 @@ export class TaskService {
    */
   changeStatus(rawInput: unknown): Task {
     const parsed = changeStatusInputSchema.safeParse(rawInput)
-    if (!parsed.success) {
-      throw new TaskServiceError(describeValidationError(parsed.error))
-    }
+    if (!parsed.success) throw new TaskServiceError(describeValidationError(parsed.error))
 
     const existing = this.requireTask(parsed.data.id)
-    const previousStatus = existing.status
-
-    const result = applyStatusChange(existing, {
+    const result = this.transition(existing, {
       status: parsed.data.status,
       source: parsed.data.source,
       confidence: parsed.data.confidence,
-      now: this.now(),
     })
 
     if (!result.ok) throw new TaskServiceError(result.message)
-
-    this.repository.save(result.task)
-    if (result.notify) this.onNotify(result.task, previousStatus)
     this.publish()
     return result.task
   }
@@ -124,6 +150,14 @@ export class TaskService {
   archive(rawId: unknown): Task {
     const id = taskIdSchema.parse(rawId)
     return this.changeStatus({ id, status: 'archived', source: 'manual', confidence: 'high' })
+  }
+
+  /** Borrado definitivo. Se lleva por delante el historial de la tarea. */
+  remove(rawId: unknown): void {
+    const id = taskIdSchema.parse(rawId)
+    this.requireTask(id)
+    this.repository.remove(id)
+    this.publish()
   }
 
   /**
@@ -151,22 +185,96 @@ export class TaskService {
       return { accepted: false, reason: `No existe ninguna tarea con id "${event.taskId}"` }
     }
 
-    const previousStatus = existing.status
-    const result = applyStatusChange(existing, {
+    const result = this.transition(existing, {
       status: event.status,
       source: event.source,
       confidence: event.confidence,
-      now: this.now(),
     })
+    if (!result.ok) return { accepted: false, reason: result.message }
 
-    if (!result.ok) {
-      return { accepted: false, reason: result.message }
-    }
-
-    this.repository.save(result.task)
-    if (result.notify) this.onNotify(result.task, previousStatus)
     this.publish()
     return { accepted: true, taskId: result.task.id, status: result.task.status }
+  }
+
+  /**
+   * Pasa a «sin confirmar» las tareas automáticas que llevan demasiado tiempo
+   * sin dar señales (D9).
+   *
+   * Deliberadamente NO toca lo que fijaste a mano. Si tú dijiste que algo está
+   * trabajando, la aplicación te cree hasta que otra cosa diga lo contrario:
+   * sin integraciones instaladas, lo contrario sería marcar como dudoso todo lo
+   * que registras, media hora después de registrarlo.
+   *
+   * Devuelve cuántas tareas ha movido.
+   */
+  sweepStale(): number {
+    const minutes = this.settings().staleAfterMinutes
+    if (minutes <= 0) return 0
+
+    const nowIso = this.now()
+    const cutoff = Date.parse(nowIso) - minutes * 60_000
+    let moved = 0
+
+    for (const task of this.repository.list()) {
+      if (task.status !== 'running' && task.status !== 'queued') continue
+      if (task.statusSource === 'manual') continue
+      if (Date.parse(task.lastActivityAt) > cutoff) continue
+
+      // Se conserva la última fuente conocida —es la última que dijo algo— y se
+      // baja la confianza. La interfaz explica que no se puede confirmar.
+      const result = this.transition(task, {
+        status: 'unknown',
+        source: task.statusSource,
+        confidence: 'low',
+      })
+      if (result.ok) moved += 1
+    }
+
+    if (moved > 0) this.publish()
+    return moved
+  }
+
+  // ─── Interno ───────────────────────────────────────────────────────────────
+
+  /**
+   * El paso común de todo cambio de estado: dominio → guardar → historial →
+   * aviso. No publica: eso lo decide quien llama, para poder agrupar cambios.
+   */
+  private transition(
+    task: Task,
+    change: { status: TaskStatus; source: Task['statusSource']; confidence: Task['statusConfidence'] },
+  ): { ok: true; task: Task } | { ok: false; message: string } {
+    const previousStatus = task.status
+    const now = this.now()
+
+    const result = applyStatusChange(task, { ...change, now })
+    if (!result.ok) return { ok: false, message: result.message }
+
+    this.repository.save(result.task)
+
+    // Solo se anota en el historial lo que de verdad cambió de estado: repetir
+    // el mismo estado llenaría la ficha de ruido sin aportar nada.
+    if (result.changed) {
+      this.repository.appendHistory({
+        taskId: result.task.id,
+        fromStatus: previousStatus,
+        toStatus: result.task.status,
+        source: result.task.statusSource,
+        confidence: result.task.statusConfidence,
+        at: now,
+      })
+    }
+
+    if (result.notify && this.notificationEnabled(result.task.status)) {
+      this.onNotify(result.task, previousStatus)
+    }
+
+    return { ok: true, task: result.task }
+  }
+
+  private notificationEnabled(status: TaskStatus): boolean {
+    const key = NOTIFY_SETTING[status]
+    return key ? this.settings()[key] === true : false
   }
 
   private requireId(rawInput: unknown): string {

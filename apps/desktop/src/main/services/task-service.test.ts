@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Task, TaskStatus } from '@torre/contracts'
+import { DEFAULT_SETTINGS, type Settings, type Task, type TaskStatus } from '@torre/contracts'
 import { InMemoryTaskRepository } from '../db/task-repository.js'
 import { TaskService, TaskServiceError } from './task-service.js'
 
@@ -14,7 +14,7 @@ const now = (): string => new Date(Date.UTC(2026, 0, 1, 0, 0, clock++)).toISOStr
 let ids = 0
 const newId = (): string => `task-${++ids}`
 
-const setup = () => {
+const setup = (settings: Partial<Settings> = {}) => {
   const repository = new InMemoryTaskRepository()
   const notified: Task[] = []
   const changes: Task[][] = []
@@ -22,6 +22,7 @@ const setup = () => {
     repository,
     now,
     newId,
+    settings: () => ({ ...DEFAULT_SETTINGS, ...settings }),
     onNotify: (task) => notified.push(task),
     onChange: (tasks) => changes.push(tasks),
   })
@@ -230,6 +231,157 @@ describe('la lista publicada refleja el estado real', () => {
     const last = changes.at(-1) as Task[]
     expect(last).toHaveLength(1)
     expect(last[0]?.status).toBe('running')
+  })
+})
+
+describe('historial de estados (D19)', () => {
+  it('deja una primera línea al crear la tarea', () => {
+    const { service } = setup()
+    const task = service.create({ title: 'A', provider: 'other', status: 'running' })
+
+    const history = service.history(task.id)
+    expect(history).toHaveLength(1)
+    expect(history[0]?.fromStatus).toBeNull()
+    expect(history[0]?.toStatus).toBe('running')
+    expect(history[0]?.source).toBe('manual')
+  })
+
+  it('anota cada cambio con su origen y su destino', () => {
+    const { service } = setup()
+    const task = service.create({ title: 'A', provider: 'other', status: 'running' })
+    service.changeStatus({ id: task.id, status: 'waiting_user' })
+    service.changeStatus({ id: task.id, status: 'completed' })
+
+    const history = service.history(task.id)
+    expect(history).toHaveLength(3)
+    // Del más reciente al más antiguo.
+    expect(history[0]?.toStatus).toBe('completed')
+    expect(history[0]?.fromStatus).toBe('waiting_user')
+    expect(history[1]?.toStatus).toBe('waiting_user')
+    expect(history[1]?.fromStatus).toBe('running')
+  })
+
+  it('no anota nada cuando el estado no cambia de verdad', () => {
+    const { service } = setup()
+    const task = service.create({ title: 'A', provider: 'other', status: 'running' })
+    service.changeStatus({ id: task.id, status: 'running' })
+    service.changeStatus({ id: task.id, status: 'running' })
+
+    expect(service.history(task.id)).toHaveLength(1)
+  })
+
+  it('guarda también lo que llega por evento, con su fuente', () => {
+    const { service } = setup()
+    const task = service.create({ title: 'A', provider: 'claude_code', status: 'running' })
+
+    service.ingestEvent({
+      type: 'status_changed',
+      taskId: task.id,
+      status: 'completed',
+      source: 'claude_hook',
+      confidence: 'high',
+      timestamp: '2026-08-03T12:00:00Z',
+    })
+
+    expect(service.history(task.id)[0]?.source).toBe('claude_hook')
+  })
+
+  it('la actividad reciente mezcla tareas y trae su título', () => {
+    const { service } = setup()
+    const a = service.create({ title: 'Primera', provider: 'other', status: 'running' })
+    service.create({ title: 'Segunda', provider: 'other', status: 'running' })
+    service.changeStatus({ id: a.id, status: 'completed' })
+
+    const activity = service.recentActivity(10)
+    expect(activity[0]?.taskTitle).toBe('Primera')
+    expect(activity.map((entry) => entry.taskTitle)).toContain('Segunda')
+  })
+
+  it('al borrar una tarea se lleva su historial por delante', () => {
+    const { service } = setup()
+    const task = service.create({ title: 'A', provider: 'other', status: 'running' })
+    service.changeStatus({ id: task.id, status: 'completed' })
+    service.remove(task.id)
+
+    expect(service.getById(task.id)).toBeNull()
+    expect(service.recentActivity(10)).toHaveLength(0)
+  })
+})
+
+describe('barrido de tareas sin señal (D9)', () => {
+  const OLD = '2025-01-01T00:00:00.000Z'
+
+  it('pasa a «sin confirmar» lo automático que lleva demasiado tiempo callado', () => {
+    const { service, repository } = setup({ staleAfterMinutes: 30 })
+    const task = service.create({ title: 'A', provider: 'claude_code', status: 'running' })
+    // Se envejece a mano la última señal, como si el evento fuese antiguo.
+    repository.save({ ...task, statusSource: 'claude_hook', lastActivityAt: OLD })
+
+    expect(service.sweepStale()).toBe(1)
+    expect(service.getById(task.id)?.status).toBe('unknown')
+    expect(service.getById(task.id)?.statusConfidence).toBe('low')
+  })
+
+  it('NUNCA toca lo que fijaste tú a mano', () => {
+    const { service, repository } = setup({ staleAfterMinutes: 30 })
+    const task = service.create({ title: 'A', provider: 'other', status: 'running' })
+    repository.save({ ...task, statusSource: 'manual', lastActivityAt: OLD })
+
+    expect(service.sweepStale()).toBe(0)
+    expect(service.getById(task.id)?.status).toBe('running')
+  })
+
+  it('no toca lo que ya terminó ni lo que te espera', () => {
+    const { service, repository } = setup({ staleAfterMinutes: 30 })
+    const done = service.create({ title: 'A', provider: 'other', status: 'running' })
+    service.changeStatus({ id: done.id, status: 'completed', source: 'local_event' })
+    repository.save({ ...(service.getById(done.id) as Task), lastActivityAt: OLD })
+
+    expect(service.sweepStale()).toBe(0)
+    expect(service.getById(done.id)?.status).toBe('completed')
+  })
+
+  it('se puede desactivar poniéndolo a cero', () => {
+    const { service, repository } = setup({ staleAfterMinutes: 0 })
+    const task = service.create({ title: 'A', provider: 'other', status: 'running' })
+    repository.save({ ...task, statusSource: 'claude_hook', lastActivityAt: OLD })
+
+    expect(service.sweepStale()).toBe(0)
+  })
+
+  it('deja constancia en el historial de que se perdió el contacto', () => {
+    const { service, repository } = setup({ staleAfterMinutes: 30 })
+    const task = service.create({ title: 'A', provider: 'other', status: 'running' })
+    repository.save({ ...task, statusSource: 'local_event', lastActivityAt: OLD })
+    service.sweepStale()
+
+    expect(service.history(task.id)[0]?.toStatus).toBe('unknown')
+  })
+})
+
+describe('los ajustes gobiernan los avisos', () => {
+  it('no avisa de lo que has silenciado', () => {
+    const { service, notified } = setup({ notifyCompleted: false })
+    const task = service.create({ title: 'A', provider: 'other', status: 'running' })
+    service.changeStatus({ id: task.id, status: 'completed' })
+
+    expect(notified).toHaveLength(0)
+  })
+
+  it('sigue avisando de lo demás', () => {
+    const { service, notified } = setup({ notifyCompleted: false })
+    const task = service.create({ title: 'A', provider: 'other', status: 'running' })
+    service.changeStatus({ id: task.id, status: 'waiting_user' })
+
+    expect(notified).toHaveLength(1)
+  })
+
+  it('silenciar un aviso no impide que el estado cambie', () => {
+    const { service } = setup({ notifyFailed: false })
+    const task = service.create({ title: 'A', provider: 'other', status: 'running' })
+    service.changeStatus({ id: task.id, status: 'failed' })
+
+    expect(service.getById(task.id)?.status).toBe('failed')
   })
 })
 

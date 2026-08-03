@@ -107,6 +107,85 @@ describe('persistencia real entre sesiones', () => {
   })
 })
 
+describe('historial de estados en disco (D19)', () => {
+  const entry = (overrides: Partial<Parameters<typeof repo.appendHistory>[0]> = {}) => ({
+    taskId: 'task-1',
+    fromStatus: 'running' as const,
+    toStatus: 'completed' as const,
+    source: 'local_event' as const,
+    confidence: 'high' as const,
+    at: '2026-08-03T12:00:00.000Z',
+    ...overrides,
+  })
+
+  it('guarda y recupera las líneas del más reciente al más antiguo', () => {
+    repo.save(task())
+    repo.appendHistory(entry({ at: '2026-08-03T10:00:00.000Z', toStatus: 'running' }))
+    repo.appendHistory(entry({ at: '2026-08-03T12:00:00.000Z' }))
+
+    const history = repo.historyFor('task-1')
+    expect(history).toHaveLength(2)
+    expect(history[0]?.toStatus).toBe('completed')
+    expect(history[1]?.toStatus).toBe('running')
+  })
+
+  it('acepta una primera línea sin estado de origen', () => {
+    repo.save(task())
+    repo.appendHistory(entry({ fromStatus: null, toStatus: 'draft' }))
+    expect(repo.historyFor('task-1')[0]?.fromStatus).toBeNull()
+  })
+
+  it('la actividad reciente trae el título y la plataforma de cada tarea', () => {
+    repo.save(task({ id: 'task-1', title: 'Con título' }))
+    repo.appendHistory(entry())
+
+    const activity = repo.recentActivity(10)
+    expect(activity[0]?.taskTitle).toBe('Con título')
+    expect(activity[0]?.provider).toBe('chatgpt')
+  })
+
+  it('borrar la tarea se lleva su historial en cascada', () => {
+    repo.save(task())
+    repo.appendHistory(entry())
+    repo.remove('task-1')
+
+    expect(repo.findById('task-1')).toBeNull()
+    expect(repo.historyFor('task-1')).toHaveLength(0)
+  })
+
+  it('el historial sobrevive a cerrar y reabrir la base', () => {
+    const path = join(dir, 'historial.db')
+    const first = new SqliteTaskRepository(path)
+    first.save(task())
+    first.appendHistory(entry())
+    first.close()
+
+    const second = new SqliteTaskRepository(path)
+    const history = second.historyFor('task-1')
+    second.close()
+
+    expect(history).toHaveLength(1)
+    expect(history[0]?.source).toBe('local_event')
+  })
+
+  it('una base creada con la versión anterior se migra sin perder tareas', () => {
+    // La migración v2 se aplica sobre una base que ya tenía datos de la v1.
+    const path = join(dir, 'migrada.db')
+    const first = new SqliteTaskRepository(path)
+    first.save(task({ id: 'preexistente' }))
+    first.close()
+
+    const second = new SqliteTaskRepository(path)
+    second.appendHistory(entry({ taskId: 'preexistente' }))
+    const found = second.findById('preexistente')
+    const history = second.historyFor('preexistente')
+    second.close()
+
+    expect(found).not.toBeNull()
+    expect(history).toHaveLength(1)
+  })
+})
+
 describe('privacidad del almacenamiento (D5)', () => {
   it('la tabla no tiene ninguna columna capaz de guardar conversaciones', () => {
     repo.save(task())

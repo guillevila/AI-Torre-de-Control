@@ -12,9 +12,8 @@ import type { Task } from '@torre/contracts'
  *
  * Este es el ÚNICO punto por el que la pantalla puede pedir algo al sistema.
  * La interfaz no tiene acceso a Node, ni al disco, ni a la red: solo puede
- * llamar a las siete operaciones de esta lista. Si mañana hiciera falta otra,
- * hay que añadirla aquí a conciencia — que es exactamente el control que se
- * busca.
+ * llamar a las operaciones de esta lista. Si mañana hiciera falta otra, hay que
+ * añadirla aquí a conciencia — que es exactamente el control que se busca.
  */
 const bridge: TorreBridge = {
   listTasks: () => ipcRenderer.invoke(IPC.tasksList),
@@ -22,7 +21,18 @@ const bridge: TorreBridge = {
   updateTask: (input) => ipcRenderer.invoke(IPC.tasksUpdate, input),
   changeStatus: (input) => ipcRenderer.invoke(IPC.tasksChangeStatus, input),
   archiveTask: (id) => ipcRenderer.invoke(IPC.tasksArchive, id),
+  deleteTask: (id) => ipcRenderer.invoke(IPC.tasksDelete, id),
   openExternal: (id) => ipcRenderer.invoke(IPC.tasksOpenExternal, id),
+
+  taskHistory: (id) => ipcRenderer.invoke(IPC.tasksHistory, id),
+  recentActivity: (limit) => ipcRenderer.invoke(IPC.recentActivity, limit),
+
+  getSettings: () => ipcRenderer.invoke(IPC.settingsGet),
+  updateSettings: (patch) => ipcRenderer.invoke(IPC.settingsUpdate, patch),
+
+  openDataFolder: () => ipcRenderer.invoke(IPC.dataOpenFolder),
+  exportCsv: () => ipcRenderer.invoke(IPC.dataExportCsv),
+
   getDevInfo: () => ipcRenderer.invoke(IPC.devInfo),
 
   onTasksChanged: (listener) => {

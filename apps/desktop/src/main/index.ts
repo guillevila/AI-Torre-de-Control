@@ -1,3 +1,4 @@
+import { statSync } from 'node:fs'
 import { join } from 'node:path'
 import { app, BrowserWindow, session, shell } from 'electron'
 import { IPC, type DevInfo, type Task } from '@torre/contracts'
@@ -8,13 +9,14 @@ import { showDesktopNotification } from './notifications/desktop-notifier.js'
 import { createNotifier } from './notifications/notifier.js'
 import { registerIpcHandlers } from './ipc/handlers.js'
 import { TaskService } from './services/task-service.js'
+import { SettingsStore } from './settings/settings-store.js'
 
 /**
  * Arranque de la aplicación: monta las piezas y las conecta.
  *
- * Este archivo es el único que sabe que existen a la vez la base de datos, el
- * receptor de eventos, las notificaciones y la ventana. Cada pieza por separado
- * no conoce a las demás.
+ * Este archivo es el único que sabe que existen a la vez la base de datos, los
+ * ajustes, el receptor de eventos, las notificaciones y la ventana. Cada pieza
+ * por separado no conoce a las demás.
  */
 
 /**
@@ -27,10 +29,7 @@ import { TaskService } from './services/task-service.js'
  */
 app.setName('AI Torre de Control')
 const userDataOverride = process.env['TORRE_USER_DATA']
-app.setPath(
-  'userData',
-  userDataOverride ?? join(app.getPath('appData'), 'ai-torre-de-control'),
-)
+app.setPath('userData', userDataOverride ?? join(app.getPath('appData'), 'ai-torre-de-control'))
 
 /**
  * Desarrollo se detecta por la presencia del servidor de Vite, no por
@@ -39,10 +38,14 @@ app.setPath(
  */
 const isDev = Boolean(process.env['ELECTRON_RENDERER_URL'])
 
+/** Cada cuánto se revisa si alguna tarea automática se ha quedado sin señal. */
+const STALE_SWEEP_INTERVAL_MS = 60_000
+
 let mainWindow: BrowserWindow | null = null
 let repository: SqliteTaskRepository | null = null
 let eventServer: LocalEventServer | null = null
 let devInfo: DevInfo | null = null
+let sweepTimer: NodeJS.Timeout | null = null
 
 function broadcastTasks(tasks: Task[]): void {
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -54,38 +57,27 @@ function broadcastTasks(tasks: Task[]): void {
  * Política de contenidos de la ventana.
  *
  * En producción se cierra a cal y canto: la interfaz solo puede cargar lo que
- * viene empaquetado con la aplicación. En desarrollo hay que aflojarla porque
- * la recarga en caliente de Vite necesita evaluar código y abrir un WebSocket
- * local. Ver la deuda técnica anotada en docs/ARQUITECTURA.md.
+ * viene empaquetado con la aplicación (incluidas las tipografías, que van
+ * dentro). En desarrollo hay que aflojarla porque la recarga en caliente de
+ * Vite necesita evaluar código y abrir un WebSocket local.
  */
 function applyContentSecurityPolicy(): void {
-  const policy = isDev
-    ? [
-        "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-        "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data:",
-        "connect-src 'self' ws://localhost:* http://localhost:*",
-        "object-src 'none'",
-        "base-uri 'none'",
-      ]
-    : [
-        "default-src 'self'",
-        "script-src 'self'",
-        "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data:",
-        "connect-src 'self'",
-        "object-src 'none'",
-        "base-uri 'none'",
-        "form-action 'none'",
-      ]
+  if (!isDev) return // En producción la política viaja dentro del propio HTML.
+
+  const policy = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "font-src 'self' data:",
+    "connect-src 'self' ws://localhost:* http://localhost:*",
+    "object-src 'none'",
+    "base-uri 'none'",
+  ].join('; ')
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Content-Security-Policy': [policy.join('; ')],
-      },
+      responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [policy] },
     })
   })
 }
@@ -98,9 +90,7 @@ function applyContentSecurityPolicy(): void {
 function hardenNavigation(): void {
   app.on('web-contents-created', (_event, contents) => {
     contents.setWindowOpenHandler(({ url }) => {
-      if (url.startsWith('https://') || url.startsWith('http://')) {
-        void shell.openExternal(url)
-      }
+      if (url.startsWith('https://') || url.startsWith('http://')) void shell.openExternal(url)
       return { action: 'deny' }
     })
 
@@ -115,13 +105,13 @@ function hardenNavigation(): void {
 
 function createWindow(): BrowserWindow {
   const window = new BrowserWindow({
-    width: 1280,
-    height: 820,
-    minWidth: 960,
-    minHeight: 640,
+    width: 1440,
+    height: 900,
+    minWidth: 900,
+    minHeight: 620,
     show: false,
     title: 'AI Torre de Control',
-    backgroundColor: '#0f1420',
+    backgroundColor: '#F5F1EA',
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -135,13 +125,18 @@ function createWindow(): BrowserWindow {
   window.once('ready-to-show', () => window.show())
 
   const rendererUrl = process.env['ELECTRON_RENDERER_URL']
-  if (rendererUrl) {
-    void window.loadURL(rendererUrl)
-  } else {
-    void window.loadFile(join(__dirname, '../renderer/index.html'))
-  }
+  if (rendererUrl) void window.loadURL(rendererUrl)
+  else void window.loadFile(join(__dirname, '../renderer/index.html'))
 
   return window
+}
+
+function databaseBytes(path: string): number {
+  try {
+    return statSync(path).size
+  } catch {
+    return 0
+  }
 }
 
 async function bootstrap(): Promise<void> {
@@ -149,21 +144,19 @@ async function bootstrap(): Promise<void> {
   const databasePath = join(userDataDir, 'torre.db')
 
   repository = new SqliteTaskRepository(databasePath)
-
+  const settings = new SettingsStore(join(userDataDir, 'settings.json'))
   const notify = createNotifier(showDesktopNotification)
 
   const service = new TaskService({
     repository,
+    settings: () => settings.get(),
     onNotify: (task) => notify(task),
     onChange: broadcastTasks,
   })
 
   // ── Receptor local de eventos ──────────────────────────────────────────────
   const token = loadOrCreateToken(userDataDir)
-  eventServer = new LocalEventServer({
-    token,
-    onEvent: (raw) => service.ingestEvent(raw),
-  })
+  eventServer = new LocalEventServer({ token, onEvent: (raw) => service.ingestEvent(raw) })
 
   let address: { host: string; port: number } | null = null
   try {
@@ -186,14 +179,34 @@ async function bootstrap(): Promise<void> {
       tokenPath: endpointFilePath(userDataDir),
     },
     databasePath,
+    dataDirectory: userDataDir,
+    databaseBytes: databaseBytes(databasePath),
+    // Estado REAL de las integraciones. Ninguna existe todavía: decirlo es
+    // parte del contrato de honestidad del producto.
+    integrations: [
+      { provider: 'claude_code', label: 'Claude Code · hook', status: 'planned' },
+      { provider: 'chatgpt', label: 'ChatGPT · extensión', status: 'planned' },
+      { provider: 'cowork', label: 'Cowork · extensión', status: 'planned' },
+      { provider: 'codex', label: 'Codex · monitor', status: 'planned' },
+    ],
   }
 
-  registerIpcHandlers({ service, getDevInfo: () => devInfo as DevInfo })
+  registerIpcHandlers({
+    service,
+    settings,
+    dataDirectory: userDataDir,
+    getDevInfo: () => ({ ...(devInfo as DevInfo), databaseBytes: databaseBytes(databasePath) }),
+  })
 
   applyContentSecurityPolicy()
   hardenNavigation()
 
   mainWindow = createWindow()
+
+  // Barrido periódico: las tareas automáticas que llevan demasiado tiempo sin
+  // dar señales pasan a «sin confirmar» en lugar de fingir que siguen vivas (D9).
+  service.sweepStale()
+  sweepTimer = setInterval(() => service.sweepStale(), STALE_SWEEP_INTERVAL_MS)
 }
 
 // Una sola instancia: dos ventanas escribiendo la misma base de datos sería
@@ -222,6 +235,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', () => {
+  if (sweepTimer) clearInterval(sweepTimer)
   void eventServer?.stop()
   repository?.close()
 })

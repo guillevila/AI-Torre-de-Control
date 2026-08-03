@@ -1,9 +1,16 @@
 import { dirname } from 'node:path'
 import { mkdirSync } from 'node:fs'
 import sqlite from 'node-sqlite3-wasm'
-import { taskSchema, type Task } from '@torre/contracts'
+import {
+  providerSchema,
+  statusHistoryEntrySchema,
+  taskSchema,
+  type RecentActivityEntry,
+  type StatusHistoryEntry,
+  type Task,
+} from '@torre/contracts'
 import { MIGRATIONS } from './schema.js'
-import type { TaskRepository } from './task-repository.js'
+import type { NewHistoryEntry, TaskRepository } from './task-repository.js'
 
 const { Database } = sqlite
 
@@ -103,6 +110,67 @@ export class SqliteTaskRepository implements TaskRepository {
         task.notes,
       ],
     )
+  }
+
+  remove(id: string): void {
+    // El historial se borra solo por la clave foránea en cascada.
+    this.db.run(`DELETE FROM tasks WHERE id = ?`, [id])
+  }
+
+  // ─── Historial de estados (D19) ────────────────────────────────────────────
+
+  appendHistory(entry: NewHistoryEntry): void {
+    this.db.run(
+      `INSERT INTO task_status_history (task_id, from_status, to_status, source, confidence, at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [entry.taskId, entry.fromStatus, entry.toStatus, entry.source, entry.confidence, entry.at],
+    )
+  }
+
+  historyFor(taskId: string): StatusHistoryEntry[] {
+    const rows = this.db.all(
+      `SELECT * FROM task_status_history WHERE task_id = ? ORDER BY at DESC, id DESC`,
+      [taskId],
+    ) as unknown as Row[]
+    return rows
+      .map((row) => this.toHistoryEntry(row))
+      .filter((entry): entry is StatusHistoryEntry => entry !== null)
+  }
+
+  recentActivity(limit: number): RecentActivityEntry[] {
+    const rows = this.db.all(
+      `SELECT h.*, t.title AS task_title, t.provider AS task_provider
+         FROM task_status_history h
+         JOIN tasks t ON t.id = h.task_id
+        ORDER BY h.at DESC, h.id DESC
+        LIMIT ?`,
+      [Math.max(1, Math.min(200, Math.trunc(limit)))],
+    ) as unknown as Row[]
+
+    return rows.flatMap((row) => {
+      const entry = this.toHistoryEntry(row)
+      if (!entry) return []
+      const provider = providerSchema.safeParse(required(row['task_provider']))
+      if (!provider.success) return []
+      return [{ ...entry, taskTitle: required(row['task_title']), provider: provider.data }]
+    })
+  }
+
+  private toHistoryEntry(row: Row): StatusHistoryEntry | null {
+    const parsed = statusHistoryEntrySchema.safeParse({
+      id: Number(row['id'] ?? 0),
+      taskId: required(row['task_id']),
+      fromStatus: text(row['from_status']),
+      toStatus: required(row['to_status']),
+      source: required(row['source']),
+      confidence: required(row['confidence']),
+      at: required(row['at']),
+    })
+    if (!parsed.success) {
+      console.warn('[torre] Línea de historial descartada por no cumplir el modelo.')
+      return null
+    }
+    return parsed.data
   }
 
   close(): void {
