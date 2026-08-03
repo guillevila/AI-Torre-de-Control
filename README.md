@@ -1,141 +1,145 @@
-# Claude Project Template — Sistema operativo de proyecto
+# AI Torre de Control
 
-> Una plantilla para construir proyectos reales con **Claude Code** de forma
-> **ordenada, profesional y segura** — aunque no tengas conocimientos técnicos.
->
-> **Tú aportas el negocio. Claude actúa como tu técnico.**
-> La plantilla pone las reglas, la estructura y las protecciones para que esa
-> colaboración salga bien y para que **siempre sepas en qué estado real está tu proyecto.**
+> Una aplicación de escritorio para no perder de vista las tareas que dejas
+> trabajando en herramientas de inteligencia artificial.
 
-> ℹ️ **Esto es una plantilla, no tu proyecto todavía.** Acabas de copiar el molde.
-> Hasta que no lo rellenes y empieces a construir, el proyecto está en estado **💡 Idea**
-> (lo verás reflejado en [PROJECT_STATUS.md](PROJECT_STATUS.md)).
+Delegas un informe a ChatGPT, un refactor a Claude Code y un análisis a Codex.
+Media hora después no recuerdas cuál terminó, cuál se quedó esperando una
+respuesta tuya y cuál falló hace rato. **AI Torre de Control es el único sitio
+donde ves las tres a la vez**, con un enlace para volver a cada conversación.
 
----
-
-## ¿Qué es esto?
-
-Una carpeta preparada para que, al abrirla con Claude Code, Claude tenga todo el
-contexto necesario para trabajar bien y, sobre todo, para que **tú siempre puedas
-entender**, sin leer código:
-
-- 🟢 **qué es** el proyecto → [SYSTEM_VISION.md](SYSTEM_VISION.md)
-- 📊 **en qué estado está** y qué funciona de verdad hoy → [PROJECT_STATUS.md](PROJECT_STATUS.md)
-- 🪜 **qué significa cada etapa** (idea, demo, MVP, producción) → [docs/ESTADOS_DEL_PROYECTO.md](docs/ESTADOS_DEL_PROYECTO.md)
-- 🤝 **cómo trabajar con Claude** → [docs/ONBOARDING_NO_TECNICO.md](docs/ONBOARDING_NO_TECNICO.md)
-- 🔒 **cuándo se puede compartir** con terceros → [docs/ANTES_DE_COMPARTIR.md](docs/ANTES_DE_COMPARTIR.md)
-
-## ¿Para quién es?
-
-Para **personas con un buen conocimiento de su negocio pero sin perfil técnico**
-que quieren construir software con Claude Code sin perder el control ni hacerse
-falsas ilusiones sobre el avance real.
+📊 **¿Quieres saber qué funciona hoy de verdad?** → [PROJECT_STATUS.md](PROJECT_STATUS.md)
+🧭 **¿Qué es y hacia dónde va?** → [SYSTEM_VISION.md](SYSTEM_VISION.md)
 
 ---
 
-## Empezar en 4 pasos
+## Lo que hace y lo que no
 
-```
-1. Copia esta carpeta y renómbrala con el nombre de tu proyecto.
-2. Rellena SYSTEM_VISION.md (qué es, para quién, objetivo).
-3. Abre la carpeta en Claude Code y dile:
-   "Lee SYSTEM_VISION.md y PROJECT_STATUS.md y cuéntame qué entiendes."
-4. A partir de ahí, Claude te guía.
+| Sí hace | No hace |
+|---|---|
+| Registra tareas y su estado | Ejecutar prompts por ti |
+| Avisa cuando algo termina o te necesita | Guardar tus conversaciones |
+| Te devuelve a la conversación original de un clic | Consumir APIs de pago de OpenAI, Anthropic ni nadie |
+| Recibe avisos automáticos de herramientas locales | Enviar tus datos a ningún servidor |
+| Funciona aunque falle toda la automatización | Tocar la configuración de tus otras herramientas |
+
+**Todo ocurre en tu ordenador.** No hay cuenta, ni nube, ni coste por uso.
+El producto solo guarda *metadatos*: título, plataforma, estado, enlace y fechas.
+Nunca el contenido de lo que hablas con la IA.
+
+---
+
+## Probarlo
+
+Necesitas [Node.js](https://nodejs.org) 20 o superior y `pnpm`
+(si no lo tienes: `npm install -g pnpm`).
+
+```bash
+pnpm install     # instalar (no compila nada nativo: es rápido y no falla)
+pnpm dev         # abrir la aplicación
 ```
 
-¿Primera vez con esto? Sigue la guía completa en **[docs/GETTING-STARTED.md](docs/GETTING-STARTED.md)**
-(instalar, conectar GitHub, primera sesión). Y para el día a día con Claude:
-**[docs/ONBOARDING_NO_TECNICO.md](docs/ONBOARDING_NO_TECNICO.md)**.
+Se abre una ventana. A partir de ahí:
 
----
+1. **Nueva tarea** → ponle un título, elige dónde se está ejecutando y pega el
+   enlace de la conversación.
+2. La tarea aparece en la pantalla, agrupada según lo que reclame tu atención.
+3. Cambia su estado con el desplegable de la tarjeta.
+4. Pulsa **Oficina** en la barra superior: las mismas tareas, ahora como
+   personas trabajando en sus puestos. Pulsa a cualquiera para ver su ficha.
 
-## Los 3 archivos que TÚ rellenas
+### Simular un aviso automático
 
-| Archivo | Qué es | Cuándo |
-|---------|--------|--------|
-| **[SYSTEM_VISION.md](SYSTEM_VISION.md)** | La visión: qué construyes, para quién, qué decisiones están tomadas | Al empezar, y lo vas completando |
-| **[PROJECT_STATUS.md](PROJECT_STATUS.md)** | El estado real: qué funciona hoy, qué no, qué falta decidir | Lo mantiene Claude, tú lo validas |
-| **[.claude/skills/project-context/SKILL.md](.claude/skills/project-context/SKILL.md)** | Contexto de negocio que Claude necesita para decidir bien | Cuando tu negocio tenga reglas que Claude deba conocer |
+Así es como te avisará mañana Claude Code cuando termine algo. Con la
+aplicación abierta, copia el identificador de una tarea desde su ficha y:
 
-> El resto de archivos los **mantiene Claude por ti** (arquitectura, changelog, roadmap...).
-> Tú solo los lees cuando quieras entender algo.
-
-## Archivos que NO deberías tocar sin entenderlos
-
-Estos definen *cómo se comporta Claude y qué protecciones tienes*. Funcionan solos.
-Cámbialos solo si sabes lo que haces (o pídele a Claude que te explique antes):
-
-- **[CLAUDE.md](CLAUDE.md)** y **[.claude/CLAUDE.md](.claude/CLAUDE.md)** — las reglas del agente (su "constitución").
-- **[.claude/hooks/](.claude/hooks/README.md)** — protecciones de seguridad automáticas.
-- **[.claude/settings.json](.claude/settings.json)** — configuración técnica de Claude Code.
-- **[.gitignore](.gitignore)** y **[.env.example](.env.example)** — protegen tus secretos. No los vacíes.
-
----
-
-## Cómo trabajar con Claude Code
-
-El detalle está en [docs/ONBOARDING_NO_TECNICO.md](docs/ONBOARDING_NO_TECNICO.md), pero en resumen:
-
-1. **Pide el QUÉ y el PORQUÉ**, no el CÓMO. Tú describes el resultado de negocio; Claude decide lo técnico.
-2. **Una cosa a la vez.** Los cambios pequeños se revisan mejor y se rompen menos.
-3. **Revisa antes de aprobar.** Pide que te expliquen el cambio en lenguaje normal y pruébalo tú.
-4. **Antes de compartir con alguien**, pide una auditoría con [docs/ANTES_DE_COMPARTIR.md](docs/ANTES_DE_COMPARTIR.md).
-
-Tienes prompts listos para copiar y pegar en **[docs/PROMPTS_BASE.md](docs/PROMPTS_BASE.md)**.
-
-## Flujo recomendado de trabajo
-
-```
-Abrir sesión  →  "Lee SYSTEM_VISION + PROJECT_STATUS y dime el estado"
-      ↓
-Pedir un cambio concreto (con su porqué de negocio)
-      ↓
-Claude propone / construye  →  te explica qué hizo
-      ↓
-Tú lo pruebas y lo apruebas  →  Claude actualiza PROJECT_STATUS
-      ↓
-Antes de enseñarlo a alguien  →  auditoría (ANTES_DE_COMPARTIR.md)
+```bash
+pnpm evento <id-de-la-tarea> completed
 ```
 
----
-
-## Mapa de la plantilla
-
-### Raíz — lo que más usarás
-- **[SYSTEM_VISION.md](SYSTEM_VISION.md)** ⭐ — la visión (tú la rellenas).
-- **[PROJECT_STATUS.md](PROJECT_STATUS.md)** 📊 — el estado real y honesto, de un vistazo.
-- **[CLAUDE.md](CLAUDE.md)** — puntero a las reglas del agente.
-
-### `docs/` — para personas, no para Claude
-- **[GETTING-STARTED.md](docs/GETTING-STARTED.md)** — arrancar desde cero (instalar, GitHub).
-- **[ONBOARDING_NO_TECNICO.md](docs/ONBOARDING_NO_TECNICO.md)** — cómo trabajar con Claude día a día.
-- **[ESTADOS_DEL_PROYECTO.md](docs/ESTADOS_DEL_PROYECTO.md)** — qué es idea / demo / MVP / producción.
-- **[ANTES_DE_COMPARTIR.md](docs/ANTES_DE_COMPARTIR.md)** — checklist antes de enseñar el repo.
-- **[PROMPTS_BASE.md](docs/PROMPTS_BASE.md)** — prompts listos para copiar.
-- **[DICCIONARIO.md](docs/DICCIONARIO.md)** — términos técnicos en lenguaje normal.
-- **[ARQUITECTURA.md](docs/ARQUITECTURA.md)** · **[ROADMAP.md](docs/ROADMAP.md)** · **[CHANGELOG.md](docs/CHANGELOG.md)** — Claude los mantiene.
-- **[decisiones/](docs/decisiones/README.md)** · **[sprints/](docs/sprints/README.md)** — historial de decisiones y trabajo.
-
-### `.claude/` — cómo se comporta Claude (funciona solo)
-- **[CLAUDE.md](.claude/CLAUDE.md)** — constitución del agente.
-- **[hooks/](.claude/hooks/README.md)** — automatizaciones y protecciones de seguridad.
-- **[agents/](.claude/agents/README.md)** — agentes especializados (arquitectura, negocio...).
-- **[skills/](.claude/skills/)** — conocimiento: lecciones aprendidas, protocolo Git, contexto de negocio.
-- **[commands/](.claude/commands/)** — atajos `/nueva-leccion`, `/revisar-cambios`, `/nuevo-sprint`.
-- **[memory/](.claude/memory/README.md)** — memoria persistente entre sesiones.
-
-### `.github/` — automatización en GitHub
-- **CI** — comprueba que la **documentación** está en orden (NO que el producto funcione; ver [el propio CI](.github/workflows/ci.yml)).
-- **PR template** — checklist de revisión antes de aprobar cambios.
+La pantalla se actualiza sola y salta una notificación de escritorio.
 
 ---
 
-## ¿Es mucho? No tienes que entenderlo todo
+## Comandos
 
-Para empezar solo necesitas cuatro archivos:
-1. [SYSTEM_VISION.md](SYSTEM_VISION.md) — rellénalo.
-2. [PROJECT_STATUS.md](PROJECT_STATUS.md) — consulta el estado real (lo mantiene Claude).
-3. [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md) — sigue los pasos.
-4. [docs/DICCIONARIO.md](docs/DICCIONARIO.md) — consúltalo cuando aparezca algo desconocido.
+| Comando | Qué hace |
+|---|---|
+| `pnpm install` | Instala las dependencias |
+| `pnpm dev` | Abre la aplicación en modo desarrollo |
+| `pnpm build` | Construye la versión de producción |
+| `pnpm test` | Ejecuta los tests unitarios |
+| `pnpm test:e2e` | Abre la aplicación de verdad y recorre el flujo completo |
+| `pnpm typecheck` | Comprueba que los tipos son correctos |
+| `pnpm evento <id> <estado>` | Envía un evento de prueba al receptor local |
 
-**El resto lo gestiona Claude.**
+---
+
+## Cómo está montado
+
+```
+apps/desktop        La aplicación Electron
+  src/main            Proceso con acceso al sistema: base de datos, eventos, avisos
+  src/preload         Puente seguro y mínimo hacia la interfaz
+  src/renderer        La interfaz (React): vista operativa y vista oficina
+packages/contracts  Tipos y validaciones compartidas
+packages/domain     Las reglas: máquina de estados, agrupaciones, decisiones de aviso
+scripts             Utilidades de desarrollo
+```
+
+La idea de fondo: **las reglas del negocio no saben nada de Electron, ni de
+SQLite, ni de React**. Viven en `packages/domain`, se prueban en milisegundos y
+se podrán reutilizar tal cual en la futura extensión de navegador.
+
+Detalle técnico completo en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).
+Por qué se eligió cada cosa, en [docs/decisiones/](docs/decisiones/).
+
+---
+
+## Seguridad
+
+Este repositorio es **público**, así que conviene decirlo claro:
+
+- **No contiene secretos** de ningún tipo, ni los contendrá.
+- El receptor de eventos escucha **solo en `127.0.0.1`**: ningún otro equipo de
+  tu red puede alcanzarlo.
+- Además exige una **clave local** que la aplicación genera sola y guarda fuera
+  del repositorio, para que ningún otro programa de tu ordenador pueda falsear
+  el estado de tus tareas.
+- Los eventos se validan enteros: si traen un solo campo de más, se rechazan.
+  Es la barrera que impide que una integración cuele contenido de conversaciones.
+- Un evento **no puede ejecutar nada**. Solo mover una tarea entre estados
+  conocidos.
+- Los enlaces se validan antes de abrirse: solo `http://` y `https://`.
+- La interfaz no tiene acceso al disco, ni a la red, ni a Node.
+
+---
+
+## Si algo no arranca
+
+**La ventana no aparece al hacer `pnpm dev`.**
+Suele pasar al lanzarlo desde la terminal integrada de un editor construido
+sobre Electron (VS Code, Cursor), que define la variable `ELECTRON_RUN_AS_NODE`.
+El proyecto ya la neutraliza; si aun así falla, prueba desde una terminal normal
+del sistema.
+
+**`pnpm evento` dice que no encuentra los datos de conexión.**
+La aplicación tiene que estar abierta: es ella quien publica la dirección y la
+clave al arrancar.
+
+---
+
+## Para el dueño del proyecto
+
+Documentación pensada para leerse sin saber programar:
+
+- [docs/ONBOARDING_NO_TECNICO.md](docs/ONBOARDING_NO_TECNICO.md) — cómo trabajar con Claude
+- [docs/ESTADOS_DEL_PROYECTO.md](docs/ESTADOS_DEL_PROYECTO.md) — qué significa idea, demo, MVP, producción
+- [docs/DICCIONARIO.md](docs/DICCIONARIO.md) — términos técnicos en lenguaje normal
+- [docs/ANTES_DE_COMPARTIR.md](docs/ANTES_DE_COMPARTIR.md) — revisión antes de enseñar el repo
+- [docs/ROADMAP.md](docs/ROADMAP.md) — qué viene después
+
+---
+
+*Proyecto personal en desarrollo. Consulta siempre
+[PROJECT_STATUS.md](PROJECT_STATUS.md) antes de dar nada por hecho.*

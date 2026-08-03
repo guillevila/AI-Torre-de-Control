@@ -54,4 +54,10 @@ Claude creará el archivo con el formato correcto.
 
 ## ADRs de este proyecto
 
-*[Se añaden aquí cuando se crean]*
+| ADR | Decisión | Estado | Fecha |
+|-----|----------|--------|-------|
+| [001](ADR-001-electron.md) | Electron como base de la aplicación de escritorio | ✅ Aceptada | 2026-08-03 |
+| [002](ADR-002-local-first.md) | Arquitectura local-first con SQLite en fichero | ✅ Aceptada | 2026-08-03 |
+| [003](ADR-003-modelo-de-estados.md) | Modelo normalizado de estados con fuente y confianza | ✅ Aceptada | 2026-08-03 |
+| [004](ADR-004-monorepo.md) | Monorepo con dominio aislado y adaptadores futuros | ✅ Aceptada | 2026-08-03 |
+| [005](ADR-005-clave-receptor-local.md) | Clave local además de escuchar solo en 127.0.0.1 | ✅ Aceptada | 2026-08-03 |
