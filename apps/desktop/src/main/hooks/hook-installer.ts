@@ -91,14 +91,39 @@ export class HookInstaller {
    */
   status(): HookStatus {
     const settings = this.readSettings()
+    const installed = this.countOurEntries(settings) > 0
     return {
-      installed: this.countOurEntries(settings) > 0,
+      installed,
+      needsUpdate: installed && this.isOutdated(settings),
       settingsPath: this.settingsPath,
       settingsExists: existsSync(this.settingsPath),
       hookScriptPath: this.hookScriptPath,
       hookScriptExists: existsSync(this.hookScriptPath),
       lastBackupPath: this.lastBackupPath,
     }
+  }
+
+  /**
+   * ¿Lo instalado corresponde a esta versión de la aplicación?
+   *
+   * Se comprueban las dos cosas que pueden quedarse atrás: el contenido del
+   * script y la lista de eventos enganchados. Un enlace de una versión anterior
+   * puede traducir mal los estados sin dar ninguna señal de que va mal.
+   */
+  private isOutdated(settings: Record<string, unknown>): boolean {
+    if (!existsSync(this.hookScriptPath)) return true
+
+    try {
+      if (readFileSync(this.hookScriptPath, 'utf8') !== hookSource) return true
+    } catch {
+      return true
+    }
+
+    const hooks = this.hooksObject(settings)
+    return HOOKED_EVENTS.some((entry) => {
+      const groups = Array.isArray(hooks[entry.event]) ? (hooks[entry.event] as HookGroup[]) : []
+      return !groups.some((group) => (group.hooks ?? []).some((hook) => this.isOurs(hook)))
+    })
   }
 
   /** El cambio exacto, para que lo compares tú mismo antes de aceptarlo (D13). */

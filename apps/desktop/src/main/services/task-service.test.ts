@@ -185,7 +185,25 @@ describe('entrada de eventos locales', () => {
     expect(result.reason).toMatch(/No existe/)
   })
 
-  it('no deja que un evento automático deshaga una decisión manual', () => {
+  it('no deja que un evento automático CIERRE de otra forma lo que cerraste tú', () => {
+    const { service } = setup()
+    const task = service.create({ title: 'A', provider: 'claude_code', status: 'running' })
+    service.changeStatus({ id: task.id, status: 'completed', source: 'manual' })
+
+    const result = service.ingestEvent({
+      type: 'status_changed',
+      taskId: task.id,
+      status: 'failed',
+      source: 'browser_extension',
+      confidence: 'low',
+      timestamp: '2026-08-03T12:00:00Z',
+    })
+
+    expect(result.accepted).toBe(false)
+    expect(service.getById(task.id)?.status).toBe('completed')
+  })
+
+  it('pero SÍ la reabre si el trabajo se reanuda de verdad', () => {
     const { service } = setup()
     const task = service.create({ title: 'A', provider: 'claude_code', status: 'running' })
     service.changeStatus({ id: task.id, status: 'completed', source: 'manual' })
@@ -194,13 +212,13 @@ describe('entrada de eventos locales', () => {
       type: 'status_changed',
       taskId: task.id,
       status: 'running',
-      source: 'browser_extension',
-      confidence: 'low',
+      source: 'claude_hook',
+      confidence: 'high',
       timestamp: '2026-08-03T12:00:00Z',
     })
 
-    expect(result.accepted).toBe(false)
-    expect(service.getById(task.id)?.status).toBe('completed')
+    expect(result.accepted).toBe(true)
+    expect(service.getById(task.id)?.status).toBe('running')
   })
 
   it('nunca ejecuta nada de lo que llega en el evento', () => {

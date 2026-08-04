@@ -23,6 +23,29 @@ export function samePath(a: string | null, b: string | null): boolean {
   return normalizeProjectPath(a) === normalizeProjectPath(b)
 }
 
+/**
+ * ¿`child` está dentro de `parent`, o es el mismo sitio?
+ *
+ * Hace falta porque una sesión puede arrancar desde una **subcarpeta** del
+ * proyecto: abres Claude Code en `proyecto/apps/web` y la tarea que registraste
+ * apunta a `proyecto`. Comparando por igualdad exacta se crearía una tarea
+ * nueva por cada subcarpeta desde la que trabajes, que es justo lo contrario de
+ * lo que quieres ver en la oficina.
+ */
+export function isWithinPath(parent: string | null, child: string | null): boolean {
+  if (!parent || !child) return false
+  const from = normalizeProjectPath(parent)
+  const to = normalizeProjectPath(child)
+  if (from === to) return true
+  // La barra evita que `proyecto-viejo` cuente como dentro de `proyecto`.
+  return to.startsWith(`${from}/`)
+}
+
+/** Profundidad de una ruta, para preferir la coincidencia más específica. */
+export function pathDepth(path: string): number {
+  return normalizeProjectPath(path).split('/').filter(Boolean).length
+}
+
 /** Nombre de la carpeta, para titular una tarea creada automáticamente. */
 export function folderName(path: string): string {
   const normalized = normalizeProjectPath(path)

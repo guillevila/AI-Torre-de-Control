@@ -1,5 +1,5 @@
 import type { Task } from '@torre/contracts'
-import { folderName, samePath } from '@torre/domain'
+import { folderName, isWithinPath, pathDepth, samePath } from '@torre/domain'
 import type { TaskService } from '../services/task-service.js'
 
 /**
@@ -13,9 +13,13 @@ import type { TaskService } from '../services/task-service.js'
  *
  *  1. **Por identificador de sesión.** Si una tarea ya lo tiene guardado, es
  *     ella con total seguridad.
- *  2. **Por carpeta de proyecto.** El caso normal: tú registras la tarea con su
+ *  2. **Por carpeta exacta.** El caso normal: tú registras la tarea con su
  *     carpeta, y todas las sesiones que trabajen ahí se asocian solas.
- *  3. **Se crea una nueva.** Así una sesión que empieza sin tarea registrada
+ *  3. **Por carpeta que la contenga.** Si abres Claude Code en una subcarpeta
+ *     del proyecto, sigue siendo el mismo trabajo. Se elige la coincidencia más
+ *     específica: con tareas para `proyecto` y `proyecto/web`, una sesión en
+ *     `proyecto/web/src` va a la segunda.
+ *  4. **Se crea una nueva.** Así una sesión que empieza sin tarea registrada
  *     aparece igualmente en la Torre, en lugar de perderse.
  *
  * El paso 3 es deliberado: perder una señal es peor que tener una tarea de más,
@@ -33,10 +37,20 @@ export class SessionLinker {
       if (bySession) return bySession
     }
 
-    const byPath = open.find((task) => samePath(task.projectPath, cwd))
-    if (byPath) {
-      this.rememberSession(byPath, sessionId)
-      return byPath
+    const exact = open.find((task) => samePath(task.projectPath, cwd))
+    if (exact) {
+      this.rememberSession(exact, sessionId)
+      return exact
+    }
+
+    // Subcarpeta: se queda con la tarea cuya carpeta sea la más específica de
+    // las que contienen a esta sesión.
+    const containing = open
+      .filter((task) => isWithinPath(task.projectPath, cwd))
+      .sort((a, b) => pathDepth(b.projectPath ?? '') - pathDepth(a.projectPath ?? ''))[0]
+    if (containing) {
+      this.rememberSession(containing, sessionId)
+      return containing
     }
 
     return this.tasks.create({

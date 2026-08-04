@@ -38,6 +38,40 @@ describe('estado', () => {
     expect(status.settingsExists).toBe(false)
   })
 
+  it('recién instalado, está al día', () => {
+    installer.install()
+    const status = installer.status()
+    expect(status.installed).toBe(true)
+    expect(status.needsUpdate).toBe(false)
+  })
+
+  it('detecta que el script instalado es de una versión anterior', () => {
+    installer.install()
+    // Se simula una instalación vieja: el script no coincide con el actual.
+    writeFileSync(installer.status().hookScriptPath, '// version antigua\n', 'utf8')
+
+    expect(installer.status().needsUpdate).toBe(true)
+  })
+
+  it('detecta que falta un evento por enganchar', () => {
+    installer.install()
+    const settings = readSettings()
+    // Se simula una instalación anterior a que existiera este evento.
+    delete settings.hooks.UserPromptSubmit
+    writeFileSync(settingsPath(), JSON.stringify(settings), 'utf8')
+
+    expect(installer.status().needsUpdate).toBe(true)
+  })
+
+  it('reinstalar deja todo al día otra vez', () => {
+    installer.install()
+    writeFileSync(installer.status().hookScriptPath, '// version antigua\n', 'utf8')
+    expect(installer.status().needsUpdate).toBe(true)
+
+    installer.install()
+    expect(installer.status().needsUpdate).toBe(false)
+  })
+
   it('lee del disco cada vez, no recuerda lo que hizo', () => {
     installer.install()
     expect(installer.status().installed).toBe(true)
