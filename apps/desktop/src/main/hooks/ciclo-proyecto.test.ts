@@ -114,6 +114,83 @@ describe('un proyecto = un icono, siempre', () => {
   })
 })
 
+/**
+ * D23-bis. El fallo que arregla esto: dos conversaciones abiertas en el mismo
+ * repositorio compartían tarea y cada señal sobrescribía el identificador de la
+ * otra. El estado acababa siendo el de la última señal recibida, así que si una
+ * conversación te esperaba y la otra terminaba, **el «te espera» desaparecía**.
+ */
+describe('varias conversaciones en el mismo proyecto (D23-bis)', () => {
+  it('cada conversación tiene su icono', () => {
+    señal('running', CARPETA, 'sesion-A')
+    señal('running', CARPETA, 'sesion-B')
+
+    expect(tasks.list()).toHaveLength(2)
+  })
+
+  it('el «te espera» de una no lo borra la otra al terminar', () => {
+    señal('waiting_user', CARPETA, 'sesion-A')
+    señal('completed', CARPETA, 'sesion-B')
+
+    const estados = tasks.list().map((tarea) => tarea.status)
+    expect(estados).toContain('waiting_user')
+    expect(estados).toContain('completed')
+  })
+
+  it('cada conversación conserva su propio identificador, sin pisarse', () => {
+    señal('running', CARPETA, 'sesion-A')
+    señal('running', CARPETA, 'sesion-B')
+    // Vuelve a hablar la primera: debe caer en SU tarea, no en la de la otra.
+    señal('waiting_user', CARPETA, 'sesion-A')
+
+    const deA = tasks.list().find((tarea) => tarea.externalSessionId === 'sesion-A')
+    const deB = tasks.list().find((tarea) => tarea.externalSessionId === 'sesion-B')
+    expect(deA?.status).toBe('waiting_user')
+    expect(deB?.status).toBe('running')
+    expect(tasks.list()).toHaveLength(2)
+  })
+
+  it('la misma conversación desde subcarpetas distintas sigue siendo un solo icono', () => {
+    señal('running', CARPETA, 'sesion-A')
+    señal('running', `${CARPETA}/apps/web`, 'sesion-A')
+    señal('waiting_user', `${CARPETA}/packages/core`, 'sesion-A')
+
+    expect(tasks.list()).toHaveLength(1)
+    expect(tasks.list()[0]?.status).toBe('waiting_user')
+  })
+
+  it('no acumula iconos: una tarea revisada la adopta la conversación siguiente', () => {
+    // Es lo que evita que abrir sesiones un día tras otro llene la oficina.
+    señal('running', CARPETA, 'sesion-A')
+    const tarea = tasks.list()[0]
+    tasks.changeStatus({ id: tarea?.id, status: 'completed', source: 'manual' })
+    tasks.changeStatus({ id: tarea?.id, status: 'reviewed', source: 'manual' })
+
+    señal('running', CARPETA, 'sesion-B')
+
+    expect(tasks.list()).toHaveLength(1)
+    expect(tasks.list()[0]?.externalSessionId).toBe('sesion-B')
+  })
+
+  it('la segunda conversación lleva el código de sesión en el título', () => {
+    señal('running', CARPETA, 'sesion-A')
+    señal('running', CARPETA, 'sesion-B-larga-0123456789')
+
+    const titulos = tasks.list().map((tarea) => tarea.title)
+    // La primera conserva el título limpio; solo la que llega después se marca.
+    expect(titulos.some((titulo) => /· sesion$/.test(titulo))).toBe(true)
+  })
+
+  it('sin identificador de sesión sigue emparejando por carpeta', () => {
+    // Perder una señal es peor que compartir una tarea: si no hay forma de
+    // distinguir, se mantiene el comportamiento de siempre.
+    señal('running', CARPETA, null)
+    señal('waiting_user', CARPETA, null)
+
+    expect(tasks.list()).toHaveLength(1)
+  })
+})
+
 describe('la ventana de diagnóstico', () => {
   it('anota cada señal que llega y qué se hizo con ella', () => {
     señal('running')

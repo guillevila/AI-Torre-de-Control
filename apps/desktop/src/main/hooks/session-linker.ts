@@ -1,6 +1,9 @@
 import type { Task } from '@torre/contracts'
-import { folderName, isWithinPath, pathDepth, samePath } from '@torre/domain'
+import { folderName, isWithinPath, pathDepth, RESTING_STATUSES, samePath } from '@torre/domain'
 import type { TaskService } from '../services/task-service.js'
+
+/** Cuántos caracteres del identificador de sesión distinguen una conversación. */
+const CODIGO_SESION = 6
 
 /**
  * Averigua a qué tarea pertenece una sesión de una herramienta local.
@@ -12,19 +15,30 @@ import type { TaskService } from '../services/task-service.js'
  * Orden de búsqueda, del más fiable al más general:
  *
  *  1. **Por identificador de sesión.** Si una tarea ya lo tiene guardado, es
- *     ella con total seguridad.
- *  2. **Por carpeta exacta.** El caso normal: tú registras la tarea con su
- *     carpeta, y todas las sesiones que trabajen ahí se asocian solas.
- *  3. **Por carpeta que la contenga.** Si abres Claude Code en una subcarpeta
- *     del proyecto, sigue siendo el mismo trabajo. Se elige la coincidencia más
- *     específica: con tareas para `proyecto` y `proyecto/web`, una sesión en
- *     `proyecto/web/src` va a la segunda.
- *  4. **Se crea una nueva.** Así una sesión que empieza sin tarea registrada
- *     aparece igualmente en la Torre, en lugar de perderse.
+ *     ella con total seguridad. Da igual desde qué subcarpeta llegue: una
+ *     conversación es siempre la misma tarea.
+ *  2. **Por carpeta, si está libre.** El caso normal: tú registras la tarea con
+ *     su carpeta y la sesión que trabaje ahí se asocia sola. Con tareas para
+ *     `proyecto` y `proyecto/web`, una sesión en `proyecto/web/src` va a la
+ *     segunda: se elige la coincidencia más específica.
+ *  3. **Se crea una nueva.** Si no había tarea para esa carpeta, o si las que
+ *     hay están ocupadas por otra conversación viva (D23-bis).
  *
- * El paso 3 es deliberado: perder una señal es peor que tener una tarea de más,
- * porque una tarea de más se archiva en un clic y una señal perdida no se
- * recupera nunca.
+ * ## Por qué «si está libre» (D23-bis)
+ *
+ * Antes, dos conversaciones abiertas en el mismo repositorio compartían tarea, y
+ * cada señal **sobrescribía** el identificador de sesión de la otra. El estado
+ * de la tarea acababa siendo el de la última señal que llegó, de cualquiera de
+ * las dos: si una te esperaba y la otra terminaba, **el «te espera» desaparecía
+ * y no te enterabas**.
+ *
+ * Ahora una tarea ocupada por otra conversación viva no se reutiliza: se crea
+ * otra. Cada conversación tiene su icono y su estado.
+ *
+ * Y sigue sin acumularse basura, porque «ocupada» excluye el reposo: una tarea
+ * **revisada** vuelve a estar libre y la adopta la siguiente conversación que
+ * abras. Ese es el ciclo que D22 y D23 dejaron montado; lo único que cambia es
+ * que dos conversaciones simultáneas ya no se pisan.
  */
 export class SessionLinker {
   constructor(private readonly tasks: TaskService) {}
@@ -37,24 +51,29 @@ export class SessionLinker {
       if (bySession) return bySession
     }
 
-    const exact = open.find((task) => samePath(task.projectPath, cwd))
-    if (exact) {
-      this.rememberSession(exact, sessionId)
-      return exact
+    // Candidatas por carpeta, de la más específica a la más general. La exacta
+    // primero; después las que contienen a esta sesión, por profundidad.
+    const candidatas: Task[] = []
+    for (const task of open.filter((task) => samePath(task.projectPath, cwd))) {
+      candidatas.push(task)
+    }
+    for (const task of open
+      .filter((task) => isWithinPath(task.projectPath, cwd))
+      .sort((a, b) => pathDepth(b.projectPath ?? '') - pathDepth(a.projectPath ?? ''))) {
+      if (!candidatas.some((previa) => previa.id === task.id)) candidatas.push(task)
     }
 
-    // Subcarpeta: se queda con la tarea cuya carpeta sea la más específica de
-    // las que contienen a esta sesión.
-    const containing = open
-      .filter((task) => isWithinPath(task.projectPath, cwd))
-      .sort((a, b) => pathDepth(b.projectPath ?? '') - pathDepth(a.projectPath ?? ''))[0]
-    if (containing) {
-      this.rememberSession(containing, sessionId)
-      return containing
+    const libre = candidatas.find((task) => !this.ocupadaPorOtraConversacion(task, sessionId))
+    if (libre) {
+      this.rememberSession(libre, sessionId)
+      return libre
     }
 
     return this.tasks.create({
-      title: `Claude Code · ${folderName(cwd)}`,
+      // Si ya hay otra conversación en este mismo proyecto, la nueva lleva el
+      // código de sesión: sin él, dos tareas del mismo repositorio se llamarían
+      // exactamente igual y no habría forma de distinguirlas.
+      title: this.tituloPara(cwd, sessionId, candidatas.length > 0),
       provider: 'claude_code',
       projectPath: cwd,
       externalSessionId: sessionId,
@@ -64,6 +83,30 @@ export class SessionLinker {
       statusSource: 'claude_hook',
       statusConfidence: 'high',
     })
+  }
+
+  /**
+   * ¿Esta tarea es de otra conversación que sigue viva? (D23-bis)
+   *
+   * Vive = no está en reposo. Una tarea **revisada** ya no reclama nada y vuelve
+   * a estar disponible, así que abrir sesiones nuevas en un proyecto no llena la
+   * oficina de iconos: los va reutilizando a medida que los revisas.
+   *
+   * Sin identificador de sesión no se puede distinguir nada, así que se sigue
+   * emparejando por carpeta como siempre: perder una señal es peor que compartir
+   * una tarea.
+   */
+  private ocupadaPorOtraConversacion(task: Task, sessionId: string | null): boolean {
+    if (!sessionId) return false
+    if (!task.externalSessionId) return false
+    if (task.externalSessionId === sessionId) return false
+    return !RESTING_STATUSES.includes(task.status)
+  }
+
+  private tituloPara(cwd: string, sessionId: string | null, hayOtra: boolean): string {
+    const base = `Claude Code · ${folderName(cwd)}`
+    if (!hayOtra || !sessionId) return base
+    return `${base} · ${sessionId.slice(0, CODIGO_SESION)}`
   }
 
   /** Guarda el identificador de sesión la primera vez que se conoce. */

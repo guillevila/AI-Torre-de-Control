@@ -10,6 +10,40 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Corregido — dos conversaciones en el mismo repo se borraban el estado (D23-bis)
+
+**Era una pérdida de datos, no una carencia de diseño.** Una tarea guardaba un
+solo identificador de sesión y cada señal **sobrescribía** el de la otra, así que
+el estado acababa siendo el de la última señal recibida, de cualquiera de las
+conversaciones. Con dos abiertas en el mismo repositorio, si una te esperaba y la
+otra terminaba su turno, **el «te espera» desaparecía y no te enterabas** — que es
+exactamente lo que este producto existe para evitar.
+
+- **La identidad de una tarea pasa a ser la conversación, no la carpeta.** Cada
+  conversación tiene su icono y su estado.
+- **La misma conversación sigue siendo un solo icono** aunque salte de subcarpeta.
+  Ese era el motivo por el que se escribió D23, y se conserva intacto.
+- **No se acumulan iconos.** Una tarea **revisada** vuelve a estar libre y la
+  adopta la conversación siguiente. Sin esto, cada sesión que abrieras dejaría un
+  muñeco permanente y en una semana la oficina sería un cementerio.
+- **Se distinguen en pantalla.** La segunda conversación de un proyecto lleva el
+  código de sesión en el título (`Claude Code · mi-app · a8439a`), y la etiqueta
+  de la oficina lo añade **solo cuando hay ambigüedad**: con una conversación por
+  proyecto la etiqueta sigue limpia. Es un código y no un nombre porque Claude
+  Code no manda el título de la conversación, y D5 prohibiría recibirlo.
+- **Sin identificador de sesión se sigue emparejando por carpeta**: perder una
+  señal es peor que compartir una tarea.
+- **7 tests nuevos**, incluido el caso que fallaba. **323 tests** unitarios y 10
+  de interfaz, en verde.
+
+### Cambiado — D23 reabierta
+
+- **Decisión D23 reabierta** y sustituida por **D23-bis**. Se le ofreció al dueño
+  del proyecto un icono por proyecto que mostrara el estado más urgente con
+  desglose en la ficha —arreglaba la pérdida igual, sin llenar la planta— y
+  eligió un icono por conversación, con la consecuencia expuesta delante.
+  Razonado en [ADR-009](decisiones/ADR-009-un-icono-por-conversacion.md).
+
 ### Añadido — modo desatendido: la Torre aprueba sola (D24)
 
 **Un interruptor en Ajustes → Permisos del asistente.** Encendido, la Torre

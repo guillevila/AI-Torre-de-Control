@@ -98,8 +98,15 @@ export const PROVIDER_COLORS: Readonly<Record<Provider, string>> = {
  *
  * Se usa el nombre de la carpeta cuando la hay; si no, el título tal cual —una
  * tarea registrada a mano puede no tener carpeta, y su título ya es suyo.
+ *
+ * **Cuando hay varias conversaciones en el mismo proyecto** (D23-bis), la carpeta
+ * sola dejaría dos muñecos con la misma etiqueta y sin forma de distinguirlos. En
+ * ese caso —y solo en ese— se añade el código de la conversación. Para eso hace
+ * falta pasar el resto de tareas: sin ellas no se puede saber si hay ambigüedad,
+ * y el caso normal (un proyecto, una conversación) no debe ensuciarse con un
+ * código que no distingue nada.
  */
-export function officeLabel(task: Task): string {
+export function officeLabel(task: Task, todas: readonly Task[] = []): string {
   if (!task.projectPath) return task.title
 
   const carpeta = folderName(task.projectPath).trim()
@@ -107,8 +114,18 @@ export function officeLabel(task: Task): string {
   // Hay rutas que no nombran ninguna carpeta: la raíz, o una unidad suelta.
   // Ahí el título es mejor etiqueta que un «/» o un «C:» bajo el muñeco.
   const noNombraNada = !carpeta || /^[/\\]+$/.test(carpeta) || /^[a-z]:$/i.test(carpeta)
+  if (noNombraNada) return task.title
 
-  return noNombraNada ? task.title : carpeta
+  const hermanas = todas.filter(
+    (otra) =>
+      otra.id !== task.id &&
+      otra.status !== 'archived' &&
+      otra.projectPath &&
+      folderName(otra.projectPath).trim() === carpeta,
+  )
+  if (hermanas.length === 0 || !task.externalSessionId) return carpeta
+
+  return `${carpeta} · ${task.externalSessionId.slice(0, 6)}`
 }
 
 /**

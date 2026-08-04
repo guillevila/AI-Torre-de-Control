@@ -122,6 +122,7 @@ export function OfficeView({ tasks, onSelect }: OfficeViewProps) {
               left={worker.left}
               top={worker.top}
               onSelect={onSelect}
+              todas={tasks}
             />
           ))}
 

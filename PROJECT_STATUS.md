@@ -39,7 +39,7 @@ comandos. Hasta eso, no es una herramienta que puedas usar cómodamente cada dí
 
 > Lista SOLO lo que has probado tú mismo y funciona de verdad.
 
-**Comprobado automáticamente** — 313 tests unitarios y 10 pruebas que arrancan
+**Comprobado automáticamente** — 323 tests unitarios y 10 pruebas que arrancan
 la aplicación de verdad, todos ejecutados y en verde el 4 de agosto de 2026:
 
 - **Instalar y arrancar.** `pnpm install` termina en segundos sin compilar nada.
@@ -130,6 +130,11 @@ la aplicación de verdad, todos ejecutados y en verde el 4 de agosto de 2026:
   silencio y Claude Code pregunta en su terminal, como siempre (D21).
 - **Las tareas de Claude Code se crean solas** a partir de la carpeta del
   proyecto. No hay que registrarlas a mano.
+- **Varias conversaciones en el mismo proyecto, cada una con su icono y su
+  estado** (D23-bis). Ninguna borra el estado de otra; la misma conversación
+  sigue siendo un solo icono aunque salte de subcarpeta; y una tarea revisada se
+  recicla para la conversación siguiente, así que la oficina no se llena.
+  Comprobado con 7 tests, incluido el caso que antes perdía el «te espera».
 - **El instalador enseña el cambio antes de tocar tu configuración** (D13),
   guarda copia, conserva los automatismos que ya tuvieras y se niega a escribir
   sobre un fichero que no entienda. Todo ello comprobado con tests.
@@ -317,6 +322,13 @@ pnpm test:e2e    # abre la aplicación de verdad y recorre todo el flujo
 
 ## 5. 🔚 Última decisión tomada
 
+- **2026-08-04** — **Un icono por conversación, no por proyecto** (D23-bis),
+  reabriendo D23. Empezó como una petición de visibilidad y resultó ser una
+  **pérdida de datos**: dos conversaciones del mismo repositorio compartían tarea
+  y se sobrescribían el estado, así que el «te espera» de una desaparecía cuando
+  la otra terminaba. Se le ofreció al dueño un icono por proyecto con desglose en
+  la ficha y eligió un icono por conversación. Detalle en
+  [ADR-009](docs/decisiones/ADR-009-un-icono-por-conversacion.md).
 - **2026-08-04** — **La Torre puede aprobar permisos sola** (D24), reabriendo
   D18-bis el mismo día que se aprobó. Hay un interruptor en Ajustes → Permisos
   del asistente, apagado por omisión. Se le ofrecieron al dueño dos alternativas

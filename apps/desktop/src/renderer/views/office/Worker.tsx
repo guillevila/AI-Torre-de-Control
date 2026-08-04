@@ -23,6 +23,12 @@ interface WorkerProps {
   left: number
   top: number
   onSelect: (task: Task) => void
+  /**
+   * El resto de las tareas de la planta. Solo se usa para la etiqueta: si hay
+   * otra conversación del mismo proyecto (D23-bis), hay que añadir el código que
+   * las distingue, y eso no se puede saber mirando una tarea sola.
+   */
+  todas?: readonly Task[]
 }
 
 /**
@@ -36,7 +42,7 @@ interface WorkerProps {
  * es su ESTADO, y nunca solo por el tono: cada estado lleva además glifo, globo
  * de texto y su sitio en la planta.
  */
-export function Worker({ task, left, top, onSelect }: WorkerProps) {
+export function Worker({ task, left, top, onSelect, todas = [] }: WorkerProps) {
   const color = WORKER_COLOR
   const { status } = task
 
@@ -87,7 +93,7 @@ export function Worker({ task, left, top, onSelect }: WorkerProps) {
           <span className="worker__tag-glyph" aria-hidden="true">
             {STATUS_GLYPHS[status]}
           </span>
-          <span className="worker__tag-title">{officeLabel(task)}</span>
+          <span className="worker__tag-title">{officeLabel(task, todas)}</span>
         </button>
       </div>
     </div>
