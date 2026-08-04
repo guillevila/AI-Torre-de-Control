@@ -40,11 +40,18 @@ interface NotificationRecord {
  * Se parchea el prototipo, así que funciona sea cual sea la forma en que el
  * código las haya importado. Se registran sin llegar a mostrarlas, para no
  * llenar el escritorio de avisos cada vez que se ejecutan las pruebas.
+ *
+ * También se fuerza `isSupported()` a true. Motivo: en los servidores de
+ * integración continua no hay servicio de notificaciones, así que Electron
+ * responde que no las soporta y la aplicación —con buen criterio— ni lo
+ * intenta. Sin este apaño, la prueba mediría si el servidor tiene demonio de
+ * avisos en lugar de medir si NUESTRA lógica decide avisar cuando debe.
  */
 async function interceptNotifications(target: ElectronApplication): Promise<void> {
   await target.evaluate(({ Notification }) => {
     const store: { title: string; body: string }[] = []
     ;(globalThis as unknown as Record<string, unknown>)['__torreNotifications'] = store
+    Notification.isSupported = () => true
     Notification.prototype.show = function show(this: { title: string; body: string }): void {
       store.push({ title: this.title, body: this.body })
     } as typeof Notification.prototype.show

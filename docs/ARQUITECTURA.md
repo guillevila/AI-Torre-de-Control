@@ -300,6 +300,8 @@ función.
 | `zod` duplicado en interfaz y proceso principal | Bajo | Baja | Consecuencia de compartir contratos; el coste real es pequeño |
 | Sin registro persistente de errores | Medio | Media | Hoy solo consola. Hará falta al depurar integraciones reales |
 | Rendimiento sin medir con muchas tareas | Bajo | Baja | Se lee la tabla entera en cada cambio. Sobra para decenas o cientos |
+| Acciones del CI avisan de obsolescencia de Node 20 | Nulo hoy | Baja | `actions/checkout@v4` y compañía se ejecutan forzadas en Node 24. Funciona, pero conviene subir de versión antes de que dejen de admitirse |
+| Los avisos de escritorio no se pueden probar de extremo a extremo en el CI | Bajo | Baja | Los servidores de integración no tienen servicio de notificaciones. La prueba fuerza `isSupported()` para medir nuestra lógica, no el entorno |
 
 ---
 
