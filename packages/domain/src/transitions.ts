@@ -25,11 +25,16 @@ export const ALLOWED_TRANSITIONS: Readonly<Record<TaskStatus, readonly TaskStatu
   // Pide intervención: o se retoma, o acaba.
   waiting_user: ['running', 'completed', 'failed', 'unknown', 'archived'],
 
-  // Terminada: se puede archivar, o reabrir si el usuario sigue la conversación.
-  completed: ['archived', 'running', 'waiting_user'],
+  // Terminada: la revisas y pasa al backlog, la archivas, o se reabre sola si
+  // vuelves a mandarle algo.
+  completed: ['reviewed', 'archived', 'running', 'waiting_user'],
 
-  // Fallida: se puede archivar o reintentar.
-  failed: ['archived', 'running', 'queued'],
+  // Fallida: se puede dar por revisada, archivar o reintentar.
+  failed: ['reviewed', 'archived', 'running', 'queued'],
+
+  // Revisada: el reposo de un proyecto. No reclama nada, pero sigue vivo: en
+  // cuanto le mandes algo vuelve a trabajar.
+  reviewed: ['running', 'waiting_user', 'queued', 'completed', 'archived'],
 
   // Perdimos el contacto (D9): cualquier señal nueva la rescata.
   unknown: ['running', 'waiting_user', 'completed', 'failed', 'queued', 'archived'],
@@ -57,7 +62,7 @@ export function canTransition(from: TaskStatus, to: TaskStatus): boolean {
  * llega un evento retrasado de la extensión que la resucita como "trabajando".
  * La decisión del humano manda (D6).
  */
-export const MANUAL_LOCK_STATUSES = ['completed', 'failed', 'archived'] as const
+export const MANUAL_LOCK_STATUSES = ['completed', 'failed', 'reviewed', 'archived'] as const
 
 /**
  * Estados que una señal automática SÍ puede imponer sobre una decisión manual.

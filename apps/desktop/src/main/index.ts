@@ -2,6 +2,7 @@ import { statSync } from 'node:fs'
 import { join } from 'node:path'
 import { app, BrowserWindow, session, shell } from 'electron'
 import { IPC, type DevInfo, type PendingPermission, type Task } from '@torre/contracts'
+import { HookActivityLog } from './hooks/hook-activity-log.js'
 import { HookInstaller } from './hooks/hook-installer.js'
 import { SessionLinker } from './hooks/session-linker.js'
 import { SessionStatusService } from './hooks/session-status-service.js'
@@ -189,12 +190,15 @@ async function bootstrap(): Promise<void> {
   // enseña en la tarjeta —incluido el comando completo— toca el disco.
   permissionRegistry = new PermissionRegistry({ onChange: broadcastPermissions })
   const linker = new SessionLinker(service)
+  // Ventana para poder mirar qué llega del enlace sin abrir la base de datos.
+  const hookActivity = new HookActivityLog()
   const permissionService = new PermissionService({
     registry: permissionRegistry,
     linker,
     taskService: service,
+    activity: hookActivity,
   })
-  const sessionStatus = new SessionStatusService(linker, service)
+  const sessionStatus = new SessionStatusService(linker, service, hookActivity)
   const hookInstaller = new HookInstaller(userDataDir)
 
   // ── Receptor local de eventos ──────────────────────────────────────────────
@@ -264,6 +268,7 @@ async function bootstrap(): Promise<void> {
     permissions: permissionService,
     registry: permissionRegistry,
     hooks: hookInstaller,
+    hookActivity,
     dataDirectory: userDataDir,
     getDevInfo: currentDevInfo,
   })

@@ -23,6 +23,7 @@ export const STATUS_GLYPHS: Readonly<Record<TaskStatus, string>> = {
   waiting_user: '▲',
   completed: '✓',
   failed: '✕',
+  reviewed: '◇',
   unknown: '?',
   archived: '▣',
 }
@@ -34,6 +35,7 @@ export const STATUS_LABELS: Readonly<Record<TaskStatus, string>> = {
   waiting_user: 'Te espera',
   completed: 'Terminada',
   failed: 'Con error',
+  reviewed: 'Revisada',
   unknown: 'Sin confirmar',
   archived: 'Archivada',
 }
@@ -46,8 +48,9 @@ export const STATUS_HINTS: Readonly<Record<TaskStatus, string>> = {
   waiting_user: 'bloqueadas por ti',
   completed: 'sin revisar',
   failed: 'terminaron mal',
+  reviewed: 'nada pendiente',
   unknown: 'no puedo saberlo',
-  archived: 'ya revisadas',
+  archived: 'retiradas',
 }
 
 export const PROVIDER_LABELS: Readonly<Record<Provider, string>> = {
@@ -79,6 +82,14 @@ export const PROVIDER_COLORS: Readonly<Record<Provider, string>> = {
   copilot: '#4A6FA5',
   other: '#8B8377',
 }
+
+/**
+ * Estados en los que una tarea NO reclama nada pero sigue viva.
+ *
+ * Es el reposo de un proyecto: no aparece en la cola de atención, pero tampoco
+ * se ha ido, y basta con mandarle algo para que vuelva a trabajar.
+ */
+export const RESTING_STATUSES: readonly TaskStatus[] = ['reviewed']
 
 export const CONFIDENCE_LABELS: Readonly<Record<StatusConfidence, string>> = {
   high: 'alta',
@@ -113,7 +124,14 @@ export const SOURCE_GLYPHS = {
 
 // ─── Grupos ──────────────────────────────────────────────────────────────────
 
-export type TaskGroupKey = 'attention' | 'active' | 'draft' | 'completed' | 'unknown' | 'archived'
+export type TaskGroupKey =
+  | 'attention'
+  | 'active'
+  | 'draft'
+  | 'completed'
+  | 'backlog'
+  | 'unknown'
+  | 'archived'
 
 const GROUP_OF_STATUS: Readonly<Record<TaskStatus, TaskGroupKey>> = {
   waiting_user: 'attention',
@@ -122,6 +140,7 @@ const GROUP_OF_STATUS: Readonly<Record<TaskStatus, TaskGroupKey>> = {
   running: 'active',
   draft: 'draft',
   completed: 'completed',
+  reviewed: 'backlog',
   unknown: 'unknown',
   archived: 'archived',
 }
@@ -136,6 +155,7 @@ export const GROUP_ORDER: readonly TaskGroupKey[] = [
   'unknown',
   'completed',
   'draft',
+  'backlog',
   'archived',
 ]
 
@@ -143,8 +163,9 @@ export const GROUP_LABELS: Readonly<Record<TaskGroupKey, string>> = {
   attention: 'Necesitan tu atención',
   active: 'Trabajando ahora',
   unknown: 'Sin confirmar',
-  completed: 'Terminadas',
+  completed: 'Terminadas, pendientes de revisar',
   draft: 'Preparadas sin lanzar',
+  backlog: 'Backlog · revisadas, sin nada pendiente',
   archived: 'Archivadas',
 }
 
@@ -162,6 +183,8 @@ export const STATUS_URGENCY_ORDER: readonly TaskStatus[] = [
   'running',
   'queued',
   'draft',
+  // El backlog va al final: es justo lo que NO reclama nada.
+  'reviewed',
 ]
 
 // ─── Ordenación ──────────────────────────────────────────────────────────────
@@ -180,6 +203,7 @@ export function groupTasks(tasks: readonly Task[]): Record<TaskGroupKey, Task[]>
     active: [],
     draft: [],
     completed: [],
+    backlog: [],
     unknown: [],
     archived: [],
   }
@@ -243,7 +267,7 @@ export function attentionQueue(tasks: readonly Task[]): Task[] {
 // ─── La oficina ──────────────────────────────────────────────────────────────
 
 /** Zonas de la planta. La geografía ES la regla: la posición comunica el estado. */
-export type OfficeZone = 'office' | 'delivery' | 'work' | 'incidents' | 'reception'
+export type OfficeZone = 'office' | 'delivery' | 'work' | 'incidents' | 'reception' | 'backlog'
 
 const ZONE_OF_STATUS: Readonly<Record<TaskStatus, OfficeZone | null>> = {
   waiting_user: 'office', // de pie en tu puerta
@@ -253,6 +277,9 @@ const ZONE_OF_STATUS: Readonly<Record<TaskStatus, OfficeZone | null>> = {
   failed: 'incidents',
   queued: 'reception',
   draft: 'reception',
+  // Revisada: se retira al fondo, sin marcharse. Sigue en la planta porque el
+  // proyecto sigue vivo: en cuanto le mandes algo vuelve a su puesto.
+  reviewed: 'backlog',
   archived: null, // sale de la planta
 }
 
@@ -316,6 +343,7 @@ export interface TaskSummary {
   waiting: number
   completed: number
   failed: number
+  reviewed: number
   unknown: number
   queued: number
   draft: number
@@ -338,6 +366,7 @@ export function summarise(tasks: readonly Task[]): TaskSummary {
     waiting,
     completed,
     failed,
+    reviewed: count('reviewed'),
     unknown,
     queued: count('queued'),
     draft: count('draft'),

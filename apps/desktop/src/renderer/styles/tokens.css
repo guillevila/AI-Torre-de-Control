@@ -56,6 +56,11 @@
   --queued-bg: #ecebf4;
   --queued-line: #d6d3e6;
 
+  /* Revisada: presente pero en reposo. Ni alerta ni desaparición. */
+  --reviewed: #5a6b74;
+  --reviewed-bg: #eaeef0;
+  --reviewed-line: #cfd9de;
+
   --draft: #8c857a;
   --draft-bg: #f0ebe2;
   --draft-line: #dcd4c6;
@@ -139,6 +144,11 @@
   --st: var(--queued);
   --st-bg: var(--queued-bg);
   --st-line: var(--queued-line);
+}
+[data-status='reviewed'] {
+  --st: var(--reviewed);
+  --st-bg: var(--reviewed-bg);
+  --st-line: var(--reviewed-line);
 }
 [data-status='draft'] {
   --st: var(--draft);

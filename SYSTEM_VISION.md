@@ -80,6 +80,8 @@ El stack puede revisarse después del MVP únicamente si aparecen problemas demo
 | D19 | Cada tarea guardará el historial completo de sus cambios de estado, no solo el estado actual                                      | Es la prueba de honestidad del sistema: permite ver cuándo se perdió el contacto, quién dijo qué y cuánto lleva algo esperando. Aprobada el 3 de agosto de 2026 |
 | D20 | Las peticiones de permiso **nunca se guardan en la base de datos**: viven en memoria y desaparecen al decidirse                    | Para poder enseñar el comando completo —necesario para aprobar con criterio— sin romper D5. Nada de lo que se muestra queda escrito en disco |
 | D21 | Si el usuario no responde a un permiso en 90 segundos, o la Torre está cerrada, la herramienta vuelve a preguntar por su vía normal | La Torre es un atajo, nunca un cuello de botella. Ninguna sesión puede quedarse colgada esperándola |
+| D22 | Existe el estado **`revisada`**: ya lo has mirado, no hay nada pendiente, pero el trabajo sigue vivo y vuelve a activarse solo al mandarle algo | Resuelve O8. Un proyecto de Claude Code no «termina»: descansa. Sin este estado había que elegir entre dejarlo como terminado —reclamando revisión para siempre— o archivarlo, que lo retira y hace aparecer un icono nuevo la próxima vez. Aprobada el 4 de agosto de 2026 |
+| D23 | Un proyecto de Claude Code tiene **un solo icono**, que se mueve entre estados. Nunca dos                                          | Es la promesa central de la oficina. Las sesiones se emparejan por carpeta —incluidas las subcarpetas— y una tarea en reposo se reutiliza en lugar de crear otra |
 
 ---
 
@@ -94,7 +96,7 @@ El stack puede revisarse después del MVP únicamente si aparecen problemas demo
 | O5 | ¿Se necesitará sincronización entre ordenadores en el futuro?                         | Dueño del proyecto | Después de validar el MVP local                      |
 | O6 | ¿El producto terminará siendo una herramienta interna o se ofrecerá a terceros?       | Dueño del proyecto | Después de validar el uso personal                   |
 | O7 | ¿Las tareas tendrán un campo «rol» (analista, diseñador, contable…)?                  | Dueño del proyecto | Cuando el uso real diga si aporta o solo estorba al registrar |
-| O8 | ¿Hará falta un estado «revisada» entre terminada y archivada?                         | Dueño del proyecto | Cuando el uso real diga si archivar directamente basta |
+| ~~O8~~ | ~~¿Hará falta un estado «revisada» entre terminada y archivada?~~ **RESUELTA 4/8/2026: sí. El uso real lo pidió a los pocos días → D22** | — | — |
 
 Estas decisiones no bloquean la construcción de la primera vertical local.
 

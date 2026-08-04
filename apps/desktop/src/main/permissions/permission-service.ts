@@ -3,6 +3,7 @@ import {
   type PermissionDecision,
   type PermissionResolution,
 } from '@torre/contracts'
+import type { HookActivityLog } from '../hooks/hook-activity-log.js'
 import type { SessionLinker } from '../hooks/session-linker.js'
 import type { TaskService } from '../services/task-service.js'
 import type { PermissionRegistry } from './permission-registry.js'
@@ -25,6 +26,7 @@ export interface PermissionServiceDeps {
   registry: PermissionRegistry
   linker: SessionLinker
   taskService: TaskService
+  activity?: HookActivityLog
   now?: () => string
 }
 
@@ -32,12 +34,14 @@ export class PermissionService {
   private readonly registry: PermissionRegistry
   private readonly linker: SessionLinker
   private readonly tasks: TaskService
+  private readonly activity: HookActivityLog | undefined
   private readonly now: () => string
 
   constructor(deps: PermissionServiceDeps) {
     this.registry = deps.registry
     this.linker = deps.linker
     this.tasks = deps.taskService
+    this.activity = deps.activity
     this.now = deps.now ?? (() => new Date().toISOString())
   }
 
@@ -51,14 +55,26 @@ export class PermissionService {
     if (!parsed.success) {
       // Ante una petición mal formada se devuelve `timeout`, no un error: así la
       // herramienta cae a su comportamiento normal en vez de quedarse colgada.
-      return {
-        outcome: 'timeout',
-        reason: `Petición mal formada: ${parsed.error.issues[0]?.message ?? 'datos no válidos'}`,
-      }
+      const reason = `Petición mal formada: ${parsed.error.issues[0]?.message ?? 'datos no válidos'}`
+      this.activity?.record({
+        event: 'permiso mal formado',
+        cwd: '—',
+        accepted: false,
+        detail: reason,
+        taskTitle: null,
+      })
+      return { outcome: 'timeout', reason }
     }
 
     const input = parsed.data
     const task = this.linker.resolve(input.cwd, input.sessionId)
+    this.activity?.record({
+      event: `permiso · ${input.toolName}`,
+      cwd: input.cwd,
+      accepted: true,
+      detail: 'esperando tu decisión',
+      taskTitle: task.title,
+    })
 
     // La tarea pasa a «te espera»: eso es lo que dispara el aviso de Windows.
     this.moveTo(task.id, 'waiting_user')
@@ -76,6 +92,19 @@ export class PermissionService {
     // Decidido: la sesión sigue trabajando. Si caducó, se queda esperándote —
     // porque es cierto: te está esperando, solo que en la terminal.
     if (resolution.outcome !== 'timeout') this.moveTo(task.id, 'running')
+
+    this.activity?.record({
+      event: `permiso · ${input.toolName}`,
+      cwd: input.cwd,
+      accepted: resolution.outcome !== 'timeout',
+      detail:
+        resolution.outcome === 'allow'
+          ? 'lo aceptaste'
+          : resolution.outcome === 'deny'
+            ? 'lo rechazaste'
+            : 'se agotó el tiempo; Claude Code preguntó por su cuenta',
+      taskTitle: task.title,
+    })
 
     return resolution
   }

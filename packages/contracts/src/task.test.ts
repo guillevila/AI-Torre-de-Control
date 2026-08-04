@@ -25,13 +25,15 @@ describe('validación de enlaces externos', () => {
 })
 
 describe('modelo de tarea', () => {
-  it('contempla los ocho estados normalizados', () => {
+  it('contempla los nueve estados normalizados', () => {
     expect([...TASK_STATUSES].sort()).toEqual([
       'archived',
       'completed',
       'draft',
       'failed',
       'queued',
+      // El reposo de un proyecto: revisado, sin nada pendiente, pero vivo.
+      'reviewed',
       'running',
       'unknown',
       'waiting_user',

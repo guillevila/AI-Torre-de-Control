@@ -2538,3 +2538,88 @@ body {
   color: var(--waiting-ink);
   align-items: center;
 }
+
+/* ─── Backlog: revisadas, sin nada pendiente ─────────────────────────────── */
+
+/*
+ * El estante del fondo de la oficina. Presencia atenuada: están dentro y
+ * siguen vivas —vuelven a su puesto en cuanto les mandes algo—, pero no
+ * reclaman nada, así que no deben competir por tu atención.
+ */
+.zone--backlog {
+  left: 66%;
+  top: 74%;
+  width: 32%;
+  height: 22%;
+  background: var(--reviewed-bg);
+  border: 1.5px solid var(--reviewed-line);
+}
+
+.legend--reviewed::before {
+  background: var(--reviewed);
+}
+
+.worker[data-status='reviewed'] {
+  opacity: 0.55;
+}
+.worker[data-status='reviewed'] .worker__head,
+.worker[data-status='reviewed'] .worker__body {
+  fill: var(--reviewed);
+}
+.worker[data-status='reviewed'] .worker__badge {
+  background: var(--reviewed);
+}
+
+.group__head[data-status='reviewed'] .group__label,
+.group__head[data-status='reviewed'] .group__glyph {
+  color: var(--reviewed);
+}
+
+/* ─── Señales recibidas del enlace ───────────────────────────────────────── */
+
+.hook-activity {
+  margin-top: var(--s6);
+  padding-top: var(--s5);
+  border-top: 1px solid var(--line);
+}
+
+.hook-activity__list {
+  list-style: none;
+  margin: var(--s4) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.hook-activity__list li {
+  display: grid;
+  grid-template-columns: 52px 150px 1fr;
+  gap: var(--s5);
+  align-items: baseline;
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: var(--size-meta);
+}
+
+.hook-activity__time {
+  color: var(--ink-4);
+}
+
+.hook-activity__event {
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.hook-activity__detail {
+  color: var(--ink-3);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Un rechazo no es un error del sistema: suele ser una protección actuando. */
+.hook-activity__list li[data-ok='false'] .hook-activity__event {
+  color: var(--waiting);
+}

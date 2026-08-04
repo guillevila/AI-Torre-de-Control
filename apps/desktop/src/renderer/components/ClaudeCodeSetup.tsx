@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { HookPreview, HookStatus } from '@torre/contracts'
+import type { HookActivityEntry, HookPreview, HookStatus } from '@torre/contracts'
+import { clockTime } from '../utils/format.js'
 
 /**
  * Instalación del enlace con Claude Code.
@@ -21,6 +22,7 @@ export function ClaudeCodeSetup() {
   const [preview, setPreview] = useState<HookPreview | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [activity, setActivity] = useState<HookActivityEntry[]>([])
 
   const refresh = useCallback(async () => {
     const result = await window.torre.hookStatus()
@@ -28,9 +30,19 @@ export function ClaudeCodeSetup() {
     else setError(result.error)
   }, [])
 
+  const refreshActivity = useCallback(async () => {
+    const result = await window.torre.hookActivity()
+    if (result.ok) setActivity(result.data)
+  }, [])
+
   useEffect(() => {
     void refresh()
-  }, [refresh])
+    void refreshActivity()
+    // Se refresca solo: mientras miras esta pantalla puedes lanzar algo en
+    // Claude Code y ver aparecer la señal aquí.
+    const timer = setInterval(() => void refreshActivity(), 3_000)
+    return () => clearInterval(timer)
+  }, [refresh, refreshActivity])
 
   const showPreview = async () => {
     setError(null)
@@ -109,6 +121,34 @@ export function ClaudeCodeSetup() {
             automatismo tuyo se queda intacto, y se guarda otra copia de seguridad antes de tocar
             nada.
           </p>
+
+          {/*
+            La ventana que evita diagnosticar a ciegas: aquí se ve si el enlace
+            está hablando con la Torre, y qué se hace con cada señal.
+          */}
+          <div className="hook-activity" data-testid="hook-activity">
+            <div className="overline">Señales recibidas del enlace</div>
+            {activity.length === 0 ? (
+              <p className="card__text card__text--muted">
+                Todavía no ha llegado nada. Escribe algo en Claude Code dentro de un proyecto y
+                debería aparecer aquí en segundos. Si no aparece, el enlace no está llegando a la
+                Torre y el problema está antes de esta aplicación.
+              </p>
+            ) : (
+              <ol className="hook-activity__list">
+                {activity.map((entry, index) => (
+                  <li key={`${entry.at}-${index}`} data-ok={entry.accepted}>
+                    <span className="mono hook-activity__time">{clockTime(entry.at)}</span>
+                    <span className="hook-activity__event">{entry.event}</span>
+                    <span className="hook-activity__detail">
+                      {entry.taskTitle ? `${entry.taskTitle} — ` : ''}
+                      {entry.detail}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
         </>
       ) : (
         <>

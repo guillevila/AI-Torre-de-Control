@@ -28,6 +28,9 @@ const ZONE_LAYOUT: Record<
   incidents: { left: 6, top: 79, colStep: 10, rowStep: 10, cols: 2 },
   // Dentro, pero todavía sin trabajar.
   reception: { left: 35, top: 79, colStep: 9, rowStep: 10, cols: 3 },
+  // El estante del fondo: revisado y sin nada pendiente. No se ha ido, solo
+  // se ha apartado — y vuelve a su puesto en cuanto le mandes algo.
+  backlog: { left: 69, top: 79, colStep: 8, rowStep: 10, cols: 3 },
 }
 
 /** Máximo de figuras por zona. Por encima se agrupan, para no animar de más. */
@@ -75,6 +78,7 @@ export function OfficeView({ tasks, onSelect }: OfficeViewProps) {
         <span className="legend legend--done">En la mesa de entregas = terminada</span>
         <span className="legend legend--fail">En incidencias = error</span>
         <span className="legend legend--unknown">Contorno discontinuo = sin confirmar</span>
+        <span className="legend legend--reviewed">En el backlog = revisada, nada pendiente</span>
       </div>
 
       <div className="office__stage">
@@ -103,6 +107,12 @@ export function OfficeView({ tasks, onSelect }: OfficeViewProps) {
 
           <div className="zone zone--reception">
             <span className="zone__label">Recepción · en cola y borradores</span>
+          </div>
+
+          <div className="zone zone--backlog">
+            <span className="zone__label">
+              Backlog · revisadas{summary.reviewed > 0 ? ` · ${summary.reviewed}` : ''}
+            </span>
           </div>
 
           {visible.map((worker) => (
