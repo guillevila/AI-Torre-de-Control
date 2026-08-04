@@ -26,6 +26,10 @@
  *                       pasa a «terminada», a la mesa de entregas, esperando
  *                       que la revises.
  *   Notification      → te está PIDIENDO algo: la tarea pasa a «te espera».
+ *                       Excepto las de tipo `permission_prompt`, que se ignoran:
+ *                       ese permiso ya llega por `PermissionRequest`, y atenderlo
+ *                       dos veces te haría llegar un aviso incluso cuando la
+ *                       Torre lo aprueba sola (D24).
  *   SessionEnd        → la sesión ha acabado: «terminada» también.
  *
  * La distinción entre las dos de en medio es deliberada y la marcó el dueño del
@@ -369,7 +373,26 @@ async function main() {
     // Ha entregado trabajo: a la mesa de entregas, pendiente de que lo revises.
     await sendStatus(endpoint, payload, 'completed')
   } else if (event === 'Notification') {
-    // Te está pidiendo algo: a tu puerta. Este estado se reserva para eso.
+    /*
+     * Te está pidiendo algo: a tu puerta. Este estado se reserva para eso.
+     *
+     * PERO no todas las notificaciones valen. Claude Code emite `Notification`
+     * con un `notification_type`, y una de ellas —`permission_prompt`— es el
+     * mismo permiso que ya llega por `PermissionRequest`, solo por otra puerta.
+     *
+     * Atenderla sería contarlo dos veces, y con el modo desatendido (D24) tiene
+     * una consecuencia que rompe la función entera: la Torre aprueba el permiso
+     * en silencio, pero este aviso pondría la tarea en «te espera» y te llegaría
+     * la notificación de Windows igualmente. Es decir: el modo desatendido
+     * dejaría de no interrumpir, que es lo único que se le pide.
+     *
+     * Así que los permisos se atienden SOLO por `PermissionRequest`, que además
+     * lo hace mejor: enseña el comando entero y espera una decisión.
+     */
+    if (payload.notification_type === 'permission_prompt') {
+      apuntar({ fase: 'ignorado', evento: event, motivo: 'permiso; ya llega por PermissionRequest' })
+      process.exit(0)
+    }
     await sendStatus(endpoint, payload, 'waiting_user')
   }
 

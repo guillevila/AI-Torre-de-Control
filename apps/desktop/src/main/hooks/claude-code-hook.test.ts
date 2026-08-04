@@ -242,6 +242,46 @@ describe('qué estado manda cada evento', () => {
     })
   }
 
+  /*
+   * Este caso nació de un fallo concreto: con el modo desatendido (D24) la Torre
+   * aprobaba el permiso en silencio, pero Claude Code emite ADEMÁS un
+   * `Notification` de tipo `permission_prompt` por el mismo permiso. Se atendía,
+   * la tarea pasaba a «te espera» y llegaba la notificación de Windows — o sea,
+   * el modo desatendido interrumpía igual, que es lo único que no debe hacer.
+   */
+  it('ignora las notificaciones de permiso: ya llegan por PermissionRequest', async () => {
+    const { codigo } = await ejecutar({
+      hook_event_name: 'Notification',
+      notification_type: 'permission_prompt',
+      session_id: 'sesion-1',
+      cwd: 'C:/proyectos/mi-app',
+    })
+
+    expect(recibidas.find((r) => r.path === '/sessions')).toBeUndefined()
+    expect(codigo).toBe(0)
+  })
+
+  it('las notificaciones de «te pregunta algo» sí pasan a «te espera»', async () => {
+    await ejecutar({
+      hook_event_name: 'Notification',
+      notification_type: 'idle_prompt',
+      session_id: 'sesion-1',
+      cwd: 'C:/proyectos/mi-app',
+    })
+
+    expect(recibidas.find((r) => r.path === '/sessions')?.body.status).toBe('waiting_user')
+  })
+
+  it('una notificación sin tipo sigue avisando: ante la duda, mejor enterarse', async () => {
+    await ejecutar({
+      hook_event_name: 'Notification',
+      session_id: 'sesion-1',
+      cwd: 'C:/proyectos/mi-app',
+    })
+
+    expect(recibidas.find((r) => r.path === '/sessions')?.body.status).toBe('waiting_user')
+  })
+
   it('no manda nada del contenido de la conversación', async () => {
     await ejecutar({
       hook_event_name: 'Stop',
