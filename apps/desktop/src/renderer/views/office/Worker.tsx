@@ -1,5 +1,5 @@
 import type { Task } from '@torre/contracts'
-import { PROVIDER_LABELS, STATUS_GLYPHS, STATUS_LABELS } from '@torre/domain'
+import { officeLabel, PROVIDER_LABELS, STATUS_GLYPHS, STATUS_LABELS } from '@torre/domain'
 import { WorkPulse } from '../../components/Indicators.js'
 
 /**
@@ -72,11 +72,22 @@ export function Worker({ task, left, top, onSelect }: WorkerProps) {
           <span className="worker__body" style={{ background: color }} />
         </button>
 
-        <button type="button" className="worker__tag" onClick={() => onSelect(task)} tabIndex={-1}>
+        {/*
+          La etiqueta lleva el PROYECTO, no el título entero: es lo que
+          distingue a un muñeco de otro. El título completo sigue estando en el
+          texto emergente y en la ficha, así que no se pierde nada.
+        */}
+        <button
+          type="button"
+          className="worker__tag"
+          onClick={() => onSelect(task)}
+          title={task.title}
+          tabIndex={-1}
+        >
           <span className="worker__tag-glyph" aria-hidden="true">
             {STATUS_GLYPHS[status]}
           </span>
-          <span className="worker__tag-title">{task.title}</span>
+          <span className="worker__tag-title">{officeLabel(task)}</span>
         </button>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import type { Provider, StatusConfidence, Task, TaskStatus } from '@torre/contracts'
+import { folderName } from './paths.js'
 
 /**
  * Agrupaciones, ordenaciones y etiquetas.
@@ -81,6 +82,33 @@ export const PROVIDER_COLORS: Readonly<Record<Provider, string>> = {
   gemini: '#7C6A4E',
   copilot: '#4A6FA5',
   other: '#8B8377',
+}
+
+/**
+ * Lo que se lee bajo el muñeco en la oficina.
+ *
+ * En la planta, lo que necesitas saber de un vistazo es **qué proyecto** es. La
+ * herramienta ya la dicen la ficha y la lista, y la etiqueta es tan estrecha
+ * —96 px— que las dos cosas no caben.
+ *
+ * Importa porque las tareas que crea el enlace se titulan «Claude Code ·
+ * nombre-del-proyecto»: al recortarse, en TODOS los muñecos se leía lo mismo,
+ * «Claude Code ·…», que además es el único dato que ya sabías. La etiqueta
+ * ocupaba sitio sin distinguir nada.
+ *
+ * Se usa el nombre de la carpeta cuando la hay; si no, el título tal cual —una
+ * tarea registrada a mano puede no tener carpeta, y su título ya es suyo.
+ */
+export function officeLabel(task: Task): string {
+  if (!task.projectPath) return task.title
+
+  const carpeta = folderName(task.projectPath).trim()
+
+  // Hay rutas que no nombran ninguna carpeta: la raíz, o una unidad suelta.
+  // Ahí el título es mejor etiqueta que un «/» o un «C:» bajo el muñeco.
+  const noNombraNada = !carpeta || /^[/\\]+$/.test(carpeta) || /^[a-z]:$/i.test(carpeta)
+
+  return noNombraNada ? task.title : carpeta
 }
 
 /**
