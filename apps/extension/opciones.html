@@ -130,6 +130,100 @@
         font-size: 12.5px;
       }
 
+      .estado {
+        margin: 10px 0 0;
+        padding: 0;
+        list-style: none;
+        font-size: 13px;
+      }
+
+      .estado li {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        padding: 5px 0;
+        border-bottom: 1px solid var(--paper);
+        color: var(--ink-2);
+      }
+
+      .estado li::before {
+        content: '•';
+        color: var(--ink-3);
+      }
+
+      .estado li[data-ok='true']::before {
+        content: '✓';
+        color: var(--ok);
+      }
+
+      .estado li[data-ok='false']::before {
+        content: '✕';
+        color: var(--fail);
+      }
+
+      .bitacora {
+        margin: 10px 0 0;
+        padding: 0;
+        list-style: none;
+        max-height: 260px;
+        overflow-y: auto;
+        font-size: 12.5px;
+      }
+
+      .bitacora li {
+        display: grid;
+        grid-template-columns: 62px 1fr;
+        gap: 8px;
+        padding: 6px 0;
+        border-bottom: 1px solid var(--paper);
+      }
+
+      .bitacora li[data-mal='true'] .bitacora__que {
+        color: var(--fail);
+      }
+
+      .bitacora__hora {
+        color: var(--ink-3);
+        font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+        font-size: 11.5px;
+      }
+
+      .bitacora__que {
+        font-weight: 600;
+        color: var(--ink);
+      }
+
+      .bitacora__detalle {
+        display: block;
+        margin-top: 2px;
+        font-weight: 400;
+        color: var(--ink-2);
+        overflow-wrap: anywhere;
+      }
+
+      .bitacora__vacio {
+        display: block !important;
+        color: var(--ink-3);
+        border: 0 !important;
+      }
+
+      .btn-suave {
+        margin-top: 12px;
+        padding: 7px 14px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: transparent;
+        color: var(--command);
+        font: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .btn-suave:hover {
+        background: var(--paper);
+      }
+
       [hidden] {
         display: none !important;
       }
@@ -150,6 +244,28 @@
       </p>
       <button id="guardar">Guardar y comprobar</button>
       <div class="aviso" id="aviso" hidden></div>
+    </section>
+
+    <section>
+      <h2>Detección automática</h2>
+      <p class="pista">
+        Estado de cada pieza. Si la tarea no se mueve sola, aquí se ve en qué punto se corta.
+      </p>
+      <ul class="estado" id="estado-deteccion">
+        <li>Comprobando…</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Cuaderno de bitácora</h2>
+      <p class="pista">
+        Lo que va viendo la extensión, lo más reciente arriba. No guarda nada del contenido de tus
+        conversaciones: solo qué ocurrió, en qué sitio y con qué resultado.
+      </p>
+      <ol class="bitacora" id="bitacora">
+        <li class="bitacora__vacio">Todavía no ha pasado nada.</li>
+      </ol>
+      <button id="limpiar" class="btn-suave">Vaciar el cuaderno</button>
     </section>
 
     <section>

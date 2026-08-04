@@ -47,6 +47,51 @@ export async function guardarClave(token) {
   await chrome.storage.local.set({ token: String(token ?? '').trim() })
 }
 
+/* ── Cuaderno de bitácora ──────────────────────────────────────────────────── */
+
+/** Cuántos apuntes se guardan. Interesa lo reciente, no el archivo histórico. */
+const BITACORA_MAX = 40
+
+/**
+ * Apunta lo que va pasando, para poder mirarlo en los Ajustes de la extensión.
+ *
+ * Existe por la misma razón que el cuaderno del enlace con Claude Code: dentro
+ * del navegador no se ve nada, y un fallo mudo sin rastro se convierte en una
+ * tarde de adivinar. Esto lo convierte en dos minutos de mirar.
+ *
+ * **Nunca apunta texto de la conversación.** Solo qué ocurrió, en qué sitio y
+ * con qué resultado. Ni siquiera guarda la dirección completa: solo el servidor,
+ * porque la dirección de una conversación ya es un dato de más para un registro
+ * de diagnóstico.
+ */
+export async function apuntar(entrada) {
+  try {
+    const { bitacora } = await chrome.storage.local.get('bitacora')
+    const lista = Array.isArray(bitacora) ? bitacora : []
+    lista.unshift({ at: new Date().toISOString(), ...entrada })
+    await chrome.storage.local.set({ bitacora: lista.slice(0, BITACORA_MAX) })
+  } catch {
+    // Un cuaderno que no se puede escribir no puede estropear nada.
+  }
+}
+
+export async function leerBitacora() {
+  try {
+    const { bitacora } = await chrome.storage.local.get('bitacora')
+    return Array.isArray(bitacora) ? bitacora : []
+  } catch {
+    return []
+  }
+}
+
+export async function borrarBitacora() {
+  try {
+    await chrome.storage.local.remove('bitacora')
+  } catch {
+    // Da igual.
+  }
+}
+
 /**
  * Busca en qué puerto está escuchando la Torre.
  *

@@ -15,7 +15,7 @@
  * Chrome lo arranca cuando hace falta y lo apaga cuando no.
  */
 
-import { avisarActividad, buscarTorre, leerClave } from './torre.js'
+import { apuntar, avisarActividad, buscarTorre, leerClave } from './torre.js'
 
 /** Dónde puede vigilar, si le das permiso. Lista cerrada a propósito. */
 const SITIOS_VIGILABLES = [
@@ -45,6 +45,7 @@ async function sincronizarVigilante() {
 
   if (permitidos.length === 0) {
     if (yaEstaba) await chrome.scripting.unregisterContentScripts({ ids: [ID_VIGILANTE] })
+    await apuntar({ que: 'vigilante retirado', detalle: 'no hay ningún sitio con permiso' })
     return
   }
 
@@ -56,8 +57,19 @@ async function sincronizarVigilante() {
     persistAcrossSessions: true,
   }
 
-  if (yaEstaba) await chrome.scripting.updateContentScripts([definicion])
-  else await chrome.scripting.registerContentScripts([definicion])
+  try {
+    if (yaEstaba) await chrome.scripting.updateContentScripts([definicion])
+    else await chrome.scripting.registerContentScripts([definicion])
+    await apuntar({ que: 'vigilante puesto', detalle: permitidos.join(', ') })
+  } catch (error) {
+    // Que Chrome no deje poner el vigilante es exactamente el tipo de fallo que
+    // desde fuera se ve como «no funciona» sin más. Queda escrito.
+    await apuntar({
+      que: 'NO se pudo poner el vigilante',
+      detalle: error?.message ?? 'motivo desconocido',
+      mal: true,
+    })
+  }
 }
 
 // Los tres momentos en que puede haber cambiado algo.
@@ -74,6 +86,18 @@ chrome.permissions.onRemoved.addListener(() => void sincronizarVigilante())
  * cualquier otra cosa que venga de fuera: no se da nada por bueno.
  */
 chrome.runtime.onMessage.addListener((mensaje, remitente) => {
+  // El saludo del vigilante. Sirve para distinguir «no está puesto» de «está
+  // puesto pero no reconoce nada», que desde fuera se ven exactamente igual.
+  if (mensaje?.tipo === 'vigilante-vivo') {
+    void apuntar({
+      que: 'vigilante en marcha',
+      detalle: `en ${mensaje.host}${
+        mensaje.reconoce?.length ? ` · reconoce: ${mensaje.reconoce.join(', ')}` : ' · ahora mismo no ve nada generándose (normal si no has pedido nada)'
+      }`,
+    })
+    return
+  }
+
   if (mensaje?.tipo !== 'actividad') return
   if (mensaje.estado !== 'running' && mensaje.estado !== 'completed') return
   // Solo se acepta la dirección que Chrome dice que tiene esa pestaña, no la
@@ -81,21 +105,55 @@ chrome.runtime.onMessage.addListener((mensaje, remitente) => {
   const url = remitente?.tab?.url
   if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) return
 
-  void enviar(mensaje.estado, url)
+  void enviar(mensaje.estado, url, mensaje.reconoce)
   // Sin respuesta: al vigilante no le hace falta saber cómo acabó.
 })
 
-async function enviar(estado, url) {
+async function enviar(estado, url, reconoce) {
+  const sitio = (() => {
+    try {
+      return new URL(url).hostname
+    } catch {
+      return '—'
+    }
+  })()
+
+  await apuntar({
+    que: `detectado: ${estado}`,
+    detalle: `en ${sitio}${reconoce?.length ? ` · por ${reconoce.join(', ')}` : ''}`,
+  })
+
   try {
     const token = await leerClave()
-    if (!token) return
+    if (!token) {
+      await apuntar({ que: 'no se envió', detalle: 'falta la clave local', mal: true })
+      return
+    }
 
     const puerto = await buscarTorre()
-    if (!puerto) return
+    if (!puerto) {
+      await apuntar({ que: 'no se envió', detalle: 'la Torre no está abierta', mal: true })
+      return
+    }
 
-    await avisarActividad({ puerto, token, externalUrl: url, status: estado })
-  } catch {
-    // La Torre está cerrada, o no contesta. No es motivo para molestarte:
-    // sigues teniendo el estado a mano en la propia aplicación.
+    const resultado = await avisarActividad({ puerto, token, externalUrl: url, status: estado })
+
+    if (!resultado.ok) {
+      await apuntar({ que: 'la Torre lo rechazó', detalle: resultado.mensaje, mal: true })
+    } else if (!resultado.emparejada) {
+      await apuntar({
+        que: 'conversación sin registrar',
+        detalle: 'la Torre no tiene ninguna tarea con esta dirección; regístrala primero',
+        mal: true,
+      })
+    } else {
+      await apuntar({ que: `la Torre la puso en «${resultado.estado ?? estado}»`, detalle: sitio })
+    }
+  } catch (error) {
+    await apuntar({
+      que: 'no se pudo hablar con la Torre',
+      detalle: error?.message ?? 'motivo desconocido',
+      mal: true,
+    })
   }
 }

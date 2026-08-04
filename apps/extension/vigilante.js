@@ -52,15 +52,40 @@ let generando = false
 let ultimoEnviado = null
 let temporizadorFin = null
 
-function estaGenerando() {
+/** Qué señales reconoce ahora mismo. Vacío = no ve nada generándose. */
+function señalesQueCoinciden() {
+  const vistas = []
   for (const señal of SEÑALES_GENERANDO) {
     try {
-      if (document.querySelector(señal)) return true
+      if (document.querySelector(señal)) vistas.push(señal)
     } catch {
       // Un selector que este navegador no entiende no puede tumbar al resto.
     }
   }
-  return false
+  return vistas
+}
+
+function estaGenerando() {
+  return señalesQueCoinciden().length > 0
+}
+
+/**
+ * Avisa de que el vigilante está en marcha.
+ *
+ * Es lo que permite distinguir «no está puesto» de «está puesto pero no
+ * reconoce nada», que son dos problemas completamente distintos y desde fuera
+ * se ven igual: la tarea no se mueve.
+ */
+function saludar() {
+  try {
+    chrome.runtime.sendMessage({
+      tipo: 'vigilante-vivo',
+      host: location.hostname,
+      reconoce: señalesQueCoinciden(),
+    })
+  } catch {
+    // La extensión se ha recargado. No es asunto de la página.
+  }
 }
 
 /**
@@ -70,7 +95,7 @@ function estaGenerando() {
  * una página web está sujeto a las reglas de esa página, y ChatGPT no permite
  * llamar a tu ordenador. Va por el fondo, que sí puede.
  */
-function avisar(estado) {
+function avisar(estado, reconocidas = []) {
   const url = location.href
   const huella = `${estado}·${url}`
   // Ni repetir el mismo aviso, ni marear a la Torre con lo que ya sabe.
@@ -78,14 +103,17 @@ function avisar(estado) {
   ultimoEnviado = huella
 
   try {
-    chrome.runtime.sendMessage({ tipo: 'actividad', estado, url })
+    // `reconoce` viaja solo para el cuaderno: dice QUÉ señal acertó, que es lo
+    // que hará falta el día que ChatGPT cambie su interfaz.
+    chrome.runtime.sendMessage({ tipo: 'actividad', estado, url, reconoce: reconocidas })
   } catch {
     // La extensión se ha recargado o desactivado. No es asunto de la página.
   }
 }
 
 function revisar() {
-  const ahora = estaGenerando()
+  const coinciden = señalesQueCoinciden()
+  const ahora = coinciden.length > 0
 
   if (ahora && !generando) {
     generando = true
@@ -93,7 +121,7 @@ function revisar() {
       clearTimeout(temporizadorFin)
       temporizadorFin = null
     }
-    avisar('running')
+    avisar('running', coinciden)
     return
   }
 
@@ -117,6 +145,11 @@ function revisar() {
 const observador = new MutationObserver(revisar)
 observador.observe(document.documentElement, { childList: true, subtree: true })
 setInterval(revisar, INTERVALO_MS)
+
+// Se saluda al arrancar y otra vez un poco después: ChatGPT tarda en pintar su
+// interfaz, y el primer vistazo puede llegar a una página todavía vacía.
+saludar()
+setTimeout(saludar, 4000)
 
 // Al cambiar de conversación, lo anterior deja de valer.
 let ultimaUrl = location.href
