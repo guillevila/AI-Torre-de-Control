@@ -144,3 +144,112 @@ describe('ciclo de vida', () => {
     await expect(fetch(`${base}/health`)).rejects.toThrow()
   })
 })
+
+/**
+ * Alta de tareas desde el navegador.
+ *
+ * Es la única ruta que CREA algo, así que se comprueba una por una que le
+ * aplican las mismas barreras que al resto: si esta se relajara, se relajaría
+ * la puerta por la que entra todo.
+ */
+describe('ruta de alta desde el navegador', () => {
+  const TAREA = {
+    title: 'Presupuesto Sagasta',
+    externalUrl: 'https://chatgpt.com/c/abc-123',
+  }
+
+  let servidorConAlta: LocalEventServer
+  let baseConAlta: string
+  let onIntake: ReturnType<typeof vi.fn>
+
+  const alta = (cuerpo: unknown, headers: Record<string, string> = {}): Promise<Response> =>
+    fetch(`${baseConAlta}/tasks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-torre-token': TOKEN, ...headers },
+      body: typeof cuerpo === 'string' ? cuerpo : JSON.stringify(cuerpo),
+    })
+
+  beforeEach(async () => {
+    onIntake = vi.fn(() => ({ accepted: true, taskId: 'task-9', duplicate: false }))
+    servidorConAlta = new LocalEventServer({
+      token: TOKEN,
+      ports: [0],
+      onEvent,
+      onIntake: onIntake as unknown as (raw: unknown) => never,
+    })
+    const address = await servidorConAlta.start()
+    baseConAlta = `http://${address.host}:${address.port}`
+  })
+
+  afterEach(async () => {
+    await servidorConAlta.stop()
+  })
+
+  it('registra la tarea con la clave correcta', async () => {
+    const res = await alta(TAREA)
+    expect(res.status).toBe(200)
+    expect(onIntake).toHaveBeenCalledWith(TAREA)
+  })
+
+  it('sin clave no llega a crear nada', async () => {
+    const res = await fetch(`${baseConAlta}/tasks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(TAREA),
+    })
+    expect(res.status).toBe(401)
+    expect(onIntake).not.toHaveBeenCalled()
+  })
+
+  it('con la clave equivocada tampoco', async () => {
+    const res = await alta(TAREA, { 'x-torre-token': 'b'.repeat(64) })
+    expect(res.status).toBe(401)
+    expect(onIntake).not.toHaveBeenCalled()
+  })
+
+  it('exige que el contenido se declare como JSON', async () => {
+    // Es la barrera que obliga a cualquier página web a pedir permiso previo,
+    // permiso que este receptor no concede nunca.
+    const res = await alta(TAREA, { 'Content-Type': 'text/plain' })
+    expect(res.status).toBe(415)
+    expect(onIntake).not.toHaveBeenCalled()
+  })
+
+  it('un cuerpo desmedido no llega al servicio', async () => {
+    const res = await alta(JSON.stringify({ ...TAREA, relleno: 'x'.repeat(20_000) }))
+    expect(res.status).toBe(413)
+    expect(onIntake).not.toHaveBeenCalled()
+  })
+
+  it('devuelve 422 cuando el servicio rechaza los datos', async () => {
+    onIntake.mockReturnValue({ accepted: false, reason: 'Falta el enlace' })
+    const res = await alta({ title: 'x' })
+    expect(res.status).toBe(422)
+  })
+
+  it('no contesta con cabeceras que dejen leer a una página web', async () => {
+    const res = await alta(TAREA)
+    expect(res.headers.get('access-control-allow-origin')).toBeNull()
+  })
+})
+
+describe('sin atendedor de altas, la ruta no existe', () => {
+  it('devuelve 404 en lugar de fingir que acepta', async () => {
+    // El servidor de arriba se crea SIN `onIntake`.
+    const res = await fetch(`${base}/tasks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-torre-token': TOKEN },
+      body: JSON.stringify({ title: 'x', externalUrl: 'https://chatgpt.com/c/1' }),
+    })
+    expect(res.status).toBe(404)
+  })
+
+  it('y ni siquiera comprueba la clave: la ruta no está', async () => {
+    const res = await fetch(`${base}/tasks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    })
+    expect(res.status).toBe(404)
+  })
+})

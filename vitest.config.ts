@@ -15,6 +15,9 @@ export default defineConfig({
     include: [
       'packages/*/src/**/*.test.ts',
       'apps/desktop/src/main/**/*.test.ts',
+      // La extensión es JavaScript de navegador, sin compilar. Lo que se puede
+      // probar sin navegador —sus funciones puras— también se prueba.
+      'apps/extension/**/*.test.mjs',
     ],
     exclude: ['**/node_modules/**', '**/dist/**', '**/out/**', '**/e2e/**'],
     reporters: 'default',

@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "AI Torre de Control",
+  "version": "0.1.0",
+  "description": "Registra en tu Torre de Control la conversación que tienes abierta. No lee conversaciones: solo el título y la dirección de la pestaña.",
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": ["http://127.0.0.1/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Registrar en la Torre de Control",
+    "default_icon": {
+      "16": "iconos/16.png",
+      "48": "iconos/48.png",
+      "128": "iconos/128.png"
+    }
+  },
+  "icons": {
+    "16": "iconos/16.png",
+    "48": "iconos/48.png",
+    "128": "iconos/128.png"
+  },
+  "options_page": "opciones.html"
+}

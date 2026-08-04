@@ -10,6 +10,41 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Añadido — Sprint 004: ChatGPT entra en la Torre (etapa 1)
+
+**Extensión de Chrome** que registra de un clic la conversación que tienes
+abierta. En `apps/extension`, con su propio [README](../apps/extension/README.md).
+
+- **No puede leer tus conversaciones, y no por promesa sino por construcción.**
+  No pide permiso sobre `chatgpt.com` ni sobre ningún otro sitio, no inyecta
+  nada dentro de las páginas y no tiene proceso de fondo. Lee el título y la
+  dirección de la pestaña, y solo cuando pulsas su icono (`activeTab`). El único
+  sitio al que puede escribir es `127.0.0.1`.
+- **Doble barrera.** Aunque el navegador fallara, el contrato de alta de la
+  Torre solo admite dos campos —título y enlace— y **rechaza la petición entera**
+  si llega uno de más. Hay tests que intentan colar prompts, respuestas y
+  transcripciones, y comprueban que se rechazan.
+- **Ruta nueva `POST /tasks`** en el receptor local, con las mismas siete
+  barreras que el resto: bucle local, clave en tiempo constante, tipo de
+  contenido, tamaño, contrato estricto. Sin atendedor devuelve 404 en lugar de
+  fingir que acepta.
+- **No duplica.** Registrar dos veces la misma conversación devuelve la que ya
+  había. Se comparan las direcciones ignorando la barra final y el fragmento,
+  porque el navegador los añade y quita él solo.
+- **La tarea nace «en cola» y con confianza baja**, no «trabajando». Registrarla
+  no significa que ChatGPT esté haciendo nada: lo único que sabemos es que
+  existe. Su fuente queda como `browser_extension` en el historial.
+- Los iconos se generan con un script sin dependencias, para que no sean tres
+  binarios llegados de ningún sitio.
+
+### Cambiado
+
+- **Una tarea puede nacer declarando quién la crea** (`statusSource` y
+  `statusConfidence` al crearla, D8). Antes toda tarea nacía como «manual, alta
+  confianza», incluidas las que crea el enlace de Claude Code: la primera línea
+  de su historial decía algo que no era verdad. Ahora el enlace declara
+  `claude_hook` y la extensión `browser_extension`.
+
 ### Corregido — una comprobación de más se tragaba tu decisión
 
 - **El enlace descartaba decisiones humanas en silencio.** Claude Code puede

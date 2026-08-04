@@ -30,10 +30,11 @@ export function createTask(rawInput: unknown, ctx: TaskCreationContext): Task {
     externalSessionId: input.externalSessionId,
     projectPath: input.projectPath,
     status: input.status,
-    // Una tarea creada a mano siempre nace de una decisión del usuario,
-    // así que su fuente es manual y su confianza es alta (D8).
-    statusSource: 'manual',
-    statusConfidence: 'high',
+    // Por omisión, manual y alta: el caso normal es que la registres tú, y de
+    // eso no hay duda. Quien la cree por otra vía debe decirlo, porque la
+    // primera línea del historial nace de aquí y tiene que ser verdad (D8).
+    statusSource: input.statusSource,
+    statusConfidence: input.statusConfidence,
     startedAt: started,
     finishedAt: null,
     lastActivityAt: ctx.now,

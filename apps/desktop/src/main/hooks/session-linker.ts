@@ -59,6 +59,10 @@ export class SessionLinker {
       projectPath: cwd,
       externalSessionId: sessionId,
       status: 'running',
+      // No la registraste tú: la creó el enlace al ver trabajar a Claude Code.
+      // La confianza es alta porque la señal viene de la propia herramienta.
+      statusSource: 'claude_hook',
+      statusConfidence: 'high',
     })
   }
 
