@@ -176,6 +176,14 @@ la aplicación de verdad, todos en verde a 3 de agosto de 2026:
 Necesitas [Node.js](https://nodejs.org) 20 o superior. Si no tienes `pnpm`:
 `npm install -g pnpm`.
 
+> **En Windows, la primera vez.** Si al ejecutar `pnpm` te dice que *«la
+> ejecución de scripts está deshabilitada en este sistema»*, es una protección
+> de Windows, no un fallo del proyecto. Se arregla de una vez con:
+> ```powershell
+> Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+> ```
+> O, si prefieres no tocar nada, escribe `pnpm.cmd` en lugar de `pnpm`.
+
 **1. Instalar y abrir** (desde la carpeta del proyecto):
 
 ```bash

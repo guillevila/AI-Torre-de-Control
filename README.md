@@ -150,6 +150,32 @@ Este repositorio es **público**, así que conviene decirlo claro:
 
 ## Si algo no arranca
 
+**`pnpm : No se puede cargar el archivo … porque la ejecución de scripts está
+deshabilitada en este sistema.`**
+
+Es una protección de Windows, no un problema del proyecto: por defecto PowerShell
+no ejecuta scripts, y `pnpm` se instala como uno. Dos salidas:
+
+*Sin cambiar nada del sistema* — usa la variante `.cmd`, que no pasa por esa
+comprobación:
+
+```powershell
+pnpm.cmd install
+pnpm.cmd dev
+```
+
+*Arreglo permanente* — permite ejecutar scripts locales, solo para tu usuario y
+sin necesidad de permisos de administrador:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+
+`RemoteSigned` deja correr los scripts que están en tu ordenador y sigue
+exigiendo firma a los descargados de internet. Es el ajuste recomendado por
+Microsoft para equipos de desarrollo. Después de esto, `pnpm dev` funciona sin
+más.
+
 **La ventana no aparece al hacer `pnpm dev`.**
 Suele pasar al lanzarlo desde la terminal integrada de un editor construido
 sobre Electron (VS Code, Cursor), que define la variable `ELECTRON_RUN_AS_NODE`.
