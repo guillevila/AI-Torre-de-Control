@@ -121,3 +121,33 @@ Que la planta se vuelva ilegible en el uso normal. La alternativa descartada
 —icono por proyecto, desglose en la ficha— sigue disponible, y el trabajo hecho
 aquí no se pierde: la identidad por conversación es lo que permite calcular el
 «estado más urgente» de un proyecto.
+
+---
+
+## Adenda (mismo día): el reciclaje al cerrar la sesión
+
+La consecuencia prevista —«la planta se llena más»— apareció **el primer día**:
+el dueño reinició todas sus sesiones para instalar el enlace, cada reinicio
+estrenó conversación, y la planta quedó llena de muñecos huérfanos de sesiones
+muertas. El reciclaje original solo actuaba sobre tareas **revisadas**, y nadie
+revisa la tarea de un simple reinicio.
+
+**Corrección, dentro de la misma decisión:** una tarea también queda libre
+cuando su conversación **ha terminado** (el evento `SessionEnd` del enlace, que
+ahora viaja como `sessionEnded` en el aviso). Cerrar una sesión deja su entrega
+en la mesa; abrir la siguiente en esa carpeta **adopta esa misma tarea** —con su
+historial— en lugar de crear otra.
+
+Lo que NO cambia: una conversación **viva** sigue sin poder ser robada (el
+arreglo central de este ADR), y lo entregado no se descarta jamás — si nadie
+abre otra sesión, la entrega espera en la mesa hasta que la revises.
+
+Dos límites honestos:
+
+- **Una sesión que muere sin despedirse** (cierre forzado del ordenador, un
+  cuelgue) no emite `SessionEnd`, así que su tarea queda «viva» y ocupa sitio
+  hasta que la revises o archives a mano.
+- **Las tareas existentes** de antes de este cambio se marcan como terminadas en
+  bloque (migración v3). Si alguna sigue viva de verdad, se corrige sola con su
+  siguiente señal; la dirección contraria no se corregiría nunca, por eso se
+  eligió esta.

@@ -127,6 +127,15 @@ export const taskSchema = z.object({
   provider: providerSchema,
   externalUrl: externalUrlSchema.nullable(),
   externalSessionId: z.string().trim().max(200).nullable(),
+  /**
+   * La conversación de esta tarea, ¿ha terminado? (D23-bis)
+   *
+   * Importa para el reciclaje: una tarea cuya conversación sigue viva está
+   * ocupada y no se comparte; una cuya conversación terminó queda libre para
+   * que la adopte la siguiente que se abra en la misma carpeta. Sin esto, cada
+   * reinicio de sesión dejaba un muñeco huérfano en la oficina.
+   */
+  sessionEnded: z.boolean(),
   projectPath: z.string().trim().max(1024).nullable(),
   status: taskStatusSchema,
   statusSource: statusSourceSchema,
@@ -148,6 +157,8 @@ export const createTaskInputSchema = z.object({
   provider: providerSchema,
   externalUrl: externalUrlSchema.nullable().default(null),
   externalSessionId: z.string().trim().max(200).nullable().default(null),
+  /** Solo tiene sentido con `externalSessionId`. Por omisión, la conversación se considera viva. */
+  sessionEnded: z.boolean().default(false),
   projectPath: z.string().trim().max(1024).nullable().default(null),
   notes: z.string().max(2000).nullable().default(null),
   status: taskStatusSchema.default('draft'),
@@ -176,6 +187,7 @@ export const updateTaskInputSchema = z.object({
   provider: providerSchema.optional(),
   externalUrl: externalUrlSchema.nullable().optional(),
   externalSessionId: z.string().trim().max(200).nullable().optional(),
+  sessionEnded: z.boolean().optional(),
   projectPath: z.string().trim().max(1024).nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
 })

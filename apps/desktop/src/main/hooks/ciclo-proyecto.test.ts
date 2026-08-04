@@ -191,6 +191,100 @@ describe('varias conversaciones en el mismo proyecto (D23-bis)', () => {
   })
 })
 
+/**
+ * El reciclaje que evita el cementerio. Nació del primer día real con D23-bis:
+ * el dueño reinició todas sus sesiones para instalar el enlace y cada reinicio
+ * estrenó conversación, dejando el muñeco de la anterior huérfano en la mesa de
+ * entregas. Cerrar una sesión debe liberar su tarea para que la siguiente
+ * conversación de la misma carpeta la adopte, con historial incluido.
+ */
+describe('cerrar y volver a abrir recicla el icono', () => {
+  const cierre = (sessionId: string, cwd = CARPETA) =>
+    sessions.apply({ sessionId, cwd, status: 'completed', sessionEnded: true, timestamp: now() })
+
+  it('reiniciar una sesión no deja un muñeco huérfano', () => {
+    señal('running', CARPETA, 'sesion-A')
+    cierre('sesion-A')
+    señal('running', CARPETA, 'sesion-B')
+
+    expect(tasks.list()).toHaveLength(1)
+    expect(tasks.list()[0]?.externalSessionId).toBe('sesion-B')
+    expect(tasks.list()[0]?.status).toBe('running')
+  })
+
+  it('tres reinicios seguidos, un solo icono', () => {
+    for (const codigo of ['sesion-A', 'sesion-B', 'sesion-C']) {
+      señal('running', CARPETA, codigo)
+      cierre(codigo)
+    }
+    señal('running', CARPETA, 'sesion-D')
+
+    expect(tasks.list()).toHaveLength(1)
+  })
+
+  it('la adopción conserva el historial de la tarea reciclada', () => {
+    señal('running', CARPETA, 'sesion-A')
+    cierre('sesion-A')
+    const tarea = tasks.list()[0]
+    const antes = tasks.history(tarea!.id).length
+
+    señal('running', CARPETA, 'sesion-B')
+
+    expect(tasks.list()[0]?.id).toBe(tarea?.id)
+    expect(tasks.history(tarea!.id).length).toBeGreaterThan(antes)
+  })
+
+  it('una conversación VIVA no se recicla: cerrar una no libera la otra', () => {
+    señal('waiting_user', CARPETA, 'sesion-A')
+    señal('running', CARPETA, 'sesion-B')
+    cierre('sesion-B')
+    señal('running', CARPETA, 'sesion-C')
+
+    // C adopta la de B (cerrada). La de A, que sigue esperándote, ni se toca.
+    expect(tasks.list()).toHaveLength(2)
+    const deA = tasks.list().find((t) => t.externalSessionId === 'sesion-A')
+    expect(deA?.status).toBe('waiting_user')
+    expect(tasks.list().some((t) => t.externalSessionId === 'sesion-C')).toBe(true)
+  })
+
+  it('lo entregado y sin revisar se conserva hasta que alguien lo adopta', () => {
+    señal('running', CARPETA, 'sesion-A')
+    cierre('sesion-A')
+
+    // Nadie abre otra sesión: la entrega sigue en la mesa, no desaparece.
+    expect(tasks.list()).toHaveLength(1)
+    expect(tasks.list()[0]?.status).toBe('completed')
+  })
+
+  it('al adoptar, el código de conversación del título se actualiza', () => {
+    señal('running', CARPETA, 'sesion-A')
+    señal('running', CARPETA, 'sesion-B-9876')
+    // La segunda nació con código en el título por la ambigüedad.
+    const conCodigo = tasks.list().find((t) => t.externalSessionId === 'sesion-B-9876')
+    expect(conCodigo?.title).toContain(' · sesion')
+
+    cierre('sesion-B-9876')
+    señal('running', CARPETA, 'sesion-C-1234')
+
+    const adoptada = tasks.list().find((t) => t.externalSessionId === 'sesion-C-1234')
+    expect(adoptada?.id).toBe(conCodigo?.id)
+    expect(adoptada?.title).toBe(`Claude Code · mi-app · ${'sesion-C-1234'.slice(0, 6)}`)
+  })
+
+  it('una señal posterior de la misma conversación la marca viva otra vez', () => {
+    // El caso de la migración: tareas marcadas como terminadas sin serlo se
+    // corrigen solas en cuanto su conversación vuelve a hablar.
+    señal('running', CARPETA, 'sesion-A')
+    cierre('sesion-A')
+    señal('running', CARPETA, 'sesion-A')
+
+    expect(tasks.list()).toHaveLength(1)
+    // Y ahora que vuelve a estar viva, otra conversación ya no puede robarla.
+    señal('running', CARPETA, 'sesion-B')
+    expect(tasks.list()).toHaveLength(2)
+  })
+})
+
 describe('la ventana de diagnóstico', () => {
   it('anota cada señal que llega y qué se hizo con ella', () => {
     señal('running')

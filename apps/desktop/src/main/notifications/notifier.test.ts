@@ -8,6 +8,7 @@ const task = (status: TaskStatus, id = 'task-1'): Task => ({
   provider: 'chatgpt',
   externalUrl: null,
   externalSessionId: null,
+  sessionEnded: false,
   projectPath: null,
   status,
   statusSource: 'manual',

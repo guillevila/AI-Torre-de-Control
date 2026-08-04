@@ -55,6 +55,20 @@ export const MIGRATIONS: readonly string[] = [
   CREATE INDEX IF NOT EXISTS idx_history_task ON task_status_history (task_id, at DESC);
   CREATE INDEX IF NOT EXISTS idx_history_at ON task_status_history (at DESC);
   `,
+
+  // ── v3 — la conversación de la tarea, ¿ha terminado? (D23-bis) ─────────────
+  //
+  // Es lo que permite reciclar el muñeco cuando cierras una sesión y abres
+  // otra en la misma carpeta, en vez de acumular uno por reinicio.
+  //
+  // Las tareas que ya existían se marcan como TERMINADAS (DEFAULT 1) a
+  // propósito: casi todas vienen de sesiones ya cerradas, y si alguna sigue
+  // viva se corrige sola con su siguiente señal, que siempre marca la
+  // conversación como viva. El error en el otro sentido —marcar viva una
+  // muerta— no se corregiría nunca, porque una sesión cerrada ya no habla.
+  `
+  ALTER TABLE tasks ADD COLUMN session_ended INTEGER NOT NULL DEFAULT 1;
+  `,
 ]
 
 /**

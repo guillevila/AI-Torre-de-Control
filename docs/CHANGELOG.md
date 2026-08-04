@@ -10,6 +10,34 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Corregido — los muñecos de sesiones cerradas se acumulaban en la oficina
+
+**Apareció el primer día de uso real de D23-bis.** Al reiniciar las sesiones
+para instalar el enlace, cada reinicio estrenaba conversación y el muñeco de la
+anterior quedaba huérfano en la mesa de entregas. El reciclaje solo actuaba
+sobre tareas **revisadas**, y nadie revisa la tarea de un simple reinicio.
+
+- **Cerrar una sesión libera su tarea.** El enlace ahora distingue «terminó un
+  turno» (Stop) de «la sesión se ha cerrado» (SessionEnd, que viaja como
+  `sessionEnded` en el aviso). La siguiente conversación que se abra en esa
+  carpeta **adopta la tarea existente** —historial incluido— en vez de crear
+  otra. Reiniciar diez veces deja **un** muñeco, no diez.
+- **Reciclar no es descartar.** Lo entregado y sin revisar espera en la mesa
+  hasta que alguien lo adopta o lo revisas. Y una conversación **viva** sigue
+  siendo intocable: cerrar una no libera a las demás.
+- **El título se actualiza al adoptar**: si llevaba el código de la conversación
+  anterior, pasa a llevar el de la nueva. Los títulos puestos a mano no se tocan.
+- **Las tareas de antes del cambio** se marcan como «sesión terminada» en bloque
+  (migración v3 de la base de datos): casi todas venían de sesiones ya muertas,
+  y las que no, se corrigen solas con su siguiente señal.
+- **Límite honesto:** una sesión que muere sin despedirse (cuelgue, cierre
+  forzado) no emite SessionEnd y su muñeco queda ocupando sitio hasta que lo
+  revises o archives a mano.
+- **9 tests nuevos** (reinicio simple, tres reinicios seguidos, historial
+  conservado, la viva no se roba, la entrega no se descarta, título actualizado,
+  y la autocorrección de la migración). **332 tests** unitarios y 10 de
+  interfaz, en verde.
+
 ### Corregido — dos conversaciones en el mismo repo se borraban el estado (D23-bis)
 
 **Era una pérdida de datos, no una carencia de diseño.** Una tarea guardaba un

@@ -8,6 +8,7 @@ const task = (overrides: Partial<Task> = {}): Task => ({
   provider: 'chatgpt',
   externalUrl: 'https://example.test/c/1',
   externalSessionId: null,
+  sessionEnded: false,
   projectPath: null,
   status: 'completed',
   statusSource: 'manual',

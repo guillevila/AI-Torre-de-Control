@@ -54,6 +54,7 @@ describe('modelo de tarea', () => {
       provider: 'chatgpt',
       externalUrl: 'https://example.test/c/1',
       externalSessionId: null,
+      sessionEnded: false,
       projectPath: null,
       status: 'running',
       statusSource: 'manual',

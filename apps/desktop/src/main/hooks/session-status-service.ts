@@ -41,7 +41,11 @@ export class SessionStatusService {
     }
 
     const update = parsed.data
-    const task = this.linker.resolve(update.cwd, update.sessionId)
+    // `sessionEnded` solo viene (y solo a true) cuando la sesión se ha cerrado.
+    // Cualquier otra señal prueba que sigue viva, y el linker lo anota.
+    const task = this.linker.resolve(update.cwd, update.sessionId, {
+      ending: update.sessionEnded === true,
+    })
 
     try {
       const moved = this.tasks.changeStatus({

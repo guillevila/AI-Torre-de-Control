@@ -13,6 +13,7 @@ export function makeTask(overrides: Partial<Task> = {}): Task {
     provider: 'claude_code',
     externalUrl: null,
     externalSessionId: null,
+    sessionEnded: false,
     projectPath: null,
     status: 'draft',
     statusSource: 'manual',

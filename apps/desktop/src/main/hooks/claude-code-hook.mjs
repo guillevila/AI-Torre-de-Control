@@ -231,8 +231,16 @@ function buildAnswer(event, resolution, payload) {
   }
 }
 
-/** Manda un aviso de estado y sigue. No espera nada útil de vuelta. */
-async function sendStatus(endpoint, payload, status) {
+/**
+ * Manda un aviso de estado y sigue. No espera nada útil de vuelta.
+ *
+ * `sessionEnded` va SOLO cuando la sesión se ha cerrado (evento SessionEnd) —
+ * no cuando termina un turno—. Es lo que permite a la Torre reciclar el muñeco
+ * cuando abres otra conversación en la misma carpeta, en vez de acumular uno
+ * por reinicio. Se omite en el resto de avisos para que una Torre anterior a
+ * este campo (contrato estricto) siga aceptándolos.
+ */
+async function sendStatus(endpoint, payload, status, { sessionEnded = false } = {}) {
   try {
     await post(
       endpoint,
@@ -241,6 +249,7 @@ async function sendStatus(endpoint, payload, status) {
         sessionId: payload?.session_id ?? null,
         cwd: payload?.cwd ?? process.cwd(),
         status,
+        ...(sessionEnded ? { sessionEnded: true } : {}),
         timestamp: new Date().toISOString(),
       },
       FIRE_AND_FORGET_TIMEOUT_MS,
@@ -369,9 +378,13 @@ async function main() {
 
   // ── Avisos de estado: se mandan y se sigue ────────────────────────────────
   if (event === 'UserPromptSubmit') await sendStatus(endpoint, payload, 'running')
-  else if (event === 'Stop' || event === 'SessionEnd') {
+  else if (event === 'Stop') {
     // Ha entregado trabajo: a la mesa de entregas, pendiente de que lo revises.
     await sendStatus(endpoint, payload, 'completed')
+  } else if (event === 'SessionEnd') {
+    // Entrega igual, pero además la conversación se ha CERRADO: la tarea queda
+    // libre para que la recicle la siguiente que se abra en esta carpeta.
+    await sendStatus(endpoint, payload, 'completed', { sessionEnded: true })
   } else if (event === 'Notification') {
     /*
      * Te está pidiendo algo: a tu puerta. Este estado se reserva para eso.

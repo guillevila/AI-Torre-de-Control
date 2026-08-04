@@ -67,6 +67,13 @@ export const sessionUpdateSchema = z
     /** Carpeta desde la que trabaja la sesión. Es la vía para casar con la tarea. */
     cwd: z.string().trim().min(1).max(1024),
     status: taskStatusSchema,
+    /**
+     * `true` solo cuando la sesión se ha CERRADO (evento SessionEnd), no cuando
+     * termina un turno. Es lo que libera la tarea para que la recicle la
+     * siguiente conversación de la misma carpeta (D23-bis). El enlace solo
+     * incluye el campo cuando es true; su ausencia significa «sigue viva».
+     */
+    sessionEnded: z.boolean().optional(),
     timestamp: isoTimestampSchema,
   })
   .strict()

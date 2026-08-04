@@ -39,7 +39,7 @@ comandos. Hasta eso, no es una herramienta que puedas usar cómodamente cada dí
 
 > Lista SOLO lo que has probado tú mismo y funciona de verdad.
 
-**Comprobado automáticamente** — 323 tests unitarios y 10 pruebas que arrancan
+**Comprobado automáticamente** — 332 tests unitarios y 10 pruebas que arrancan
 la aplicación de verdad, todos ejecutados y en verde el 4 de agosto de 2026:
 
 - **Instalar y arrancar.** `pnpm install` termina en segundos sin compilar nada.
@@ -135,6 +135,12 @@ la aplicación de verdad, todos ejecutados y en verde el 4 de agosto de 2026:
   sigue siendo un solo icono aunque salte de subcarpeta; y una tarea revisada se
   recicla para la conversación siguiente, así que la oficina no se llena.
   Comprobado con 7 tests, incluido el caso que antes perdía el «te espera».
+- **Cerrar una sesión y abrir otra recicla el muñeco**, no deja uno huérfano por
+  reinicio. El enlace distingue «terminó un turno» de «la sesión se cerró», y la
+  conversación siguiente adopta la tarea con su historial. Lo entregado sin
+  revisar no se descarta, y una conversación viva no se puede robar. Comprobado
+  con 9 tests. Límite conocido: una sesión que muere sin despedirse (cuelgue) no
+  avisa, y su muñeco hay que revisarlo o archivarlo a mano.
 - **El instalador enseña el cambio antes de tocar tu configuración** (D13),
   guarda copia, conserva los automatismos que ya tuvieras y se niega a escribir
   sobre un fichero que no entienda. Todo ello comprobado con tests.

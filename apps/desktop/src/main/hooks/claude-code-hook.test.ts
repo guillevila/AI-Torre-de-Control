@@ -242,6 +242,34 @@ describe('qué estado manda cada evento', () => {
     })
   }
 
+  it('SessionEnd avisa además de que la conversación ha CERRADO', () => {
+    // Es lo que permite a la Torre reciclar el muñeco (D23-bis). Stop no lo
+    // manda: terminar un turno no es cerrar la sesión.
+    return (async () => {
+      await ejecutar({
+        hook_event_name: 'SessionEnd',
+        session_id: 'sesion-1',
+        cwd: 'C:/proyectos/mi-app',
+      })
+      expect(recibidas.find((r) => r.path === '/sessions')?.body.sessionEnded).toBe(true)
+    })()
+  })
+
+  it('Stop NO marca la conversación como cerrada: sigue viva tras entregar', () => {
+    return (async () => {
+      await ejecutar({
+        hook_event_name: 'Stop',
+        session_id: 'sesion-1',
+        cwd: 'C:/proyectos/mi-app',
+      })
+      const body = recibidas.find((r) => r.path === '/sessions')?.body
+      expect(body?.status).toBe('completed')
+      // El campo ni siquiera viaja: una Torre antigua (contrato estricto)
+      // seguiría aceptando este aviso.
+      expect('sessionEnded' in (body ?? {})).toBe(false)
+    })()
+  })
+
   /*
    * Este caso nació de un fallo concreto: con el modo desatendido (D24) la Torre
    * aprobaba el permiso en silencio, pero Claude Code emite ADEMÁS un

@@ -28,6 +28,7 @@ export function createTask(rawInput: unknown, ctx: TaskCreationContext): Task {
     provider: input.provider,
     externalUrl: input.externalUrl,
     externalSessionId: input.externalSessionId,
+    sessionEnded: input.sessionEnded,
     projectPath: input.projectPath,
     status: input.status,
     // Por omisión, manual y alta: el caso normal es que la registres tú, y de
@@ -61,6 +62,7 @@ export function applyTaskUpdate(task: Task, rawInput: unknown, now: string): Tas
     externalUrl: input.externalUrl !== undefined ? input.externalUrl : task.externalUrl,
     externalSessionId:
       input.externalSessionId !== undefined ? input.externalSessionId : task.externalSessionId,
+    sessionEnded: input.sessionEnded !== undefined ? input.sessionEnded : task.sessionEnded,
     projectPath: input.projectPath !== undefined ? input.projectPath : task.projectPath,
     notes: input.notes !== undefined ? input.notes : task.notes,
     updatedAt: now,
