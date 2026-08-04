@@ -79,6 +79,33 @@ export function SettingsView({
       </section>
 
       <section className="card">
+        <h2 className="card__title">Permisos del asistente</h2>
+        <p className="card__text">
+          Cuando Claude Code pide permiso para editar un fichero o ejecutar un comando, la Torre te
+          lo enseña entero y decides tú con un clic. Puedes delegarlo: la Torre contesta «sí» al
+          momento y no te interrumpe.
+        </p>
+        <div className="switches">
+          <Toggle
+            label="Aprobar solo, sin preguntarme"
+            hint="Modo desatendido — la Torre decide en tu lugar"
+            checked={settings.autoApprovePermissions}
+            testId="toggle-auto-approve"
+            onChange={(value) => onUpdate({ autoApprovePermissions: value })}
+          />
+        </div>
+        {settings.autoApprovePermissions && (
+          <p className="card__text" data-testid="auto-approve-warning">
+            ⚠️ <strong>Está aprobando sola.</strong> Todo lo que pida el asistente —editar ficheros,
+            ejecutar comandos, lo que sea— se acepta al momento y sin aviso. Lo aprobado queda
+            listado más abajo, en <strong>Señales recibidas del enlace</strong>, con el comando
+            entero. Esa lista vive en memoria y se pierde al cerrar la Torre: las peticiones de
+            permiso nunca se escriben en disco (D20).
+          </p>
+        )}
+      </section>
+
+      <section className="card">
         <h2 className="card__title">Pérdida de contacto</h2>
         <p className="card__text">
           Una tarea automática que lleva demasiado tiempo sin dar señales pasa a{' '}

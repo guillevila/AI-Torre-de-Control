@@ -10,6 +10,45 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Añadido — modo desatendido: la Torre aprueba sola (D24)
+
+**Un interruptor en Ajustes → Permisos del asistente.** Encendido, la Torre
+contesta «sí» al momento a todo lo que pida Claude Code —editar ficheros,
+ejecutar comandos— sin interrumpirte. Nace apagado.
+
+- **Se ve mientras está activo.** Aviso permanente en ámbar desde cualquier
+  pantalla, **que no se puede cerrar**, con un botón de apagado a un clic.
+  Enterarse de que la Torre decide por ti no puede depender de entrar en Ajustes.
+- **No llueven avisos.** Con el modo encendido la tarea **no pasa** por «te
+  espera»: si nadie espera, nadie avisa. Sin esto habría una notificación de
+  Windows por permiso —decenas por minuto— y acabarías apagando los avisos, que
+  son la función original del producto.
+- **Queda rastro de lo aprobado**, con el comando entero, en «Señales recibidas
+  del enlace», marcado como `aprobado solo`. El tope del registro sube de 40 a
+  200 entradas: con este modo, 40 se agotan en un minuto.
+  > ⚠️ **La trazabilidad es volátil.** Ese registro vive en memoria y se pierde al
+  > cerrar la Torre. No puede ser de otra manera sin romper D20 (los permisos
+  > nunca se escriben en disco). Un registro permanente sería otro ADR.
+- **Sigue sin aprobar lo que no entiende.** Una petición que no cumple el
+  contrato devuelve `timeout`, no un «sí»: el modo desatendido no es un «sí» a
+  cualquier cosa que llegue al puerto.
+- **Es opt-in de verdad.** Un servicio de permisos construido sin el parámetro se
+  comporta como antes de D24. Hay un test que lo fija.
+- **9 tests nuevos** del servicio de permisos: aprueba al momento, no deja
+  petición pendiente, no pasa por «te espera» *ni en el historial*, registra el
+  comando, respeta el apagado en la petición siguiente sin reiniciar, y rechaza
+  lo mal formado. Total: **313 tests** unitarios y **10** de interfaz, en verde.
+
+### Cambiado
+
+- **Decisión D18-bis reabierta** el mismo día que se aprobó, a petición del dueño
+  del proyecto, y sustituida por **D18-ter**: la Torre ya no solo transmite un
+  clic humano — puede decidir sola si el usuario lo enciende. Se le ofrecieron dos
+  alternativas más conservadoras (auto-aprobar solo lo inofensivo; usar el modo de
+  permisos de Claude Code sin tocar el producto) y las descartó. Riesgo,
+  alternativas y quién decidió qué, en
+  [ADR-008](decisiones/ADR-008-modo-desatendido.md).
+
 ### Añadido — Sprint 004: ChatGPT entra en la Torre (etapa 1)
 
 **Extensión de Chrome** que registra de un clic la conversación que tienes

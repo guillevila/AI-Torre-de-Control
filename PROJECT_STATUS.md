@@ -39,8 +39,8 @@ comandos. Hasta eso, no es una herramienta que puedas usar cómodamente cada dí
 
 > Lista SOLO lo que has probado tú mismo y funciona de verdad.
 
-**Comprobado automáticamente** — 147 tests unitarios y 3 pruebas que arrancan
-la aplicación de verdad, todos en verde a 3 de agosto de 2026:
+**Comprobado automáticamente** — 313 tests unitarios y 10 pruebas que arrancan
+la aplicación de verdad, todos ejecutados y en verde el 4 de agosto de 2026:
 
 - **Instalar y arrancar.** `pnpm install` termina en segundos sin compilar nada.
   `pnpm dev` abre la aplicación.
@@ -135,6 +135,15 @@ la aplicación de verdad, todos en verde a 3 de agosto de 2026:
   sobre un fichero que no entienda. Todo ello comprobado con tests.
 - **Las peticiones de permiso no se guardan en ningún sitio** (D20): viven en
   memoria y desaparecen al decidirse.
+- **Modo desatendido** (D24), en Ajustes → Permisos del asistente. Encendido, la
+  Torre aprueba sola y no interrumpe; la tarea **no** pasa por «te espera», así
+  que no llueven avisos; lo aprobado queda listado con el comando entero; y hay un
+  aviso en pantalla que no se puede cerrar mientras está activo. Comprobado con 9
+  tests: aprueba al momento, no deja petición pendiente, no toca «te espera» ni en
+  el historial, registra el comando, y apagarlo surte efecto en la petición
+  siguiente sin reiniciar.
+  > ⚠️ **Probado, no confirmado.** El dueño del proyecto todavía no ha encendido el
+  > interruptor con una sesión de Claude Code trabajando de verdad.
 
 **La extensión de Chrome para ChatGPT (Sprint 004, etapa 1):**
 
@@ -308,6 +317,15 @@ pnpm test:e2e    # abre la aplicación de verdad y recorre todo el flujo
 
 ## 5. 🔚 Última decisión tomada
 
+- **2026-08-04** — **La Torre puede aprobar permisos sola** (D24), reabriendo
+  D18-bis el mismo día que se aprobó. Hay un interruptor en Ajustes → Permisos
+  del asistente, apagado por omisión. Se le ofrecieron al dueño dos alternativas
+  más conservadoras y las descartó. Riesgo, alternativas y quién decidió qué, en
+  [ADR-008](docs/decisiones/ADR-008-modo-desatendido.md).
+  > ⚠️ **Comprobado con 9 tests nuevos, pero el dueño del proyecto todavía no lo ha
+  > visto funcionar en una sesión real de Claude Code.** Hasta que se encienda el
+  > interruptor con una sesión trabajando de verdad, esto está probado, no
+  > confirmado.
 - **2026-08-03** — Adoptar **íntegro** el sistema de diseño «Oficina de papel»
   encargado a Claude Designer, y construirlo funcional (Sprint 002). Detalle en
   [docs/sprints/sprint-002.md](docs/sprints/sprint-002.md) y
@@ -353,6 +371,8 @@ pnpm test:e2e    # abre la aplicación de verdad y recorre todo el flujo
 | **Instalar hooks tocará configuración global de Claude Code** | Medio (a futuro) | No se ha tocado nada. Cuando llegue, se pedirá confirmación explícita y se hará copia de seguridad (D13) |
 | **El repositorio es público** | Alto si se descuida | Controlado: sin secretos, sin datos reales, clave local fuera del repositorio, y un test que vigila que no aparezcan columnas capaces de guardar conversaciones |
 | **Dependencia de un paquete pequeño** (`node-sqlite3-wasm`) | Bajo | Mitigado: está detrás de una interfaz, cambiarlo son unas decenas de líneas en un solo archivo |
+| **El modo desatendido quita la última barrera humana** (D24). Un comando equivocado se ejecuta sin que nadie lo lea | Alto mientras esté encendido | Mitigado, no eliminado: nace apagado, se ve en pantalla con un aviso que no se puede cerrar, se apaga a un clic, y todo lo aprobado queda listado con el comando entero. La red de seguridad real son los hooks del proyecto, que **solo existen en los repositorios que los tengan instalados** |
+| **La trazabilidad del modo desatendido es volátil.** Si la Torre se cierra, no queda constancia de lo que aprobó | Medio mientras esté encendido | Abierto por diseño: D20 impide escribir permisos en disco. Un registro permanente exige reabrir D20 y sería otro ADR |
 
 ---
 
@@ -372,5 +392,5 @@ un par de días, esto pasa a alto.
 
 ---
 
-*Última actualización: 3 de agosto de 2026 por Claude (Sprint 002).*
+*Última actualización: 4 de agosto de 2026 por Claude (modo desatendido, D24).*
 *Mantiene: Claude (con validación del dueño del proyecto).*

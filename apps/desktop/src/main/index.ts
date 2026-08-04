@@ -192,12 +192,18 @@ async function bootstrap(): Promise<void> {
   permissionRegistry = new PermissionRegistry({ onChange: broadcastPermissions })
   const linker = new SessionLinker(service)
   // Ventana para poder mirar qué llega del enlace sin abrir la base de datos.
-  const hookActivity = new HookActivityLog()
+  // 200 y no 40: con el modo desatendido encendido (D24) la Torre aprueba sola
+  // decenas de permisos por minuto, y esta lista es la única forma de ver qué
+  // aprobó. Sigue viviendo en memoria y perdiéndose al cerrar (D20).
+  const hookActivity = new HookActivityLog(200)
   const permissionService = new PermissionService({
     registry: permissionRegistry,
     linker,
     taskService: service,
     activity: hookActivity,
+    // Se lee en cada petición, no al arrancar: apagar el interruptor surte
+    // efecto en la siguiente petición, sin reiniciar la aplicación.
+    autoApprove: () => settings.get().autoApprovePermissions,
   })
   const sessionStatus = new SessionStatusService(linker, service, hookActivity)
   // Altas que llegan de fuera (extensión de navegador). No duplica tareas.

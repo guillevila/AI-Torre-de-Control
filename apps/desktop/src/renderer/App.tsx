@@ -197,6 +197,29 @@ export function App() {
         )}
 
         {/*
+          Modo desatendido (D24). Se ve desde CUALQUIER sección y no se puede
+          cerrar: es el único ajuste que hace que la Torre decida en tu lugar, y
+          enterarte de que está puesto no puede depender de que entres en
+          Ajustes. Ámbar, no rojo: no es un fallo, es algo que debes saber.
+        */}
+        {settings.autoApprovePermissions && (
+          <div className="banner banner--warm" data-testid="auto-approve-banner">
+            <span>
+              <strong>Modo desatendido activo.</strong> La Torre aprueba sola todo lo que pide el
+              asistente, sin avisarte. Lo aprobado se ve en Ajustes → Señales recibidas del enlace.
+            </span>
+            <button
+              type="button"
+              className="btn"
+              data-testid="auto-approve-banner-off"
+              onClick={() => void updateSettings({ autoApprovePermissions: false })}
+            >
+              Apagar
+            </button>
+          </div>
+        )}
+
+        {/*
           Los permisos van por encima del contenido y se ven desde CUALQUIER
           sección. Algo que tiene una herramienta parada esperándote no puede
           depender de en qué pantalla estés mirando.

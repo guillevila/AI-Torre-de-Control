@@ -41,6 +41,22 @@ export const settingsSchema = z.object({
    */
   staleAfterMinutes: z.number().int().min(0).max(1440).default(30),
 
+  /**
+   * Aprobar solo, sin preguntarte, los permisos que pida el asistente (D24).
+   *
+   * Apagado —lo normal— cada permiso es un clic tuyo. Encendido, la Torre
+   * contesta «sí» al momento, la tarea no pasa por «te espera» y no salta
+   * ningún aviso: nadie está esperando nada.
+   *
+   * Es el único ajuste de la aplicación que hace que decida ella en tu lugar.
+   * Por eso arranca apagado, se ve en pantalla mientras está activo, y todo lo
+   * que aprueba queda listado en la actividad del enlace.
+   *
+   * Lo que NO cambia: los hooks de protección del proyecto siguen actuando
+   * antes de que la petición llegue aquí. Lo que ellos bloquean no llega.
+   */
+  autoApprovePermissions: z.boolean().default(false),
+
   /** Vista con la que arranca la aplicación. */
   startView: z.enum(['operations', 'office']).default('operations'),
 

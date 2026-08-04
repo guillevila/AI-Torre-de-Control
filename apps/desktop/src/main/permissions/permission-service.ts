@@ -21,6 +21,11 @@ import type { PermissionRegistry } from './permission-registry.js'
  * Si nadie decide, el registro resuelve `timeout` y la herramienta pregunta por
  * su vía normal (D21). En ese caso la tarea se queda en «te espera», porque es
  * la verdad: sigue esperándote, solo que en la terminal.
+ *
+ * **Excepción: modo desatendido (D24).** Si el ajuste `autoApprovePermissions`
+ * está encendido, los pasos 2 y 3 se saltan: la Torre contesta «sí» al momento y
+ * la tarea sigue trabajando. Es el único caso en que la aplicación decide en
+ * lugar del usuario, y por eso queda listado en la actividad del enlace.
  */
 export interface PermissionServiceDeps {
   registry: PermissionRegistry
@@ -28,6 +33,12 @@ export interface PermissionServiceDeps {
   taskService: TaskService
   activity?: HookActivityLog
   now?: () => string
+  /**
+   * Si la Torre debe aprobar sola (D24). Se lee en cada petición, no una vez al
+   * arrancar: apagar el interruptor tiene efecto en la siguiente petición, sin
+   * reiniciar nada.
+   */
+  autoApprove?: () => boolean
 }
 
 export class PermissionService {
@@ -36,6 +47,7 @@ export class PermissionService {
   private readonly tasks: TaskService
   private readonly activity: HookActivityLog | undefined
   private readonly now: () => string
+  private readonly autoApprove: () => boolean
 
   constructor(deps: PermissionServiceDeps) {
     this.registry = deps.registry
@@ -43,6 +55,9 @@ export class PermissionService {
     this.tasks = deps.taskService
     this.activity = deps.activity
     this.now = deps.now ?? (() => new Date().toISOString())
+    // Por omisión NO aprueba sola. Un servicio construido sin este parámetro se
+    // comporta como antes de D24, que es lo que debe pasar.
+    this.autoApprove = deps.autoApprove ?? (() => false)
   }
 
   /**
@@ -68,6 +83,30 @@ export class PermissionService {
 
     const input = parsed.data
     const task = this.linker.resolve(input.cwd, input.sessionId)
+
+    // ── Modo desatendido (D24) ────────────────────────────────────────────────
+    // Se comprueba ANTES de tocar el estado de la tarea. Si la Torre va a decir
+    // «sí» al momento, nadie está esperando: pasar por «te espera» dispararía un
+    // aviso de Windows por cada permiso, que con un asistente trabajando son
+    // decenas por minuto. La tarea sigue trabajando, que es la verdad.
+    if (this.autoApprove()) {
+      this.activity?.record({
+        event: `permiso · ${input.toolName}`,
+        cwd: input.cwd,
+        accepted: true,
+        // El comando entero, igual que en la tarjeta: si la Torre aprueba por ti,
+        // como mínimo tienes que poder ver qué aprobó. El registro vive en
+        // memoria y se pierde al cerrar, así que esto no rompe D20.
+        detail: `aprobado solo · ${input.detail}`,
+        taskTitle: task.title,
+      })
+      this.moveTo(task.id, 'running')
+      return {
+        outcome: 'allow',
+        reason: 'Aprobado automáticamente por la Torre (modo desatendido, D24).',
+      }
+    }
+
     this.activity?.record({
       event: `permiso · ${input.toolName}`,
       cwd: input.cwd,
