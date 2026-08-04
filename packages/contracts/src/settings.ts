@@ -42,6 +42,19 @@ export const settingsSchema = z.object({
   staleAfterMinutes: z.number().int().min(0).max(1440).default(30),
 
   /**
+   * Traer al frente la ventana del proyecto cuando salte un aviso (O10).
+   *
+   * En el momento exacto en que se entrega un aviso —terminada, te espera o
+   * fallida, ya pasadas la espera anti-lluvia y la deduplicación— la ventana
+   * cuyo título lleva el nombre del proyecto (la de VSCode, si hay varias) pasa
+   * al primer plano. Si Windows bloquea el cambio de foco, la ventana queda
+   * parpadeando en la barra de tareas, que sigue siendo un buen aviso.
+   *
+   * Solo Windows. Nace apagado: robar el foco es intrusivo y debe pedirse.
+   */
+  focusProjectWindowOnAttention: z.boolean().default(false),
+
+  /**
    * Aprobar solo, sin preguntarte, los permisos que pida el asistente (D24).
    *
    * Apagado —lo normal— cada permiso es un clic tuyo. Encendido, la Torre

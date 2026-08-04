@@ -55,7 +55,22 @@ export function SettingsView({
             testId="toggle-failed"
             onChange={(value) => onUpdate({ notifyFailed: value })}
           />
+          <Toggle
+            label="Traer la ventana del proyecto al avisar"
+            hint="La ventana de la conversación (VSCode) te salta delante en el mismo momento del aviso"
+            checked={settings.focusProjectWindowOnAttention}
+            testId="toggle-focus-window"
+            onChange={(value) => onUpdate({ focusProjectWindowOnAttention: value })}
+          />
         </div>
+        {settings.focusProjectWindowOnAttention && (
+          <p className="card__text card__text--muted" data-testid="focus-window-note">
+            Salta cuando el aviso se entrega de verdad —con la misma espera de abajo—, así que no te
+            interrumpe mientras estás contestando en la propia sesión. Se enfoca la <strong>ventana
+            del proyecto</strong>; con varias conversaciones en el mismo proyecto, la pestaña la
+            eliges tú. Si Windows bloquea el cambio, la ventana queda parpadeando en la barra.
+          </p>
+        )}
 
         <label className="field">
           <span className="field__label">Avisar de «terminada» y «te espera» tras</span>

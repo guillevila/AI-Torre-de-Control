@@ -10,6 +10,28 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Añadido — la ventana de la conversación te salta delante (resuelve O10)
+
+**Interruptor en Ajustes → Notificaciones: «Traer la ventana del proyecto al
+avisar».** Encendido, en el momento exacto en que se entrega un aviso
+—terminada, te espera o fallida— la ventana cuyo título lleva el nombre del
+proyecto (la de VSCode, si hay varias) pasa al primer plano.
+
+- **Hereda toda la contención de los avisos**: la espera anti-lluvia y la
+  deduplicación. La ventana no salta mientras estás contestando en la propia
+  sesión; salta cuando saltaría el aviso.
+- **Comprobado en vivo en este equipo**: Windows bloquea el robo de foco desde
+  segundo plano (la ventana solo parpadeaba en la barra); con el desbloqueo
+  estándar de Alt sintético, la ventana pasa al frente de verdad. Si Windows lo
+  bloquease igualmente, queda el parpadeo naranja — un aviso digno.
+- **El nombre del proyecto viaja en variable de entorno**, nunca interpolado en
+  el script: una carpeta con comillas o `$` no puede ejecutar nada.
+- **Límite honesto:** se enfoca la ventana del proyecto, **no la pestaña exacta**
+  de la conversación — VSCode no ofrece esa puerta. Con dos conversaciones en el
+  mismo proyecto, la pestaña la eliges tú. Solo Windows, que es el sistema del
+  MVP (O1).
+- Nace **apagado**: robar el foco es intrusivo y debe pedirse.
+
 ### Añadido — el muñeco dice qué conversación es (D5-bis, resuelve O9)
 
 **Etiqueta en dos líneas**: el proyecto arriba, en pequeño, y el **nombre de la

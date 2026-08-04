@@ -135,6 +135,13 @@ la aplicación de verdad, todos ejecutados y en verde el 4 de agosto de 2026:
   sigue siendo un solo icono aunque salte de subcarpeta; y una tarea revisada se
   recicla para la conversación siguiente, así que la oficina no se llena.
   Comprobado con 7 tests, incluido el caso que antes perdía el «te espera».
+- **La ventana de la conversación te salta delante** al entregarse un aviso
+  (O10, interruptor en Ajustes → Notificaciones, apagado por omisión). El
+  mecanismo de foco está comprobado en vivo en este equipo; hereda la espera
+  anti-lluvia, así que no interrumpe mientras contestas en la propia sesión.
+  Límite: enfoca la ventana del proyecto, no la pestaña exacta.
+  > ⚠️ El mecanismo está probado en vivo; el flujo completo (aviso → ventana)
+  > aún no se ha visto con una sesión real.
 - **El muñeco dice qué conversación es** (D5-bis, dos líneas: proyecto arriba,
   nombre de la conversación debajo). El nombre sale del registro de metadatos de
   Claude Code, nunca de la transcripción; un `/rename` en la sesión se ve bajo

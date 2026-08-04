@@ -2,6 +2,8 @@ import { statSync } from 'node:fs'
 import { join } from 'node:path'
 import { app, BrowserWindow, session, shell } from 'electron'
 import { IPC, type DevInfo, type PendingPermission, type Task } from '@torre/contracts'
+import { folderName } from '@torre/domain'
+import { focusProjectWindow } from './system/focus-window.js'
 import { HookActivityLog } from './hooks/hook-activity-log.js'
 import { HookInstaller } from './hooks/hook-installer.js'
 import { SessionLinker } from './hooks/session-linker.js'
@@ -173,10 +175,25 @@ async function bootstrap(): Promise<void> {
 
   repository = new SqliteTaskRepository(databasePath)
   const settings = new SettingsStore(join(userDataDir, 'settings.json'))
-  const notify = createNotifier(showDesktopNotification, {
-    // Se lee el ajuste en cada aviso, no al arrancar: si lo cambias, aplica ya.
-    idleDelayMs: () => settings.get().idleNoticeDelaySeconds * 1000,
-  })
+  const notify = createNotifier(
+    (message) => {
+      showDesktopNotification(message)
+      // Traer la ventana del proyecto (O10), solo si el dueño lo encendió. Va
+      // AQUÍ y no en cada cambio de estado a propósito: este es el momento en
+      // que un aviso se entrega de verdad —pasadas la espera anti-lluvia y la
+      // deduplicación—, así que la ventana salta exactamente cuando el aviso, y
+      // nunca mientras estás contestando en la propia sesión.
+      if (settings.get().focusProjectWindowOnAttention) {
+        const tarea = repository?.findById(message.taskId)
+        const carpeta = tarea?.projectPath ? folderName(tarea.projectPath) : ''
+        if (carpeta) focusProjectWindow(carpeta)
+      }
+    },
+    {
+      // Se lee el ajuste en cada aviso, no al arrancar: si lo cambias, aplica ya.
+      idleDelayMs: () => settings.get().idleNoticeDelaySeconds * 1000,
+    },
+  )
 
   const service = new TaskService({
     repository,
