@@ -55,6 +55,28 @@ export function SettingsView({
             onChange={(value) => onUpdate({ notifyFailed: value })}
           />
         </div>
+
+        <label className="field">
+          <span className="field__label">Avisar de «te espera» tras</span>
+          <select
+            className="input"
+            value={String(settings.waitingNoticeDelaySeconds)}
+            data-testid="waiting-delay"
+            onChange={(event) =>
+              onUpdate({ waitingNoticeDelaySeconds: Number(event.target.value) })
+            }
+          >
+            <option value="0">Al momento</option>
+            <option value="15">15 segundos sin que vuelvas</option>
+            <option value="45">45 segundos sin que vuelvas</option>
+            <option value="120">2 minutos sin que vuelvas</option>
+          </select>
+          <span className="field__hint">
+            Claude Code termina cada turno esperándote. Sin esta espera te llegaría un aviso por
+            turno mientras trabajas en la terminal. Si vuelves antes, el aviso se cancela solo.
+            «Terminada» y «fallida» avisan siempre al instante.
+          </span>
+        </label>
       </section>
 
       <section className="card">

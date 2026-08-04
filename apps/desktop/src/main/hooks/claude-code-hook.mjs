@@ -21,9 +21,15 @@
  *   PermissionRequest → te lo enseña en la Torre y espera tu clic (máx. 90 s).
  *                       Si decides, transmite tu decisión. Si no, se rinde y
  *                       Claude Code te pregunta en la terminal como siempre.
- *   Notification      → marca la tarea como «te espera».
- *   Stop              → refresca la señal de vida; la tarea sigue trabajando.
- *   SessionEnd        → marca la tarea como terminada.
+ *   UserPromptSubmit  → le acabas de pedir algo: la tarea pasa a «trabajando».
+ *   Stop              → Claude Code ha terminado su turno y la pelota está en
+ *                       tu tejado: la tarea pasa a «te espera».
+ *   Notification      → Claude Code te reclama: «te espera» también.
+ *   SessionEnd        → la sesión ha acabado: la tarea pasa a «terminada».
+ *
+ * OJO con `Stop`: significa que el asistente ha PARADO, no que siga trabajando.
+ * Mapearlo a «trabajando» —como se hizo al principio— deja las sesiones
+ * terminadas mintiendo en el tablero.
  */
 
 import { readFileSync } from 'node:fs'
@@ -212,9 +218,12 @@ async function main() {
   }
 
   // ── Avisos de estado: se mandan y se sigue ────────────────────────────────
-  if (event === 'Notification') await sendStatus(endpoint, payload, 'waiting_user')
-  else if (event === 'SessionEnd') await sendStatus(endpoint, payload, 'completed')
-  else if (event === 'Stop') await sendStatus(endpoint, payload, 'running')
+  if (event === 'UserPromptSubmit') await sendStatus(endpoint, payload, 'running')
+  else if (event === 'Stop' || event === 'Notification') {
+    // Las dos cosas significan lo mismo para la Torre: ya no está trabajando,
+    // te toca a ti.
+    await sendStatus(endpoint, payload, 'waiting_user')
+  } else if (event === 'SessionEnd') await sendStatus(endpoint, payload, 'completed')
 
   process.exit(0)
 }

@@ -167,3 +167,39 @@ sonado.
 
 **Contexto:** Siempre, con cualquier automatismo o protección: hooks, reglas de
 CI, validadores. Vale también para las reglas de permisos.
+
+---
+
+## 2026-08-04 10:20 — Traducir el vocabulario ajeno, no copiarlo
+
+**Error o aprendizaje:** Al conectar Claude Code mapeé su evento `Stop` al estado
+«trabajando». El resultado: una sesión que había **terminado su turno y estaba
+esperando al usuario** aparecía en el tablero como si siguiera trabajando. El
+dueño del proyecto lo detectó en el primer uso real: *«está saltando la
+notificación pero no veo que represente el estado en el dashboard»*.
+
+**Causa raíz:** `Stop` describe lo que hace **la herramienta** (el asistente ha
+parado de escribir). El estado de la Torre describe **la situación del usuario**
+(¿tengo que hacer algo?). Son dos vocabularios distintos, y traduje por parecido
+fonético en lugar de por significado. Que el asistente pare significa justo lo
+contrario de que siga trabajando: significa que la pelota ha pasado a ti.
+
+Peor aún: el mapeo incorrecto **peleaba** con el correcto. `Notification` ponía
+«te espera» y un `Stop` posterior lo devolvía a «trabajando», así que el aviso
+saltaba pero el tablero mentía.
+
+**Lección:**
+1. Al integrar una herramienta ajena, para cada evento suyo preguntarse **«¿qué
+   significa esto para el usuario?»**, no «¿a qué estado se parece el nombre?».
+2. Una máquina de estados necesita los eventos que la hacen **avanzar y
+   retroceder**. Faltaba `UserPromptSubmit` («vuelve a trabajar»), y sin él no
+   había forma de salir de «te espera» de manera natural.
+3. Cuando dos eventos escriben el mismo campo, comprobar **en qué orden llegan
+   en la vida real**. Dos mapeos que se contradicen producen un fallo
+   intermitente, que es el peor de diagnosticar.
+4. El primer uso real vale más que cualquier test: ningún test detectó esto
+   porque todos usaban el mapeo equivocado como premisa.
+
+**Contexto:** Cualquier integración con eventos de una herramienta externa. Vale
+para la futura extensión de navegador: `DOMContentLoaded` no significa «tarea
+terminada».

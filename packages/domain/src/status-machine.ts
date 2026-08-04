@@ -64,7 +64,10 @@ export function shouldNotify(previous: TaskStatus, next: TaskStatus): boolean {
 }
 
 export function applyStatusChange(task: Task, change: StatusChangeRequest): TransitionResult {
-  if (isManuallyLocked(task.status, task.statusSource) && change.source !== 'manual') {
+  if (
+    isManuallyLocked(task.status, task.statusSource, change.status) &&
+    change.source !== 'manual'
+  ) {
     return {
       ok: false,
       reason: 'manual_decision_locked',

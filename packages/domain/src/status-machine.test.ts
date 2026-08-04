@@ -66,16 +66,37 @@ describe('applyStatusChange', () => {
     expect(result.reason).toBe('invalid_transition')
   })
 
-  it('impide que una señal automática deshaga una decisión manual', () => {
-    const task = makeTask({ status: 'completed', statusSource: 'manual' })
+  it('impide que una señal automática CIERRE de otra forma lo que cerraste tú', () => {
+    const task = makeTask({ status: 'failed', statusSource: 'manual' })
     const result = applyStatusChange(
       task,
-      change('running', { source: 'browser_extension', confidence: 'low' }),
+      change('completed', { source: 'browser_extension', confidence: 'low' }),
     )
 
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.reason).toBe('manual_decision_locked')
+  })
+
+  it('tampoco puede archivar por su cuenta lo que diste por terminado', () => {
+    const task = makeTask({ status: 'completed', statusSource: 'manual' })
+    const result = applyStatusChange(task, change('archived', { source: 'claude_hook' }))
+    expect(result.ok).toBe(false)
+  })
+
+  /**
+   * La excepción, y el motivo por el que existe: si cierras una tarea a mano y
+   * después vuelves a trabajar en esa carpeta, la señal de que hay trabajo en
+   * marcha es información nueva y observada, no un evento retrasado. Sin esto,
+   * cerrar una tarea a mano dejaba su carpeta sorda para siempre.
+   */
+  it('SÍ deja que una señal automática la reabra si el trabajo se reanuda', () => {
+    const task = makeTask({ status: 'completed', statusSource: 'manual' })
+    const result = applyStatusChange(task, change('running', { source: 'claude_hook' }))
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.task.status).toBe('running')
   })
 
   it('sí deja al usuario cambiar a mano lo que él mismo cerró', () => {

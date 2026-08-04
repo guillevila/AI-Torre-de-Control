@@ -2527,3 +2527,14 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/*
+ * Aviso de que algo requiere una acción tuya pero no es un error: se usa el
+ * ámbar de «te espera», no el rojo de fallo.
+ */
+.banner--warm {
+  background: var(--waiting-bg);
+  border-color: var(--waiting-line);
+  color: var(--waiting-ink);
+  align-items: center;
+}

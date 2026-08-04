@@ -101,6 +101,14 @@ export interface DevInfo {
  */
 export interface HookStatus {
   installed: boolean
+  /**
+   * true cuando está instalado pero con una versión anterior: o el script ha
+   * cambiado, o hay eventos nuevos que enganchar.
+   *
+   * Sin esto, una corrección del enlace no llegaría nunca a quien ya lo tenía
+   * instalado, y seguiría viendo el fallo sin saber por qué.
+   */
+  needsUpdate: boolean
   /** Ruta del fichero de ajustes de Claude Code que habría que tocar. */
   settingsPath: string
   /** false cuando Claude Code todavía no ha creado su configuración. */

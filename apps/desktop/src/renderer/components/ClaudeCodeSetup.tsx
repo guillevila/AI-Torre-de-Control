@@ -69,10 +69,29 @@ export function ClaudeCodeSetup() {
 
       {status?.installed ? (
         <>
-          <p className="card__text">
-            <strong data-testid="hook-installed">Instalado.</strong> Cuando Claude Code pida
-            permiso, termine o te reclame, esta Torre se entera y te avisa.
-          </p>
+          {status.needsUpdate ? (
+            <div className="banner banner--warm" data-testid="hook-outdated">
+              <span>
+                <strong>Hay una versión nueva del enlace.</strong> La que tienes instalada es
+                anterior y puede traducir mal los estados. Actualízala para que la Torre refleje lo
+                que de verdad hace Claude Code.
+              </span>
+              <button
+                type="button"
+                className="btn btn--primary"
+                disabled={busy}
+                data-testid="hook-update"
+                onClick={() => void install()}
+              >
+                Actualizar ahora
+              </button>
+            </div>
+          ) : (
+            <p className="card__text">
+              <strong data-testid="hook-installed">Instalado y al día.</strong> Cuando Claude Code
+              pida permiso, termine o te reclame, esta Torre se entera y te avisa.
+            </p>
+          )}
           <pre className="codeblock mono">{status.settingsPath}</pre>
           <div className="card__actions">
             <button

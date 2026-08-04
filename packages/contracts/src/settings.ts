@@ -18,6 +18,18 @@ export const settingsSchema = z.object({
   notifyFailed: z.boolean().default(true),
 
   /**
+   * Segundos que espera el aviso de «te espera» antes de salir.
+   *
+   * Existe por el enlace con Claude Code: cada turno del asistente termina
+   * esperándote, así que sin esta espera te llovería un aviso por turno
+   * mientras trabajas en la terminal. Si vuelves antes, el aviso se cancela
+   * solo. 0 avisa al momento.
+   *
+   * No afecta a «terminada» ni «fallida»: esos salen siempre al instante.
+   */
+  waitingNoticeDelaySeconds: z.number().int().min(0).max(600).default(45),
+
+  /**
    * Minutos sin señal tras los cuales una tarea automática pasa a «sin
    * confirmar» (D9). 0 desactiva el barrido.
    *

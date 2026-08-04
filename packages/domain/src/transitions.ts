@@ -59,6 +59,27 @@ export function canTransition(from: TaskStatus, to: TaskStatus): boolean {
  */
 export const MANUAL_LOCK_STATUSES = ['completed', 'failed', 'archived'] as const
 
-export function isManuallyLocked(status: TaskStatus, source: string): boolean {
-  return source === 'manual' && (MANUAL_LOCK_STATUSES as readonly string[]).includes(status)
+/**
+ * Estados que una señal automática SÍ puede imponer sobre una decisión manual.
+ *
+ * Solo `running`, y por un motivo concreto: si marcaste una tarea como
+ * terminada y después vuelves a trabajar en esa carpeta, la señal de que hay
+ * trabajo en marcha es **información nueva y observada**, no un evento
+ * retrasado. Sin esta excepción, la primera vez que cierras una tarea a mano su
+ * carpeta se queda sorda para siempre.
+ *
+ * Lo que el candado sigue impidiendo —y es lo que importa— es que una señal
+ * automática dé por terminado o fallido algo que tú cerraste de otra forma.
+ */
+const UNLOCKS_MANUAL: readonly TaskStatus[] = ['running']
+
+export function isManuallyLocked(
+  status: TaskStatus,
+  source: string,
+  incomingStatus?: TaskStatus,
+): boolean {
+  if (source !== 'manual') return false
+  if (!(MANUAL_LOCK_STATUSES as readonly string[]).includes(status)) return false
+  if (incomingStatus && UNLOCKS_MANUAL.includes(incomingStatus)) return false
+  return true
 }
