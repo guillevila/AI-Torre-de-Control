@@ -69,8 +69,35 @@ const $estado = document.getElementById('deteccion-estado')
 const $botonDeteccion = document.getElementById('deteccion-boton')
 const $nota = document.getElementById('deteccion-nota')
 
-/** Sitios donde la detección es posible. Debe coincidir con el manifiesto. */
-const VIGILABLES = ['chatgpt.com', 'chat.openai.com', 'claude.ai']
+/**
+ * Sitios donde la detección es posible, y el permiso EXACTO que hay que pedir
+ * para cada uno.
+ *
+ * Se guarda el permiso escrito, no se construye a partir de la pestaña: Chrome
+ * solo concede permisos que estén declarados palabra por palabra en el
+ * manifiesto. Entrando por `www.chatgpt.com` se pediría `https://www.chatgpt.com/*`,
+ * que no está declarado, y la petición fallaría sin más explicación.
+ */
+const VIGILABLES = {
+  'chatgpt.com': 'https://chatgpt.com/*',
+  'chat.openai.com': 'https://chat.openai.com/*',
+  'claude.ai': 'https://claude.ai/*',
+}
+
+/**
+ * Si la detección está activa, sabido ANTES de que pulses.
+ *
+ * No es un capricho de eficiencia. Chrome exige que pedir un permiso sea lo
+ * primero que ocurra tras tu clic: cualquier consulta previa —aunque tarde un
+ * milisegundo— «gasta» el gesto, y para cuando llega la petición Chrome ya la
+ * rechaza por no venir de una acción tuya.
+ *
+ * Es exactamente lo que rompió el botón la primera vez: no hacía nada, y no
+ * había ningún error a la vista. Por eso el estado se recuerda de antemano y el
+ * clic va directo a pedir.
+ */
+let deteccionActiva = false
+let origenVigilado = null
 
 /**
  * Enseña el interruptor de la detección automática.
@@ -84,26 +111,33 @@ const VIGILABLES = ['chatgpt.com', 'chat.openai.com', 'claude.ai']
  */
 async function montarDeteccion(url) {
   const host = new URL(url).hostname.toLowerCase().replace(/^www\./, '')
-  if (!VIGILABLES.includes(host)) return
+  const permiso = VIGILABLES[host]
+  if (!permiso) return
 
-  const origen = `${new URL(url).origin}/*`
+  origenVigilado = permiso
   $deteccion.hidden = false
-  await pintarDeteccion(origen)
+  await pintarDeteccion()
 
-  $botonDeteccion.addEventListener('click', async () => {
-    const concedido = await chrome.permissions.contains({ origins: [origen] })
-    if (concedido) {
-      await chrome.permissions.remove({ origins: [origen] })
-    } else {
-      // Chrome enseña su propio cuadro. Si dices que no, no pasa nada más.
-      await chrome.permissions.request({ origins: [origen] })
-    }
-    await pintarDeteccion(origen)
+  $botonDeteccion.addEventListener('click', () => {
+    // NADA de `await` antes de esta línea. Ver el comentario de arriba.
+    const peticion = deteccionActiva
+      ? chrome.permissions.remove({ origins: [origenVigilado] })
+      : chrome.permissions.request({ origins: [origenVigilado] })
+
+    peticion
+      .then(() => pintarDeteccion())
+      .catch((error) => {
+        // Si algún día vuelve a fallar, que se vea el motivo en lugar de que el
+        // botón se quede mudo.
+        avisar('fallo', `Chrome no dejó cambiar el permiso: ${error?.message ?? 'motivo desconocido'}`)
+      })
   })
 }
 
-async function pintarDeteccion(origen) {
-  const activa = await chrome.permissions.contains({ origins: [origen] })
+async function pintarDeteccion() {
+  if (!origenVigilado) return
+  const activa = await chrome.permissions.contains({ origins: [origenVigilado] })
+  deteccionActiva = activa
 
   $punto.dataset.activa = String(activa)
   $estado.textContent = activa ? 'Detección automática activada' : 'Detección automática desactivada'
