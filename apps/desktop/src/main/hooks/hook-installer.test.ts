@@ -62,13 +62,14 @@ describe('enseñar el cambio antes de tocar nada (D13)', () => {
     expect(JSON.parse(preview.after).hooks.PermissionRequest).toBeDefined()
   })
 
-  it('el después incluye los cuatro eventos que se enganchan', () => {
+  it('engancha los cinco eventos que describen una sesión entera', () => {
     const after = JSON.parse(installer.preview().after)
     expect(Object.keys(after.hooks).sort()).toEqual([
-      'Notification',
-      'PermissionRequest',
-      'SessionEnd',
-      'Stop',
+      'Notification', // te reclama por su cuenta
+      'PermissionRequest', // pide permiso y espera tu decisión
+      'SessionEnd', // la sesión acaba
+      'Stop', // termina su turno: la pelota pasa a ti
+      'UserPromptSubmit', // le pides algo: vuelve a trabajar
     ])
   })
 })

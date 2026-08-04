@@ -122,6 +122,19 @@ test.afterAll(async () => {
 })
 
 test('la vertical completa funciona de principio a fin', async () => {
+  // El aviso de «te espera» normalmente espera 45 s a ver si vuelves. Para la
+  // prueba se pone a cero: lo que se comprueba aquí es que el aviso SALE, y esa
+  // espera tiene sus propios tests unitarios.
+  // `globalThis` es el `window` del renderer; se usa así porque este archivo se
+  // compila sin los tipos del navegador.
+  await page.evaluate(() =>
+    (
+      globalThis as unknown as {
+        torre: { updateSettings: (patch: unknown) => Promise<unknown> }
+      }
+    ).torre.updateSettings({ waitingNoticeDelaySeconds: 0 }),
+  )
+
   // ── 1. Arranca vacía ──────────────────────────────────────────────────────
   await page.getByTestId('nav-tasks').click()
   await expect(page.getByTestId('tasks-empty')).toBeVisible()

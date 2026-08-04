@@ -34,14 +34,19 @@ const HOOKED_EVENTS = [
     summary: 'Cuando Claude Code pida permiso, te lo enseña en la Torre y espera tu decisión.',
   },
   {
-    event: 'Notification',
+    event: 'UserPromptSubmit',
     timeoutSeconds: 10,
-    summary: 'Cuando Claude Code te reclame, la tarea pasa a «te espera» y te avisa Windows.',
+    summary: 'Cuando le pidas algo a Claude Code, la tarea pasa a «trabajando».',
   },
   {
     event: 'Stop',
     timeoutSeconds: 10,
-    summary: 'Cuando Claude Code termine un turno, refresca la señal de vida de la tarea.',
+    summary: 'Cuando Claude Code termine su turno, la tarea pasa a «te espera» y te avisa Windows.',
+  },
+  {
+    event: 'Notification',
+    timeoutSeconds: 10,
+    summary: 'Cuando Claude Code te reclame por su cuenta, la tarea pasa a «te espera».',
   },
   {
     event: 'SessionEnd',

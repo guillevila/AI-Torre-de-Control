@@ -23,7 +23,11 @@ const setup = (settings: Partial<Settings> = {}) => {
     now,
     newId,
     settings: () => ({ ...DEFAULT_SETTINGS, ...settings }),
-    onNotify: (task) => notified.push(task),
+    // Solo se apuntan los cambios que MERECÍAN aviso: el resto llegan también,
+    // pero sirven para cancelar avisos pendientes, no para lanzarlos.
+    onStatusChange: (task: Task, _previous: TaskStatus, notify: boolean) => {
+      if (notify) notified.push(task)
+    },
     onChange: (tasks) => changes.push(tasks),
   })
   return { service, repository, notified, changes }

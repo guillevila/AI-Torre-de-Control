@@ -34,8 +34,15 @@ export interface TaskServiceDeps {
   newId?: () => string
   /** Ajustes vigentes. Se lee en cada uso para que los cambios apliquen ya. */
   settings?: () => Settings
-  /** Se llama cuando un cambio merece interrumpir al usuario. */
-  onNotify?: (task: Task, previousStatus: TaskStatus) => void
+  /**
+   * Se llama en CADA cambio real de estado, con `notify` indicando si ese
+   * cambio merecía interrumpir al usuario.
+   *
+   * Se avisa también de los que NO interrumpen porque quien escucha necesita
+   * enterarse de todos: un aviso pendiente de «te espera» deja de tener sentido
+   * en cuanto la tarea se mueve a otro sitio.
+   */
+  onStatusChange?: (task: Task, previousStatus: TaskStatus, notify: boolean) => void
   /** Se llama tras cualquier cambio, con la lista completa ya actualizada. */
   onChange?: (tasks: Task[]) => void
 }
@@ -60,7 +67,7 @@ export class TaskService {
   private readonly now: () => string
   private readonly newId: () => string
   private readonly settings: () => Settings
-  private readonly onNotify: (task: Task, previousStatus: TaskStatus) => void
+  private readonly onStatusChange: (task: Task, previousStatus: TaskStatus, notify: boolean) => void
   private readonly onChange: (tasks: Task[]) => void
 
   constructor(deps: TaskServiceDeps) {
@@ -68,7 +75,7 @@ export class TaskService {
     this.now = deps.now ?? (() => new Date().toISOString())
     this.newId = deps.newId ?? (() => randomUUID())
     this.settings = deps.settings ?? (() => DEFAULT_SETTINGS)
-    this.onNotify = deps.onNotify ?? (() => {})
+    this.onStatusChange = deps.onStatusChange ?? (() => {})
     this.onChange = deps.onChange ?? (() => {})
   }
 
@@ -265,8 +272,9 @@ export class TaskService {
       })
     }
 
-    if (result.notify && this.notificationEnabled(result.task.status)) {
-      this.onNotify(result.task, previousStatus)
+    if (result.changed) {
+      const notify = result.notify && this.notificationEnabled(result.task.status)
+      this.onStatusChange(result.task, previousStatus, notify)
     }
 
     return { ok: true, task: result.task }
