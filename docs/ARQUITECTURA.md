@@ -98,6 +98,9 @@ ai-torre-de-control/
 │     │  ├─ events/
 │     │  │  ├─ local-event-server.ts   Receptor HTTP en 127.0.0.1
 │     │  │  └─ endpoint.ts             Clave local y fichero de conexión
+│     │  ├─ hooks/                  Enlace con Claude Code (instalador y señales)
+│     │  ├─ permissions/            Permisos en memoria, nunca en disco (D20)
+│     │  ├─ intake/                 Altas que llegan de fuera (extensión)
 │     │  ├─ notifications/
 │     │  │  ├─ notifier.ts             Lógica de avisos (sin Electron: testeable)
 │     │  │  └─ desktop-notifier.ts     Envío real al sistema operativo
@@ -116,6 +119,12 @@ ai-torre-de-control/
 │     │  └─ styles/                 tokens.css (el sistema de diseño) + app.css
 │     ├─ e2e/                       Prueba de interfaz
 │     └─ scripts/launch.mjs         Arrancador (neutraliza ELECTRON_RUN_AS_NODE)
+│  └─ extension/                    Extensión de Chrome (JS de navegador, sin compilar)
+│     ├─ manifest.json              LOS PERMISOS. El fichero que de verdad importa
+│     ├─ torre.js                   Todo lo que sale del navegador: buscar y registrar
+│     ├─ popup.*                    La ventanita del icono
+│     ├─ opciones.*                 La clave local, una sola vez
+│     └─ scripts/generar-iconos.mjs Genera los PNG, para que no sean binarios sin origen
 ├─ packages/
 │  ├─ contracts/                    Tipos + esquemas zod (sin lógica)
 │  └─ domain/                       Reglas puras (sin dependencias de plataforma)

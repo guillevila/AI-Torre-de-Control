@@ -151,6 +151,21 @@ export const createTaskInputSchema = z.object({
   projectPath: z.string().trim().max(1024).nullable().default(null),
   notes: z.string().max(2000).nullable().default(null),
   status: taskStatusSchema.default('draft'),
+
+  /*
+   * Quién dice que la tarea nace en ese estado, y cuánto se fía uno (D8).
+   *
+   * Por omisión, `manual` y `high`: el caso normal es que la registres tú, y de
+   * eso no hay duda ninguna.
+   *
+   * Existen porque no todas las tareas nacen de una persona. La que crea la
+   * extensión de navegador nace de un clic tuyo sobre una pestaña, y de ella
+   * solo sabemos que existe: nadie ha dicho todavía que esté trabajando. Que
+   * naciera marcada como «manual, alta confianza» sería afirmar algo que no
+   * sabemos, y en esta aplicación eso es el error más caro que se puede cometer.
+   */
+  statusSource: statusSourceSchema.default('manual'),
+  statusConfidence: statusConfidenceSchema.default('high'),
 })
 
 export type CreateTaskInput = z.input<typeof createTaskInputSchema>

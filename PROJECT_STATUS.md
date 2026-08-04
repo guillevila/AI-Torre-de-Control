@@ -136,6 +136,28 @@ la aplicación de verdad, todos en verde a 3 de agosto de 2026:
 - **Las peticiones de permiso no se guardan en ningún sitio** (D20): viven en
   memoria y desaparecen al decidirse.
 
+**La extensión de Chrome para ChatGPT (Sprint 004, etapa 1):**
+
+> ⚠️ **Construida y probada, pero TÚ todavía no la has instalado.** Los tests
+> pasan y comprueban cosas de verdad —incluido el cuerpo exacto que sale del
+> navegador contra un servidor real—, pero hasta que la cargues en tu Chrome y
+> registres una conversación, esto no está comprobado *en vivo*. No cuenta como
+> «funciona» hasta entonces.
+
+- **Registra de un clic** la conversación que tengas abierta: pulsas su icono y
+  la tarea aparece en la Torre.
+- **No puede leer tus conversaciones, y no es una promesa.** No pide permiso
+  sobre `chatgpt.com` ni sobre ninguna otra página, no mete nada dentro de ellas
+  y no tiene nada corriendo de fondo. Lee el título y la dirección de la
+  pestaña, y solo cuando pulsas su icono.
+- **Aunque el navegador fallara, la Torre no lo aceptaría**: su contrato de alta
+  solo admite dos campos y rechaza la petición entera si llega uno más. Hay
+  tests que intentan colar prompts, respuestas y transcripciones.
+- **No duplica**: registrar dos veces la misma conversación devuelve la que ya
+  había.
+- **La tarea nace «en cola» y con confianza baja**, no «trabajando». Registrarla
+  no significa que ChatGPT esté haciendo nada, y la Torre no debe fingirlo.
+
 **Comprobado contra el propio Windows:**
 
 - **La notificación llega al sistema operativo.** Se disparó una real (sin
@@ -162,9 +184,13 @@ la aplicación de verdad, todos en verde a 3 de agosto de 2026:
 
 **Lo que falta para llegar a MVP:**
 
-- **ChatGPT, Claude web y Codex siguen sin avisar solos.** Claude Code sí, desde
-  el Sprint 003. Los demás necesitan una extensión de navegador o un monitor de
-  procesos, que son mecanismos bastante más frágiles.
+- **ChatGPT no avisa solo de que ha terminado.** La extensión de Chrome del
+  Sprint 004 sirve para **registrar** una conversación de un clic, y nada más:
+  después el estado lo mueves tú a mano. Detectar el final de una respuesta sin
+  leer la conversación es la **etapa 2**, y no está construida.
+- **Claude web, Codex y los demás siguen sin avisar solos.** Claude Code sí,
+  desde el Sprint 003. Para el resto haría falta ampliar la extensión o un
+  monitor de procesos, mecanismos bastante más frágiles.
 - **No se puede instalar.** No hay un `.exe` ni un instalador: hay que arrancarla
   con `pnpm dev` desde una terminal. Depende de decidir para qué sistema
   operativo se empaqueta primero (decisión abierta O1).
@@ -181,7 +207,8 @@ la aplicación de verdad, todos en verde a 3 de agosto de 2026:
 
 **Fuera de alcance de este sprint, por decisión:**
 
-- Extensión de navegador.
+- **Detectar solo que ChatGPT ha terminado** (etapa 2 de la extensión). Hoy
+  registras de un clic y el estado lo mueves tú.
 - Lectura del contenido de conversaciones (y no se hará: decisión D5).
 - Cualquier API de OpenAI, Anthropic u otros (y no se hará: decisión D2).
 - Cuentas, autenticación, sincronización entre ordenadores, multiusuario.

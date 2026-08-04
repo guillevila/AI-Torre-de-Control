@@ -4,6 +4,7 @@ import type {
   EventIngestResult,
   PermissionResolution,
   SessionUpdateResult,
+  TaskIntakeResult,
 } from '@torre/contracts'
 
 /**
@@ -50,6 +51,15 @@ export interface LocalEventServerOptions {
    * su carpeta y su sesión. Es lo que envía el enlace con Claude Code.
    */
   onSession?: (raw: unknown) => SessionUpdateResult
+  /**
+   * Da de alta una tarea que llega de fuera. Es lo que usa la extensión de
+   * navegador para registrar la conversación que tienes abierta.
+   *
+   * A diferencia de un evento, esta ruta sí CREA algo. Por eso el contrato que
+   * la gobierna solo admite dos campos —título y dirección— y rechaza por
+   * completo cualquier petición que traiga uno más.
+   */
+  onIntake?: (raw: unknown) => TaskIntakeResult
 }
 
 export interface LocalEventServerAddress {
@@ -142,13 +152,15 @@ export class LocalEventServer {
     const isEvents = req.method === 'POST' && url === '/events'
     const isPermissions = req.method === 'POST' && url === '/permissions'
     const isSessions = req.method === 'POST' && url === '/sessions'
+    const isIntake = req.method === 'POST' && url === '/tasks'
 
     // Cada ruta solo existe si la aplicación sabe atenderla. Sin atendedor
     // devuelve 404 en lugar de aceptar algo que nadie va a procesar.
     const known =
       isEvents ||
       (isPermissions && this.options.onPermission) ||
-      (isSessions && this.options.onSession)
+      (isSessions && this.options.onSession) ||
+      (isIntake && this.options.onIntake)
     if (!known) {
       return send(res, 404, { accepted: false, reason: 'Ruta no encontrada' })
     }
@@ -186,6 +198,11 @@ export class LocalEventServer {
 
         if (isSessions && this.options.onSession) {
           const result = this.options.onSession(parsed)
+          return send(res, result.accepted ? 200 : 422, result)
+        }
+
+        if (isIntake && this.options.onIntake) {
+          const result = this.options.onIntake(parsed)
           return send(res, result.accepted ? 200 : 422, result)
         }
 
