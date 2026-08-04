@@ -35,7 +35,7 @@
  * de significar nada.
  */
 
-import { readFileSync } from 'node:fs'
+import { appendFileSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { homedir, platform } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
@@ -46,10 +46,52 @@ const REQUEST_TIMEOUT_MS = 100_000
 const FIRE_AND_FORGET_TIMEOUT_MS = 3_000
 /** Tope del texto que se manda. La Torre lo rechazaría por encima de 4000. */
 const DETAIL_MAX = 3_800
+/** Cuaderno donde queda constancia de cada permiso. Ver `apuntar()`. */
+const DIAGNOSTIC_FILENAME = 'diagnostico-permisos.log'
+/** Al pasarse de aquí, el cuaderno empieza de cero. Interesa lo reciente. */
+const DIAGNOSTIC_MAX_BYTES = 256 * 1024
 
 /** Sale sin hacer nada. Es la respuesta correcta ante cualquier problema. */
 function bailOut() {
   process.exit(0)
+}
+
+/**
+ * Cuaderno de bitácora de las peticiones de permiso.
+ *
+ * Existe porque un fallo mudo no se diagnostica adivinando, y este canal ya ha
+ * fallado dos veces sin dar ni un error: primero por contestar con el nombre de
+ * campo de otro evento, después por una comprobación de más que descartaba la
+ * decisión en silencio. Las dos se habrían visto en dos minutos con esto.
+ *
+ * **Nunca escribe contenido de conversación.** Solo el nombre del evento, el de
+ * la herramienta y la FORMA de los datos de decisión —qué campos vienen y de
+ * qué tipo—. Ni prompts, ni respuestas, ni el contenido de los ficheros.
+ *
+ * Si no puede escribir, no pasa nada: es un cuaderno, no un requisito (D21).
+ */
+function apuntar(nota) {
+  try {
+    const ruta = join(userDataDir(), DIAGNOSTIC_FILENAME)
+
+    // Un cuaderno de diagnóstico no puede crecer sin fin en el disco de nadie:
+    // al pasarse de tamaño se empieza de cero. Interesa lo reciente.
+    try {
+      if (statSync(ruta).size > DIAGNOSTIC_MAX_BYTES) rmSync(ruta)
+    } catch {
+      // No existe todavía, o no se puede mirar. Se sigue igual.
+    }
+
+    appendFileSync(ruta, `${JSON.stringify({ at: new Date().toISOString(), ...nota })}\n`, 'utf8')
+  } catch {
+    // Un cuaderno que no se puede escribir jamás debe estropear una sesión.
+  }
+}
+
+/** Apunta por qué se rinde y se aparta, para que el motivo no se pierda. */
+function rendirse(motivo, extra = {}) {
+  apuntar({ fase: 'se aparta', motivo, ...extra })
+  bailOut()
 }
 
 /** Misma carpeta que fija el proceso principal de la aplicación. */
@@ -213,14 +255,35 @@ async function main() {
 
   const event = String(payload.hook_event_name ?? '')
 
+  /*
+   * Toda señal deja rastro, no solo las de permiso.
+   *
+   * Responde sin adivinar a las dos preguntas que más tiempo cuestan: «¿esto
+   * llega siquiera?» y «¿en qué modo está la sesión?». Si el modo aprueba las
+   * cosas por su cuenta, no habrá peticiones de permiso que capturar — y eso no
+   * es un fallo del enlace, aunque desde fuera lo parezca.
+   */
+  apuntar({ fase: 'señal', evento: event, modo: payload.permission_mode ?? null })
+
   // ── Peticiones de permiso: el único caso que espera ────────────────────────
   if (event === 'PermissionRequest' || event === 'PreToolUse') {
     const toolName = String(payload.tool_name ?? 'desconocida')
-
-    // Claude Code avisa de qué decisiones admite esta petición concreta. Si la
-    // nuestra no está entre ellas, no se pregunta en balde: se sale y que lo
-    // gestione él como siempre.
     const admitidas = payload.permission_suggestions
+
+    // Queda constancia de la FORMA exacta de lo que llega. Es lo que permite
+    // ver de un vistazo por qué una decisión no surtió efecto.
+    apuntar({
+      fase: 'llega',
+      evento: event,
+      herramienta: toolName,
+      admitidas: admitidas ?? null,
+      tipoDeAdmitidas: Array.isArray(admitidas)
+        ? `lista de [${[...new Set(admitidas.map((v) => typeof v))].join(', ')}]`
+        : typeof admitidas,
+      modo: payload.permission_mode ?? null,
+      traeIdDeLlamada: Boolean(payload.tool_use_id),
+      camposDelSobre: Object.keys(payload).sort(),
+    })
 
     let response
     try {
@@ -239,25 +302,64 @@ async function main() {
       )
     } catch {
       // La Torre no contestó. Que pregunte Claude Code, como siempre.
-      bailOut()
+      rendirse('la Torre no contestó (cerrada, o tardó demasiado)')
     }
 
-    if (!response.ok) bailOut()
+    if (!response.ok) rendirse('la Torre respondió con error', { estado: response.status })
 
     let resolution
     try {
       resolution = await response.json()
     } catch {
-      bailOut()
+      rendirse('la respuesta de la Torre no se pudo leer')
     }
 
     // `timeout` o cualquier cosa rara: no se decide nada y Claude Code pregunta.
-    if (resolution?.outcome !== 'allow' && resolution?.outcome !== 'deny') bailOut()
+    if (resolution?.outcome !== 'allow' && resolution?.outcome !== 'deny') {
+      rendirse('nadie decidió a tiempo', { recibido: resolution?.outcome ?? null })
+    }
 
-    // Decidiste algo que esta petición no admite: mejor no contestar.
-    if (Array.isArray(admitidas) && !admitidas.includes(resolution.outcome)) bailOut()
+    /*
+     * Claude Code PUEDE indicar qué decisiones admite esta petición concreta.
+     *
+     * Solo se le hace caso si viene como una lista de textos. Cualquier otra
+     * forma se ignora a propósito: descartar una decisión humana por no
+     * entender un campo es peor que no mirar el campo siquiera. Esa misma
+     * comprobación, escrita sin esta cautela, se tragó decisiones reales en
+     * silencio el 4/8/2026.
+     */
+    const listaAdmitidas =
+      Array.isArray(admitidas) && admitidas.length > 0 && admitidas.every((v) => typeof v === 'string')
+        ? admitidas
+        : null
 
-    process.stdout.write(`${JSON.stringify(buildAnswer(event, resolution, payload))}\n`)
+    if (listaAdmitidas && !listaAdmitidas.includes(resolution.outcome)) {
+      rendirse('esta petición no admite esa decisión', {
+        decidido: resolution.outcome,
+        admitidas: listaAdmitidas,
+      })
+    }
+
+    const answer = buildAnswer(event, resolution, payload)
+    const salida = answer.hookSpecificOutput
+
+    /*
+     * Se apunta la FORMA del sobre, nunca su carga.
+     *
+     * `updatedInput` lleva la orden original tal cual: para una escritura, eso
+     * es el contenido entero del fichero. Apuntarlo convertiría el cuaderno de
+     * diagnóstico en un registro de todo lo que se escribe, que es justo lo que
+     * esta aplicación promete no hacer.
+     */
+    apuntar({
+      fase: 'contesta',
+      evento: event,
+      decidido: resolution.outcome,
+      campoUsado: 'decision' in salida ? 'decision.behavior' : 'permissionDecision',
+      decisionEnviada: salida.decision?.behavior ?? salida.permissionDecision ?? null,
+    })
+
+    process.stdout.write(`${JSON.stringify(answer)}\n`)
     process.exit(0)
   }
 

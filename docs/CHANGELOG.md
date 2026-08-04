@@ -10,6 +10,23 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Corregido — una comprobación de más se tragaba tu decisión
+
+- **El enlace descartaba decisiones humanas en silencio.** Claude Code puede
+  indicar qué decisiones admite cada petición; el enlace hacía caso de ese campo
+  sin comprobar su forma, así que en cuanto llegaba distinto de lo esperado —una
+  lista vacía, una lista de objetos— tu clic en «Aceptar» se perdía sin dar
+  ningún error. Ahora ese campo solo se tiene en cuenta si viene como lista de
+  textos: **ante un campo que no se entiende, tu decisión siempre gana**.
+- **Cuaderno de bitácora del enlace.** Cada petición deja apuntado qué llegó,
+  con qué forma, y qué se contestó, en
+  `diagnostico-permisos.log` dentro de la carpeta de datos. Este canal ya había
+  fallado dos veces sin dar un solo error; ahora un fallo mudo se ve en dos
+  minutos en lugar de en una tarde.
+- **El cuaderno no guarda contenido de conversación**, solo la forma de los
+  datos. Lo comprueba un test: una primera versión sí filtraba el contenido de
+  los ficheros al apuntar la respuesta entera, y el test lo cazó antes de salir.
+
 ### Corregido — el botón «Aceptar» no llegaba a Claude Code
 
 - **El enlace contestaba a las peticiones de permiso en el formato equivocado.**

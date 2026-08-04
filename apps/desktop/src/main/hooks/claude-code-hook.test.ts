@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process'
 import { createServer, type Server } from 'node:http'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -172,6 +172,40 @@ describe('nunca estorba a Claude Code (D21)', () => {
     expect(codigo).toBe(0)
   })
 
+  /**
+   * La cautela que costó una tarde.
+   *
+   * La comprobación de arriba, escrita sin cuidado, descartaba decisiones
+   * humanas en silencio en cuanto ese campo venía con una forma inesperada: el
+   * dueño del proyecto pulsaba «Aceptar» y no pasaba nada, sin ningún error.
+   *
+   * Ante un campo que no se entiende, la decisión SIEMPRE gana. Preferimos
+   * contestar de más que tragarnos un clic.
+   */
+  describe('un campo raro nunca puede tragarse tu decisión', () => {
+    const formasRaras: ReadonlyArray<readonly [string, unknown]> = [
+      ['una lista de objetos', [{ behavior: 'allow' }, { behavior: 'deny' }]],
+      ['una lista vacía', []],
+      ['un texto suelto', 'allow'],
+      ['un objeto', { allow: true }],
+      ['nulo', null],
+      ['una lista mezclada', ['allow', { behavior: 'deny' }]],
+    ]
+
+    for (const [descripcion, valor] of formasRaras) {
+      it(`transmite igual si viene como ${descripcion}`, async () => {
+        respuesta = { outcome: 'allow', reason: 'Aceptado desde la Torre' }
+
+        const { salida } = await ejecutar(
+          peticionDePermiso({ permission_suggestions: valor }),
+        )
+
+        expect(salida.trim()).not.toBe('')
+        expect(JSON.parse(salida).hookSpecificOutput.decision.behavior).toBe('allow')
+      })
+    }
+  })
+
   it('sin Torre abierta sale en silencio y sin quejarse', async () => {
     rmSync(join(dataDir, 'event-endpoint.json'))
 
@@ -209,6 +243,102 @@ describe('qué estado manda cada evento', () => {
   }
 
   it('no manda nada del contenido de la conversación', async () => {
+    await ejecutar({
+      hook_event_name: 'Stop',
+      session_id: 'sesion-1',
+      cwd: 'C:/proyectos/mi-app',
+      transcript_path: 'C:/algo/transcripcion.jsonl',
+      message: 'texto que jamás debe salir de aquí',
+    })
+
+    const enviado = recibidas.find((r) => r.path === '/sessions')
+    expect(JSON.stringify(enviado?.body)).not.toContain('jamás debe salir')
+    expect(JSON.stringify(enviado?.body)).not.toContain('transcripcion')
+  })
+})
+
+/**
+ * El cuaderno que evita volver a diagnosticar a ciegas.
+ *
+ * Este canal ha fallado dos veces sin dar un solo error. Apuntar qué llega y
+ * qué se contesta es lo que convierte «no funciona» en «mira, aquí está».
+ */
+describe('cuaderno de bitácora de los permisos', () => {
+  const leerCuaderno = (): Array<Record<string, unknown>> => {
+    const ruta = join(dataDir, 'diagnostico-permisos.log')
+    if (!existsSync(ruta)) return []
+    return readFileSync(ruta, 'utf8')
+      .trim()
+      .split('\n')
+      .filter(Boolean)
+      .map((linea) => JSON.parse(linea) as Record<string, unknown>)
+  }
+
+  /** Se busca por fase, no por posición: así añadir apuntes no rompe la prueba. */
+  const fase = (nombre: string) => leerCuaderno().find((l) => l.fase === nombre)
+
+  it('apunta toda señal que llega, sea del tipo que sea', async () => {
+    await ejecutar({ hook_event_name: 'Stop', session_id: 's', cwd: 'C:/x' })
+
+    expect(fase('señal')).toMatchObject({ evento: 'Stop' })
+  })
+
+  it('apunta lo que llega y lo que se contesta', async () => {
+    respuesta = { outcome: 'allow', reason: 'ok' }
+    await ejecutar(peticionDePermiso())
+
+    expect(leerCuaderno().map((l) => l.fase)).toEqual(['señal', 'llega', 'contesta'])
+    expect(fase('llega')).toMatchObject({ herramienta: 'Bash' })
+    // Deja dicho POR QUÉ campo se contestó: es lo que estuvo mal el 4/8/2026.
+    expect(fase('contesta')).toMatchObject({
+      decisionEnviada: 'allow',
+      campoUsado: 'decision.behavior',
+    })
+  })
+
+  it('deja escrito POR QUÉ se apartó, que es lo que hacía falta saber', async () => {
+    respuesta = { outcome: 'timeout', reason: 'nadie decidió' }
+    await ejecutar(peticionDePermiso())
+
+    expect(fase('se aparta')?.motivo).toContain('decidió')
+  })
+
+  it('anota la FORMA del campo que rompió el canal, no solo su valor', async () => {
+    respuesta = { outcome: 'allow', reason: 'ok' }
+    await ejecutar(peticionDePermiso({ permission_suggestions: [{ behavior: 'allow' }] }))
+
+    expect(fase('llega')).toMatchObject({ tipoDeAdmitidas: 'lista de [object]' })
+  })
+
+  it('anota el modo de permisos, que decide si habrá peticiones o no', async () => {
+    await ejecutar({
+      hook_event_name: 'Stop',
+      session_id: 's',
+      cwd: 'C:/x',
+      permission_mode: 'acceptEdits',
+    })
+
+    expect(fase('señal')).toMatchObject({ modo: 'acceptEdits' })
+  })
+
+  it('NO escribe nada del contenido de la conversación', async () => {
+    respuesta = { outcome: 'allow', reason: 'ok' }
+    await ejecutar(
+      peticionDePermiso({
+        tool_name: 'Write',
+        tool_input: { file_path: 'x.txt', content: 'secreto que jamás debe escribirse' },
+        transcript_path: 'C:/algo/transcripcion.jsonl',
+      }),
+    )
+
+    const cuaderno = leerCuaderno()
+    expect(cuaderno).not.toContain('secreto que jamás')
+    expect(cuaderno).not.toContain('transcripcion.jsonl')
+  })
+})
+
+describe('avisos de estado y privacidad', () => {
+  it('tampoco manda el contenido en los avisos de estado', async () => {
     await ejecutar({
       hook_event_name: 'Stop',
       session_id: 'sesion-1',
