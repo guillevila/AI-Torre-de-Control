@@ -25,6 +25,22 @@
  * problema de verdad.
  */
 
+/*
+ * Puede entrar dos veces en la misma página: una porque está dado de alta para
+ * las páginas nuevas, y otra porque se metió a mano en las que ya estaban
+ * abiertas. Dos vigilantes mirando lo mismo mandarían todo por duplicado.
+ *
+ * Esta marca vive en el mundo aislado de la extensión, no en el de la página:
+ * ni la página la ve, ni puede tocarla.
+ */
+if (window.__torreVigilanteEnMarcha) {
+  // Ya hay uno trabajando aquí. Este se retira sin hacer nada.
+} else {
+  window.__torreVigilanteEnMarcha = true
+  arrancarVigilante()
+}
+
+function arrancarVigilante() {
 /**
  * Formas de reconocer «se está generando una respuesta», de más a menos fiable.
  *
@@ -165,3 +181,4 @@ setInterval(() => {
 }, INTERVALO_MS)
 
 revisar()
+}

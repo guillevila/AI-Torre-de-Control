@@ -61,6 +61,7 @@ async function sincronizarVigilante() {
     if (yaEstaba) await chrome.scripting.updateContentScripts([definicion])
     else await chrome.scripting.registerContentScripts([definicion])
     await apuntar({ que: 'vigilante puesto', detalle: permitidos.join(', ') })
+    await ponerEnPestañasAbiertas(permitidos)
   } catch (error) {
     // Que Chrome no deje poner el vigilante es exactamente el tipo de fallo que
     // desde fuera se ve como «no funciona» sin más. Queda escrito.
@@ -68,6 +69,42 @@ async function sincronizarVigilante() {
       que: 'NO se pudo poner el vigilante',
       detalle: error?.message ?? 'motivo desconocido',
       mal: true,
+    })
+  }
+}
+
+/**
+ * Mete el vigilante en las pestañas que YA tenías abiertas.
+ *
+ * Un vigilante recién dado de alta solo entra en las páginas que se cargan
+ * después. La pestaña de ChatGPT que tenías delante al conceder el permiso se
+ * quedaría fuera hasta que la recargaras — y desde fuera eso se ve como «he
+ * activado la detección y no hace nada», que es exactamente el fallo mudo que
+ * llevamos todo el día persiguiendo.
+ *
+ * Es la tercera vez hoy que aparece el mismo patrón: algo que solo surte efecto
+ * al arrancar de nuevo. Aquí se resuelve en lugar de pedirte que lo recuerdes.
+ */
+async function ponerEnPestañasAbiertas(patrones) {
+  const pestañas = await chrome.tabs.query({ url: patrones }).catch(() => [])
+  let puestas = 0
+
+  for (const pestaña of pestañas) {
+    if (typeof pestaña.id !== 'number') continue
+    try {
+      await chrome.scripting.executeScript({ target: { tabId: pestaña.id }, files: ['vigilante.js'] })
+      puestas += 1
+    } catch {
+      // Una pestaña puede estar descargada de memoria o ser inaccesible. No es
+      // motivo para dejar sin vigilante a las demás.
+    }
+  }
+
+  if (pestañas.length > 0) {
+    await apuntar({
+      que: 'vigilante metido en pestañas ya abiertas',
+      detalle: `${puestas} de ${pestañas.length}`,
+      mal: puestas === 0,
     })
   }
 }
