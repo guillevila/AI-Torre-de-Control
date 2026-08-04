@@ -92,12 +92,22 @@ la aplicación de verdad, todos en verde a 3 de agosto de 2026:
   Comprobado ejecutando el script tal y como lo ejecutará Claude Code —con el
   JSON del evento por la entrada estándar— y verificando la respuesta exacta que
   Claude Code leerá, contrastada con su documentación oficial.
-  > ⚠️ **Esto es lo único del enlace que todavía NO se ha visto funcionar en una
-  > sesión real.** Hasta el 4/8/2026 el script contestaba en el formato de otro
-  > evento y Claude Code descartaba la decisión sin dar ningún error: el botón
-  > «Aceptar» de la Torre no hacía nada y no había forma de notarlo. Ya está
-  > corregido y cubierto por tests, pero **queda por confirmarlo en vivo**. Lo
-  > demás del enlace sí se ha visto funcionar de verdad.
+  > ✅ **Comprobado en vivo el 4/8/2026.** Se disparó una petición real contra el
+  > enlace instalado, apareció la tarjeta en la Torre, el dueño del proyecto
+  > pulsó «Aceptar» y la respuesta volvió en el formato correcto. La tarea pasó a
+  > «te espera» y volvió a «trabajando» 23 segundos después, al decidir.
+  >
+  > Hasta ese día el script contestaba con el campo de **otro** evento
+  > (`permissionDecision`, que es de `PreToolUse`, en lugar de
+  > `decision.behavior`). Claude Code descarta en silencio un campo que no
+  > conoce: el botón «Aceptar» no hacía nada y no había manera de notarlo.
+  >
+  > ⚠️ **Lo que sigue sin comprobarse:** que Claude Code dispare la petición él
+  > solo durante el trabajo normal. Decide por su cuenta casi todo lo que
+  > considera inofensivo —leer, escribir, borrar un fichero suelto— y solo
+  > pregunta en casos que no se han conseguido provocar a voluntad. Cuando
+  > pregunte, la Torre ya está lista para recibirlo; hasta verlo una vez, no se
+  > da por cerrado.
 - **Después de instalar o actualizar el enlace hay que reiniciar las sesiones de
   Claude Code.** Lee qué avisos debe mandar una sola vez, al abrirse: las
   sesiones que ya estén abiertas seguirán calladas. La pantalla de Ajustes ahora
