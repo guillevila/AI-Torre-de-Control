@@ -1,6 +1,21 @@
 import type { Task } from '@torre/contracts'
-import { PROVIDER_COLORS, PROVIDER_LABELS, STATUS_GLYPHS, STATUS_LABELS } from '@torre/domain'
+import { PROVIDER_LABELS, STATUS_GLYPHS, STATUS_LABELS } from '@torre/domain'
 import { WorkPulse } from '../../components/Indicators.js'
+
+/**
+ * Color de los muñecos de la oficina.
+ *
+ * Antes cada uno llevaba el color de su plataforma —verde Claude Code, azul
+ * ChatGPT, morado Codex—. El dueño del proyecto los quiso todos azules
+ * (4/8/2026), y así están.
+ *
+ * La plataforma no se pierde: se sigue viendo en la ficha de la tarea, en la
+ * barra lateral y en la lista. Solo deja de estar codificada en la figura.
+ *
+ * Es el azul petróleo de mando del sistema de diseño, no un azul inventado
+ * aparte: si algún día se cambia la paleta, esto cambia con ella.
+ */
+const WORKER_COLOR = 'var(--command)'
 
 interface WorkerProps {
   task: Task
@@ -17,12 +32,12 @@ interface WorkerProps {
  * trivial de portar a un motor gráfico más adelante porque cada trabajador es
  * solo `{id, plataforma, estado, x, y}`.
  *
- * El color es la plataforma. El diseño original usaba el «rol» de la tarea,
- * pero ese campo quedó como decisión abierta (O7), así que se usa el dato que
- * sí existe y cumple la misma función.
+ * Todos van del mismo azul (ver `WORKER_COLOR`). Lo que distingue a uno de otro
+ * es su ESTADO, y nunca solo por el tono: cada estado lleva además glifo, globo
+ * de texto y su sitio en la planta.
  */
 export function Worker({ task, left, top, onSelect }: WorkerProps) {
-  const color = PROVIDER_COLORS[task.provider]
+  const color = WORKER_COLOR
   const { status } = task
 
   return (
