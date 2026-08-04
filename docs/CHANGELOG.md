@@ -10,6 +10,37 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Añadido — modo ininterrumpido: trabajar sin parar a consultar
+
+- **Interruptor `/ininterrumpido on|off`.** Encendido, cuando Claude iba a
+  preguntar algo, el hook `modo-ininterrumpido.mjs` intercepta la pregunta y le
+  ordena elegir la opción recomendada (o la más conservadora), anotar la decisión
+  con el prefijo `[decisión automática]` y continuar. Apagado —el estado por
+  defecto—, la pregunta llega al dueño del proyecto como siempre.
+- **El interruptor es un fichero** (`.claude/modo-ininterrumpido.on`), no un
+  ajuste, y está en `.gitignore`: es personal, no se hereda al clonar el
+  repositorio y para el resto del equipo el hook nunca hace nada.
+- **Toda pregunta auto-resuelta se anota** en
+  `.claude/audit/decisiones-automaticas.log`, con fecha y hora. Si una IA decide
+  por ti, tienes que poder revisar después qué decidió.
+- **Aviso al abrir sesión** si el modo quedó encendido de una sesión anterior.
+  El interruptor persiste entre sesiones y nadie debe descubrir por sorpresa que
+  Claude está decidiendo solo.
+- **El modo no amplía permisos.** Solo cambia quién responde a las preguntas, y
+  el propio texto que recibe Claude le ordena pararse ante cualquier cosa
+  irreversible: borrar datos reales, tocar producción o lo que no se pueda
+  deshacer.
+
+### Cambiado — auto-aprobación de permisos, personal y fuera del repositorio
+
+- Se añade `.claude/settings.local.json` (ignorado por git) con
+  `permissions.defaultMode: "bypassPermissions"` para el dueño del proyecto. Las
+  protecciones de `pre-tool-use.mjs` **siguen actuando**: la documentación oficial
+  de hooks confirma que los `PreToolUse` se ejecutan también en ese modo.
+- Queda anotado en PROJECT_STATUS.md como riesgo medio, y con un efecto colateral
+  que conviene no olvidar: **sin peticiones de permiso no se puede probar en vivo
+  la tarjeta de permiso de la Torre** en este repositorio.
+
 ### Corregido — el botón «Aceptar» no llegaba a Claude Code
 
 - **El enlace contestaba a las peticiones de permiso en el formato equivocado.**

@@ -38,6 +38,13 @@ event-endpoint.json
 # Logs de auditoría local (opcionales — quitar si quieres subirlos)
 .claude/audit/
 
+# Ajustes personales de Claude Code — cada persona tiene los suyos, no se comparten
+.claude/settings.local.json
+
+# Interruptor del modo ininterrumpido — es una decisión personal de cada sesión,
+# nunca se hereda al clonar el repositorio
+.claude/modo-ininterrumpido.on
+
 # IDEs y editores
 .vscode/
 .idea/

@@ -8,7 +8,7 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 
 const line = '═'.repeat(63)
 
@@ -76,6 +76,19 @@ if (projectStatus) {
   const marked = section?.split('\n').find((l) => /^- \[[Xx]\] /.test(l))
   out.push(marked ? `📊 Estado del proyecto: ${marked.replace(/^- \[[Xx]\] /, '')}` : '📊 Revisa la etapa en PROJECT_STATUS.md')
   out.push('')
+}
+
+// ── Modo ininterrumpido ──────────────────────────────────────────────────────
+// El interruptor es un fichero y persiste entre sesiones. Si quedó encendido de
+// una sesión anterior, hay que decirlo de entrada: nadie debe descubrir por
+// sorpresa que Claude está decidiendo solo.
+if (existsSync('.claude/modo-ininterrumpido.on')) {
+  out.push(
+    '⏩ MODO ININTERRUMPIDO ENCENDIDO (venía de una sesión anterior)',
+    '   Claude decide solo las dudas rutinarias y no para a consultar.',
+    '   Para apagarlo: /ininterrumpido off',
+    '',
+  )
 }
 
 // ── Recordatorios ────────────────────────────────────────────────────────────

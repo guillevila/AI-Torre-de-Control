@@ -257,6 +257,21 @@ pnpm test:e2e    # abre la aplicación de verdad y recorre todo el flujo
 
 ## 5. 🔚 Última decisión tomada
 
+- **2026-08-04** — **Trabajar en este repositorio sin peticiones de permiso**, y
+  añadir un **modo ininterrumpido** que Claude enciende y apaga a voluntad
+  (`/ininterrumpido on|off`). Dos cosas distintas que conviene no confundir:
+  la auto-aprobación es **personal y no se comparte** (vive en
+  `.claude/settings.local.json`, fuera del repositorio); el modo ininterrumpido
+  solo cambia **quién responde a las preguntas**, no lo que Claude puede hacer.
+  Las protecciones de `pre-tool-use.mjs` siguen actuando en los dos casos
+  —comprobado contra la documentación oficial de hooks—. Detalle en
+  [.claude/hooks/README.md](.claude/hooks/README.md).
+  > ⚠️ **Efecto colateral que afecta al producto:** con la auto-aprobación
+  > activada, Claude Code **ya no emite peticiones de permiso en este
+  > repositorio**. Es justo el evento que alimenta las tarjetas de permiso de la
+  > Torre, lo único del enlace que sigue **sin confirmarse en vivo** (ver
+  > apartado 2). Para esa prueba hay que desactivar la auto-aprobación
+  > temporalmente o hacerla desde otro proyecto.
 - **2026-08-03** — Adoptar **íntegro** el sistema de diseño «Oficina de papel»
   encargado a Claude Designer, y construirlo funcional (Sprint 002). Detalle en
   [docs/sprints/sprint-002.md](docs/sprints/sprint-002.md) y
@@ -302,6 +317,8 @@ pnpm test:e2e    # abre la aplicación de verdad y recorre todo el flujo
 | **Instalar hooks tocará configuración global de Claude Code** | Medio (a futuro) | No se ha tocado nada. Cuando llegue, se pedirá confirmación explícita y se hará copia de seguridad (D13) |
 | **El repositorio es público** | Alto si se descuida | Controlado: sin secretos, sin datos reales, clave local fuera del repositorio, y un test que vigila que no aparezcan columnas capaces de guardar conversaciones |
 | **Dependencia de un paquete pequeño** (`node-sqlite3-wasm`) | Bajo | Mitigado: está detrás de una interfaz, cambiarlo son unas decenas de líneas en un solo archivo |
+| **Trabajar sin peticiones de permiso** (decisión del 4/8/2026). Si Claude se equivoca con un comando, se ejecuta sin que nadie lo apruebe | Medio | Mitigado, no eliminado: `pre-tool-use.mjs` sigue bloqueando borrados irreversibles, reescrituras de historial y ficheros con credenciales. Pero cubre **una lista concreta de patrones**, no todo lo imaginable. Es personal y reversible: borrar `.claude/settings.local.json` lo deja como estaba |
+| **La prueba en vivo de las tarjetas de permiso queda bloqueada en este repositorio**, porque con auto-aprobación no se emite el evento que las alimenta | Medio | Abierto. Se cierra desactivando la auto-aprobación un momento, o probando el enlace desde otro proyecto |
 
 ---
 
@@ -321,5 +338,5 @@ un par de días, esto pasa a alto.
 
 ---
 
-*Última actualización: 3 de agosto de 2026 por Claude (Sprint 002).*
+*Última actualización: 4 de agosto de 2026 por Claude (auto-aprobación y modo ininterrumpido).*
 *Mantiene: Claude (con validación del dueño del proyecto).*

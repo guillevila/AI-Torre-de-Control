@@ -47,6 +47,12 @@
         "hooks": [
           { "type": "command", "command": "node", "args": [".claude/hooks/pre-tool-use.mjs"] }
         ]
+      },
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          { "type": "command", "command": "node", "args": [".claude/hooks/modo-ininterrumpido.mjs"] }
+        ]
       }
     ],
     "PostToolUse": [
