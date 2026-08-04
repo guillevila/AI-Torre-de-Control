@@ -19,6 +19,22 @@ build/
 .next/
 out/
 
+# Resultados de las pruebas de interfaz
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+
+# Bases de datos locales — los datos reales viven en la carpeta del usuario,
+# nunca en el repositorio
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Fichero de conexión del receptor local (contiene la clave local)
+event-endpoint.json
+
 # Logs de auditoría local (opcionales — quitar si quieres subirlos)
 .claude/audit/
 

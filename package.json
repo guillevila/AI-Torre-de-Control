@@ -1,0 +1,28 @@
+{
+  "name": "ai-torre-de-control",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Torre de control local para supervisar tareas delegadas a herramientas de IA",
+  "license": "MIT",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @torre/desktop dev",
+    "build": "pnpm --filter @torre/desktop build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "pnpm --filter @torre/desktop test:e2e",
+    "evento": "node scripts/send-test-event.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["electron", "esbuild"]
+  }
+}

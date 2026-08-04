@@ -151,20 +151,46 @@ El objetivo: en 6 meses, Claude no comete los mismos errores dos veces.
 ## 🚀 Comandos rápidos del proyecto
 
 ```bash
-# Instalar dependencias
-[rellenar según el proyecto]
+# Instalar dependencias (no compila nada nativo: es rápido y no debe fallar)
+pnpm install
 
-# Arrancar en desarrollo
-[rellenar según el proyecto]
+# Arrancar la aplicación en desarrollo
+pnpm dev
 
-# Ejecutar tests
-[rellenar según el proyecto]
+# Tests unitarios (dominio, contratos, base de datos, seguridad del receptor)
+pnpm test
+pnpm test:watch          # en modo vigilancia mientras se programa
 
-# Build para producción
-[rellenar según el proyecto]
+# Prueba de interfaz: arranca la aplicación real y recorre el flujo completo
+pnpm test:e2e
+
+# Comprobar tipos en todo el monorepo
+pnpm typecheck
+
+# Build de producción
+pnpm build
+
+# Simular un evento local (la aplicación tiene que estar abierta)
+pnpm evento <id-de-la-tarea> <estado>
 ```
 
-*Actualizar esta sección cuando el proyecto tenga su stack definido.*
+**Antes de dar por terminado cualquier cambio, ejecutar como mínimo:**
+`pnpm typecheck && pnpm test`. Si se ha tocado la interfaz o el proceso
+principal, añadir `pnpm test:e2e`.
+
+### Dónde está cada cosa
+
+| Si tocas… | Está en… |
+|---|---|
+| Reglas de estados, agrupaciones, avisos | `packages/domain/src/` |
+| Tipos y validaciones compartidas | `packages/contracts/src/` |
+| Base de datos | `apps/desktop/src/main/db/` |
+| Receptor de eventos | `apps/desktop/src/main/events/` |
+| Interfaz | `apps/desktop/src/renderer/` |
+
+**Regla estructural que no se rompe:** `packages/domain` y `packages/contracts`
+no importan nada de Electron, React ni la base de datos. Si un cambio te obliga
+a hacerlo, el cambio está mal planteado.
 
 ---
 
