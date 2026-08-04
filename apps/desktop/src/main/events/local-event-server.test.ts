@@ -253,3 +253,97 @@ describe('sin atendedor de altas, la ruta no existe', () => {
     expect(res.status).toBe(404)
   })
 })
+
+/**
+ * Ruta de actividad del navegador (etapa 2).
+ *
+ * Mueve tareas que ya existen, así que se comprueba que le aplican las mismas
+ * barreras: una ruta que mueve estados sin clave sería tan grave como una que
+ * los crea.
+ */
+describe('ruta de actividad del navegador', () => {
+  const SEÑAL = {
+    externalUrl: 'https://chatgpt.com/c/abc-123',
+    status: 'completed',
+    timestamp: '2026-08-04T12:00:00Z',
+  }
+
+  let servidor: LocalEventServer
+  let baseActividad: string
+  let onWebActivity: ReturnType<typeof vi.fn>
+
+  const enviar = (cuerpo: unknown, headers: Record<string, string> = {}): Promise<Response> =>
+    fetch(`${baseActividad}/web-activity`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-torre-token': TOKEN, ...headers },
+      body: JSON.stringify(cuerpo),
+    })
+
+  beforeEach(async () => {
+    onWebActivity = vi.fn(() => ({ accepted: true, matched: true, taskId: 'task-1' }))
+    servidor = new LocalEventServer({
+      token: TOKEN,
+      ports: [0],
+      onEvent,
+      onWebActivity: onWebActivity as unknown as (raw: unknown) => never,
+    })
+    const address = await servidor.start()
+    baseActividad = `http://${address.host}:${address.port}`
+  })
+
+  afterEach(async () => {
+    await servidor.stop()
+  })
+
+  it('mueve la tarea con la clave correcta', async () => {
+    const res = await enviar(SEÑAL)
+    expect(res.status).toBe(200)
+    expect(onWebActivity).toHaveBeenCalledWith(SEÑAL)
+  })
+
+  it('sin clave no mueve nada', async () => {
+    const res = await fetch(`${baseActividad}/web-activity`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(SEÑAL),
+    })
+    expect(res.status).toBe(401)
+    expect(onWebActivity).not.toHaveBeenCalled()
+  })
+
+  it('con la clave equivocada tampoco', async () => {
+    const res = await enviar(SEÑAL, { 'x-torre-token': 'b'.repeat(64) })
+    expect(res.status).toBe(401)
+    expect(onWebActivity).not.toHaveBeenCalled()
+  })
+
+  it('exige que el contenido se declare como JSON', async () => {
+    const res = await enviar(SEÑAL, { 'Content-Type': 'text/plain' })
+    expect(res.status).toBe(415)
+    expect(onWebActivity).not.toHaveBeenCalled()
+  })
+
+  it('devuelve 422 cuando el servicio rechaza la señal', async () => {
+    onWebActivity.mockReturnValue({ accepted: false, reason: 'Estado no admitido' })
+    const res = await enviar({ ...SEÑAL, status: 'failed' })
+    expect(res.status).toBe(422)
+  })
+
+  it('una conversación desconocida NO es un error', async () => {
+    // Registrar sigue siendo del usuario: el vigilante puede estar mirando una
+    // pestaña que nunca se dio de alta, y eso no debe parecer un fallo.
+    onWebActivity.mockReturnValue({ accepted: true, matched: false })
+    const res = await enviar(SEÑAL)
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ matched: false })
+  })
+
+  it('sin atendedor, la ruta no existe', async () => {
+    const res = await fetch(`${base}/web-activity`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-torre-token': TOKEN },
+      body: JSON.stringify(SEÑAL),
+    })
+    expect(res.status).toBe(404)
+  })
+})

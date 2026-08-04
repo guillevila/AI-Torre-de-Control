@@ -5,6 +5,7 @@ import type {
   PermissionResolution,
   SessionUpdateResult,
   TaskIntakeResult,
+  WebActivityResult,
 } from '@torre/contracts'
 
 /**
@@ -60,6 +61,13 @@ export interface LocalEventServerOptions {
    * completo cualquier petición que traiga uno más.
    */
   onIntake?: (raw: unknown) => TaskIntakeResult
+  /**
+   * Señal de que una conversación del navegador empieza o termina.
+   *
+   * A diferencia del alta, esta ruta NO crea nada: solo mueve una tarea que ya
+   * existía. Una conversación desconocida se ignora sin ruido.
+   */
+  onWebActivity?: (raw: unknown) => WebActivityResult
 }
 
 export interface LocalEventServerAddress {
@@ -153,6 +161,7 @@ export class LocalEventServer {
     const isPermissions = req.method === 'POST' && url === '/permissions'
     const isSessions = req.method === 'POST' && url === '/sessions'
     const isIntake = req.method === 'POST' && url === '/tasks'
+    const isWebActivity = req.method === 'POST' && url === '/web-activity'
 
     // Cada ruta solo existe si la aplicación sabe atenderla. Sin atendedor
     // devuelve 404 en lugar de aceptar algo que nadie va a procesar.
@@ -160,7 +169,8 @@ export class LocalEventServer {
       isEvents ||
       (isPermissions && this.options.onPermission) ||
       (isSessions && this.options.onSession) ||
-      (isIntake && this.options.onIntake)
+      (isIntake && this.options.onIntake) ||
+      (isWebActivity && this.options.onWebActivity)
     if (!known) {
       return send(res, 404, { accepted: false, reason: 'Ruta no encontrada' })
     }
@@ -203,6 +213,11 @@ export class LocalEventServer {
 
         if (isIntake && this.options.onIntake) {
           const result = this.options.onIntake(parsed)
+          return send(res, result.accepted ? 200 : 422, result)
+        }
+
+        if (isWebActivity && this.options.onWebActivity) {
+          const result = this.options.onWebActivity(parsed)
           return send(res, result.accepted ? 200 : 422, result)
         }
 

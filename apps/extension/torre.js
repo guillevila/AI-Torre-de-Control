@@ -118,3 +118,34 @@ export async function registrar({ puerto, token, title, externalUrl }) {
 
   return { ok: true, duplicada: Boolean(cuerpo.duplicate), titulo: cuerpo.title }
 }
+
+/**
+ * Avisa de que una conversación empieza o termina (etapa 2).
+ *
+ * Igual que el alta: lo que sale de aquí son la dirección, una de dos palabras
+ * y la hora. La Torre rechazaría la petición entera si llevara algo más.
+ *
+ * Si esa conversación no está registrada, la Torre contesta que no la conoce y
+ * aquí se acepta sin más. No es un fallo: registrar sigue siendo decisión tuya.
+ */
+export async function avisarActividad({ puerto, token, externalUrl, status }) {
+  const respuesta = await fetch(`http://127.0.0.1:${puerto}/web-activity`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-torre-token': token },
+    body: JSON.stringify({ externalUrl, status, timestamp: new Date().toISOString() }),
+    signal: AbortSignal.timeout(ESPERA_MS * 2),
+  })
+
+  let cuerpo = null
+  try {
+    cuerpo = await respuesta.json()
+  } catch {
+    // Sin cuerpo legible, manda el código.
+  }
+
+  if (!respuesta.ok || !cuerpo?.accepted) {
+    return { ok: false, mensaje: cuerpo?.reason ?? `código ${respuesta.status}` }
+  }
+
+  return { ok: true, emparejada: Boolean(cuerpo.matched), estado: cuerpo.status ?? null }
+}

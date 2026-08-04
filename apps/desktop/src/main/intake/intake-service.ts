@@ -1,5 +1,5 @@
 import { taskIntakeSchema, type TaskIntakeResult } from '@torre/contracts'
-import { detectProvider } from '@torre/domain'
+import { detectProvider, sameConversation } from '@torre/domain'
 import type { TaskService } from '../services/task-service.js'
 
 /**
@@ -78,28 +78,3 @@ export class IntakeService {
   }
 }
 
-/**
- * ¿Son la misma conversación?
- *
- * Se comparan sin el fragmento (`#...`) ni la barra final, porque el navegador
- * los añade y quita solo mientras navegas: `…/c/abc`, `…/c/abc/` y `…/c/abc#x`
- * son la misma página, y tratarlas como distintas duplicaría la tarea.
- *
- * Los parámetros (`?...`) SÍ cuentan: hay herramientas que identifican la
- * conversación por ahí, y unirlas sería peor que separarlas.
- */
-function sameConversation(a: string | null, b: string): boolean {
-  if (!a) return false
-  return canonical(a) === canonical(b)
-}
-
-function canonical(url: string): string {
-  try {
-    const parsed = new URL(url.trim())
-    parsed.hash = ''
-    const path = parsed.pathname.replace(/\/+$/, '')
-    return `${parsed.protocol}//${parsed.host.toLowerCase()}${path}${parsed.search}`
-  } catch {
-    return url.trim()
-  }
-}

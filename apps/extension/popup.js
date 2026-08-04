@@ -57,6 +57,60 @@ async function arrancar() {
 
   $boton.disabled = false
   $boton.addEventListener('click', () => void enviar({ token, title, externalUrl: url }))
+
+  await montarDeteccion(url)
+}
+
+/* ── Etapa 2: detección automática ─────────────────────────────────────────── */
+
+const $deteccion = document.getElementById('deteccion')
+const $punto = document.getElementById('deteccion-punto')
+const $estado = document.getElementById('deteccion-estado')
+const $botonDeteccion = document.getElementById('deteccion-boton')
+const $nota = document.getElementById('deteccion-nota')
+
+/** Sitios donde la detección es posible. Debe coincidir con el manifiesto. */
+const VIGILABLES = ['chatgpt.com', 'chat.openai.com', 'claude.ai']
+
+/**
+ * Enseña el interruptor de la detección automática.
+ *
+ * Solo aparece en los sitios donde puede funcionar: ofrecerlo en cualquier
+ * página sería pedir un permiso que no serviría de nada.
+ *
+ * El permiso se concede aquí y se retira aquí. Mientras no lo concedas, la
+ * extensión sigue sin poder ver nada de la página, ni siquiera si está
+ * generando.
+ */
+async function montarDeteccion(url) {
+  const host = new URL(url).hostname.toLowerCase().replace(/^www\./, '')
+  if (!VIGILABLES.includes(host)) return
+
+  const origen = `${new URL(url).origin}/*`
+  $deteccion.hidden = false
+  await pintarDeteccion(origen)
+
+  $botonDeteccion.addEventListener('click', async () => {
+    const concedido = await chrome.permissions.contains({ origins: [origen] })
+    if (concedido) {
+      await chrome.permissions.remove({ origins: [origen] })
+    } else {
+      // Chrome enseña su propio cuadro. Si dices que no, no pasa nada más.
+      await chrome.permissions.request({ origins: [origen] })
+    }
+    await pintarDeteccion(origen)
+  })
+}
+
+async function pintarDeteccion(origen) {
+  const activa = await chrome.permissions.contains({ origins: [origen] })
+
+  $punto.dataset.activa = String(activa)
+  $estado.textContent = activa ? 'Detección automática activada' : 'Detección automática desactivada'
+  $botonDeteccion.textContent = activa ? 'Desactivar' : 'Activar en este sitio'
+  $nota.textContent = activa
+    ? 'La tarea pasará sola a «trabajando» y a «terminada». La extensión mira solo si hay una respuesta generándose, nunca el texto. Puedes desactivarlo aquí mismo.'
+    : 'Si la activas, la tarea se moverá sola. Chrome te pedirá permiso para este sitio: es lo que permite ver si hay una respuesta en marcha. Sigue sin leerse el texto de la conversación.'
 }
 
 async function enviar({ token, title, externalUrl }) {

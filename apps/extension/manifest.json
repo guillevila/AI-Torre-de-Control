@@ -1,10 +1,19 @@
 {
   "manifest_version": 3,
   "name": "AI Torre de Control",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Registra en tu Torre de Control la conversación que tienes abierta. No lee conversaciones: solo el título y la dirección de la pestaña.",
-  "permissions": ["activeTab", "storage"],
+  "permissions": ["activeTab", "storage", "scripting"],
   "host_permissions": ["http://127.0.0.1/*"],
+  "optional_host_permissions": [
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://claude.ai/*"
+  ],
+  "background": {
+    "service_worker": "fondo.js",
+    "type": "module"
+  },
   "action": {
     "default_popup": "popup.html",
     "default_title": "Registrar en la Torre de Control",
@@ -19,5 +28,6 @@
     "48": "iconos/48.png",
     "128": "iconos/128.png"
   },
-  "options_page": "opciones.html"
+  "options_page": "opciones.html",
+  "web_accessible_resources": []
 }

@@ -157,6 +157,17 @@ la aplicación de verdad, todos en verde a 3 de agosto de 2026:
   había.
 - **La tarea nace «en cola» y con confianza baja**, no «trabajando». Registrarla
   no significa que ChatGPT esté haciendo nada, y la Torre no debe fingirlo.
+- **Detección automática (etapa 2), opcional.** Si la activas, la tarea pasa
+  sola a «trabajando» cuando ChatGPT empieza a responder y a «terminada» cuando
+  acaba. El permiso lo concedes tú desde la ventana de la extensión y lo puedes
+  retirar desde el mismo botón: **recién instalada no puede ni mirar la página**.
+  El vigilante mira solo si existe el botón de detener la respuesta; nunca lee
+  texto. Solo puede decir dos cosas —«trabajando» o «terminada»—, con confianza
+  media, y no puede crear tareas ni tocar lo que fijaste tú a mano.
+  > ⚠️ **Se va a romper, y está previsto.** ChatGPT cambia su interfaz cada pocas
+  > semanas. Cuando cambie el botón, el vigilante dejará de reconocerlo y
+  > **callará** en lugar de inventarse un estado: la tarea se queda donde estaba.
+  > Arreglarlo son cuatro líneas agrupadas a propósito en `vigilante.js`.
 
 **Comprobado contra el propio Windows:**
 
@@ -184,10 +195,12 @@ la aplicación de verdad, todos en verde a 3 de agosto de 2026:
 
 **Lo que falta para llegar a MVP:**
 
-- **ChatGPT no avisa solo de que ha terminado.** La extensión de Chrome del
-  Sprint 004 sirve para **registrar** una conversación de un clic, y nada más:
-  después el estado lo mueves tú a mano. Detectar el final de una respuesta sin
-  leer la conversación es la **etapa 2**, y no está construida.
+- **La detección automática de ChatGPT está construida pero SIN PROBAR contra
+  ChatGPT de verdad.** Los tests comprueban el contrato, el servicio, la ruta y
+  el paquete exacto que sale del navegador — pero **ninguno abre ChatGPT**. Que
+  el vigilante reconozca su botón de detener en la interfaz real de hoy no está
+  comprobado por nadie. Hasta que se vea funcionar, esta parte es una apuesta
+  razonada, no un hecho.
 - **Claude web, Codex y los demás siguen sin avisar solos.** Claude Code sí,
   desde el Sprint 003. Para el resto haría falta ampliar la extensión o un
   monitor de procesos, mecanismos bastante más frágiles.
