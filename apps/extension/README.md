@@ -57,8 +57,8 @@ chincheta) para tenerlo siempre a mano.
 
 La Torre solo acepta órdenes de quien conoce su clave local. Hay que dársela:
 
-1. Abre **AI Torre de Control** → **Ajustes** → **Privacidad y datos**
-2. Copia la clave local
+1. Abre **AI Torre de Control** → **Ajustes** → baja hasta **Privacidad y datos**
+2. En **Clave local**, pulsa **Ver** y luego **Copiar**
 3. En Chrome, botón derecho sobre el icono de la extensión → **Opciones**
 4. Pégala y pulsa **Guardar y comprobar**
 

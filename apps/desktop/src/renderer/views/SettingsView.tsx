@@ -1,5 +1,6 @@
 import type { DevInfo, Settings, SettingsPatch } from '@torre/contracts'
 import { ClaudeCodeSetup } from '../components/ClaudeCodeSetup.js'
+import { ClaveLocal } from '../components/ClaveLocal.js'
 import { formatBytes } from '../utils/format.js'
 
 interface SettingsViewProps {
@@ -186,6 +187,14 @@ export function SettingsView({
             {'\n'}torre.db · {formatBytes(devInfo.databaseBytes)}
           </pre>
         )}
+
+        <div className="field">
+          <span className="field__label">Clave local</span>
+          <ClaveLocal
+            token={devInfo?.eventServer.token ?? null}
+            port={devInfo?.eventServer.port ?? null}
+          />
+        </div>
         <div className="card__actions">
           <button type="button" className="btn btn--ghost" data-testid="open-folder" onClick={onOpenFolder}>
             Abrir la carpeta
