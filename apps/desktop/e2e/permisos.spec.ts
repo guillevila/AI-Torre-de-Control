@@ -182,10 +182,21 @@ test('el hook REAL transmite la decisión de vuelta a Claude Code', async () => 
 
   const resultado = await hook
   expect(resultado.code).toBe(0)
+
   // Esto es exactamente lo que Claude Code leerá para saber que has aceptado.
+  //
+  // El nombre del campo importa más de lo que parece: `PermissionRequest` lee
+  // `decision.behavior`. Durante un tiempo se le contestó con `permissionDecision`
+  // —que es de otro evento— y Claude Code descartaba la decisión sin dar ningún
+  // error, así que el botón «Aceptar» de la Torre no hacía nada y no había forma
+  // de verlo. Por eso se comprueba el sobre exacto, no solo que haya respuesta.
   const salida = JSON.parse(resultado.stdout)
-  expect(salida.hookSpecificOutput.permissionDecision).toBe('allow')
   expect(salida.hookSpecificOutput.hookEventName).toBe('PermissionRequest')
+  expect(salida.hookSpecificOutput.decision.behavior).toBe('allow')
+  // La orden viaja de vuelta sin retocar: se aprueba lo que se enseñó.
+  expect(salida.hookSpecificOutput.decision.updatedInput).toEqual({
+    command: 'git push --force origin master',
+  })
 })
 
 test('sin Torre abierta, el hook se aparta y no estorba (D21)', async () => {

@@ -145,6 +145,46 @@ function describe(toolName, toolInput) {
   }
 }
 
+/**
+ * Traduce tu decisión al formato que espera CADA evento.
+ *
+ * No son intercambiables, y esto costó un fallo silencioso: contestar a
+ * `PermissionRequest` con el formato de `PreToolUse` no da ningún error —
+ * Claude Code simplemente ignora la decisión y te vuelve a preguntar en la
+ * terminal, como si la Torre no existiera. Desde fuera parece que el enlace
+ * está roto cuando lo único mal es el sobre.
+ *
+ *   PermissionRequest → hookSpecificOutput.decision.behavior  ('allow' | 'deny')
+ *   PreToolUse        → hookSpecificOutput.permissionDecision ('allow' | 'deny')
+ *
+ * En «allow» se devuelve la orden original sin tocar: la Torre aprueba lo que
+ * se le enseñó, nunca una versión modificada de ello.
+ */
+function buildAnswer(event, resolution, payload) {
+  const reason = String(resolution.reason ?? 'Decidido en AI Torre de Control')
+
+  if (event === 'PermissionRequest') {
+    return {
+      hookSpecificOutput: {
+        hookEventName: 'PermissionRequest',
+        decision:
+          resolution.outcome === 'allow'
+            ? { behavior: 'allow', updatedInput: payload.tool_input ?? {} }
+            : { behavior: 'deny' },
+      },
+      systemMessage: reason,
+    }
+  }
+
+  return {
+    hookSpecificOutput: {
+      hookEventName: event,
+      permissionDecision: resolution.outcome,
+      permissionDecisionReason: reason,
+    },
+  }
+}
+
 /** Manda un aviso de estado y sigue. No espera nada útil de vuelta. */
 async function sendStatus(endpoint, payload, status) {
   try {
@@ -176,6 +216,12 @@ async function main() {
   // ── Peticiones de permiso: el único caso que espera ────────────────────────
   if (event === 'PermissionRequest' || event === 'PreToolUse') {
     const toolName = String(payload.tool_name ?? 'desconocida')
+
+    // Claude Code avisa de qué decisiones admite esta petición concreta. Si la
+    // nuestra no está entre ellas, no se pregunta en balde: se sale y que lo
+    // gestione él como siempre.
+    const admitidas = payload.permission_suggestions
+
     let response
     try {
       response = await post(
@@ -208,15 +254,10 @@ async function main() {
     // `timeout` o cualquier cosa rara: no se decide nada y Claude Code pregunta.
     if (resolution?.outcome !== 'allow' && resolution?.outcome !== 'deny') bailOut()
 
-    process.stdout.write(
-      `${JSON.stringify({
-        hookSpecificOutput: {
-          hookEventName: event,
-          permissionDecision: resolution.outcome,
-          permissionDecisionReason: String(resolution.reason ?? 'Decidido en AI Torre de Control'),
-        },
-      })}\n`,
-    )
+    // Decidiste algo que esta petición no admite: mejor no contestar.
+    if (Array.isArray(admitidas) && !admitidas.includes(resolution.outcome)) bailOut()
+
+    process.stdout.write(`${JSON.stringify(buildAnswer(event, resolution, payload))}\n`)
     process.exit(0)
   }
 

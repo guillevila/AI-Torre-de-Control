@@ -203,3 +203,61 @@ saltaba pero el tablero mentía.
 **Contexto:** Cualquier integración con eventos de una herramienta externa. Vale
 para la futura extensión de navegador: `DOMContentLoaded` no significa «tarea
 terminada».
+
+## 2026-08-04 13:20 — Un contrato mal escrito no da error: da silencio
+
+**Error o aprendizaje:** El enlace con Claude Code contestaba a las peticiones de
+permiso en el formato equivocado. `PermissionRequest` espera
+`hookSpecificOutput.decision.behavior`; se le estaba enviando
+`hookSpecificOutput.permissionDecision`, que es el formato de OTRO evento
+(`PreToolUse`). Claude Code no se queja de un campo que no conoce: descarta la
+decisión sin decir nada y pregunta por su vía normal. Desde fuera parecía que la
+Torre no recibía nada, cuando lo único mal era el nombre de un campo.
+
+**Causa raíz:** Se escribió el formato de respuesta **de memoria**, asumiendo que
+todos los eventos de Claude Code contestaban igual. No se contrastó con la
+documentación oficial. Y no había ninguna prueba que ejecutara el script de
+verdad: los tests cubrían la aplicación que RECIBE, no el enlace que CONTESTA.
+
+**Lección:**
+1. Cuando se habla con un sistema externo, el formato **se contrasta con su
+   documentación oficial antes de escribirlo**, no después de que falle.
+2. Todo contrato con un sistema externo necesita una prueba que lo ejecute de
+   verdad —proceso real, entrada real, salida real—. Un contrato solo probado
+   «por dentro» no está probado.
+3. Sospechar siempre de los fallos **mudos**. Que no haya error no significa que
+   no haya fallo; en integraciones suele significar justo lo contrario.
+
+**Contexto:** Siempre que este proyecto hable con algo que no controla: hooks de
+Claude Code, la futura extensión de Chrome, cualquier integración posterior.
+
+---
+
+## 2026-08-04 13:25 — «Instalado» no es «funcionando»
+
+**Error o aprendizaje:** Tras instalar el enlace, la pantalla de Ajustes decía
+«Instalado y al día» y el dueño del proyecto probó a continuación en la sesión de
+Claude Code que ya tenía abierta. No pasó nada. Claude Code lee qué avisos debe
+mandar **una sola vez, al abrir la sesión**: la que estaba abierta seguía ciega.
+Se perdió tiempo buscando el fallo en el código cuando el estado era correcto y
+lo que faltaba era reiniciar la sesión.
+
+**Causa raíz:** La pantalla informaba del estado del FICHERO, no del estado
+REAL: que el enlace esté escrito no significa que esté activo en las sesiones
+vivas. Se dio por hecho un paso que la aplicación no puede dar por el usuario y
+no se le dijo.
+
+**Lección:**
+1. Cuando una acción de la aplicación **solo surte efecto tras un paso manual**
+   (reiniciar, volver a abrir, recargar), ese paso se dice en pantalla, en el
+   momento, y con la misma claridad que el éxito. Callarlo convierte un éxito en
+   un fallo aparente.
+2. Es la misma familia de error que confundir documentación con producto: aquí
+   era confundir «configurado» con «funcionando». Ante la duda, describir siempre
+   el estado menor.
+3. Al diagnosticar, comprobar primero **cuándo se abrió la sesión** frente a
+   cuándo se instaló. Un fallo que «empezó a funcionar solo» tras reiniciar casi
+   nunca era un fallo de código.
+
+**Contexto:** Todo instalador o integración del proyecto, y toda pantalla que
+informe de que algo «está listo».

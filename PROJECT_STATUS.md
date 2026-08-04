@@ -91,7 +91,17 @@ la aplicación de verdad, todos en verde a 3 de agosto de 2026:
   una tarjeta con **el comando entero**, y tu clic viaja de vuelta a Claude Code.
   Comprobado ejecutando el script tal y como lo ejecutará Claude Code —con el
   JSON del evento por la entrada estándar— y verificando la respuesta exacta que
-  Claude Code leerá.
+  Claude Code leerá, contrastada con su documentación oficial.
+  > ⚠️ **Esto es lo único del enlace que todavía NO se ha visto funcionar en una
+  > sesión real.** Hasta el 4/8/2026 el script contestaba en el formato de otro
+  > evento y Claude Code descartaba la decisión sin dar ningún error: el botón
+  > «Aceptar» de la Torre no hacía nada y no había forma de notarlo. Ya está
+  > corregido y cubierto por tests, pero **queda por confirmarlo en vivo**. Lo
+  > demás del enlace sí se ha visto funcionar de verdad.
+- **Después de instalar o actualizar el enlace hay que reiniciar las sesiones de
+  Claude Code.** Lee qué avisos debe mandar una sola vez, al abrirse: las
+  sesiones que ya estén abiertas seguirán calladas. La pantalla de Ajustes ahora
+  lo dice al terminar de instalar.
 - **Si la Torre está cerrada o tardas, no pasa nada.** El script sale en
   silencio y Claude Code pregunta en su terminal, como siempre (D21).
 - **Las tareas de Claude Code se crean solas** a partir de la carpeta del
