@@ -47,16 +47,21 @@ describe('un proyecto = un icono, siempre', () => {
     expect(tasks.list()).toHaveLength(1)
     expect(tasks.list()[0]?.status).toBe('running')
 
-    // Termina su turno: te espera.
-    señal('waiting_user')
-    expect(tasks.list()[0]?.status).toBe('waiting_user')
+    // Termina su turno: te ENTREGA algo. A la mesa de entregas, no a tu puerta.
+    señal('completed')
+    expect(tasks.list()[0]?.status).toBe('completed')
 
     // Le mandas otra cosa: vuelve a trabajar. MISMA tarea.
     señal('running')
     expect(tasks.list()).toHaveLength(1)
     expect(tasks.list()[0]?.status).toBe('running')
 
-    // La sesión acaba: terminada, pendiente de que la revises.
+    // Ahora sí te PIDE algo: se planta en tu puerta.
+    señal('waiting_user')
+    expect(tasks.list()[0]?.status).toBe('waiting_user')
+
+    // Lo resuelves y sigue; al acabar, otra entrega.
+    señal('running')
     señal('completed')
     expect(tasks.list()[0]?.status).toBe('completed')
 

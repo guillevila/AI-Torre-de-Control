@@ -62,14 +62,6 @@ describe('anti-duplicados', () => {
 })
 
 describe('estados finales: se avisa al momento', () => {
-  it('avisa de terminada sin esperar', () => {
-    const enviados: string[] = []
-    const notify = createNotifier((m) => enviados.push(m.title))
-
-    notify(task('completed'), true)
-    expect(enviados).toEqual(['Tarea terminada'])
-  })
-
   it('avisa de fallida sin esperar', () => {
     const enviados: string[] = []
     const notify = createNotifier((m) => enviados.push(m.title))
@@ -80,7 +72,7 @@ describe('estados finales: se avisa al momento', () => {
 
   it('no avisa si el cambio no lo merecía', () => {
     const enviados: string[] = []
-    const notify = createNotifier((m) => enviados.push(m.title))
+    const notify = createNotifier((m) => enviados.push(m.title), { idleDelayMs: 0 })
 
     notify(task('completed'), false)
     expect(enviados).toEqual([])
@@ -102,11 +94,49 @@ describe('estados finales: se avisa al momento', () => {
  * Con el enlace de Claude Code, cada turno del asistente termina en «te espera».
  * Si estás delante contestando, no debe salir ningún aviso.
  */
+describe('cada turno acaba en «terminada»: también espera', () => {
+  it('no avisa de terminada de inmediato', () => {
+    vi.useFakeTimers()
+    const enviados: string[] = []
+    const notify = createNotifier((m) => enviados.push(m.title), { idleDelayMs: 45_000 })
+
+    notify(task('completed'), true)
+    expect(enviados).toEqual([])
+  })
+
+  it('un turno tras otro no genera ni un aviso', () => {
+    vi.useFakeTimers()
+    const enviados: string[] = []
+    const notify = createNotifier((m) => enviados.push(m.title), { idleDelayMs: 45_000 })
+
+    // Trabajando en la terminal: entrega, le contestas, entrega, le contestas…
+    for (let turno = 0; turno < 5; turno += 1) {
+      notify(task('completed'), true)
+      vi.advanceTimersByTime(9_000)
+      notify(task('running'), false)
+      vi.advanceTimersByTime(3_000)
+    }
+
+    vi.advanceTimersByTime(60_000)
+    expect(enviados).toEqual([])
+  })
+
+  it('pero si te vas de verdad, avisa de que ha terminado', () => {
+    vi.useFakeTimers()
+    const enviados: string[] = []
+    const notify = createNotifier((m) => enviados.push(m.title), { idleDelayMs: 45_000 })
+
+    notify(task('completed'), true)
+    vi.advanceTimersByTime(45_001)
+    expect(enviados).toEqual(['Tarea terminada'])
+  })
+})
+
 describe('«te espera»: el aviso espera a ver si vuelves', () => {
   it('no avisa de inmediato', () => {
     vi.useFakeTimers()
     const enviados: string[] = []
-    const notify = createNotifier((m) => enviados.push(m.title), { waitingDelayMs: 45_000 })
+    const notify = createNotifier((m) => enviados.push(m.title), { idleDelayMs: 45_000 })
 
     notify(task('waiting_user'), true)
     expect(enviados).toEqual([])
@@ -115,7 +145,7 @@ describe('«te espera»: el aviso espera a ver si vuelves', () => {
   it('avisa si de verdad te has ido', () => {
     vi.useFakeTimers()
     const enviados: string[] = []
-    const notify = createNotifier((m) => enviados.push(m.title), { waitingDelayMs: 45_000 })
+    const notify = createNotifier((m) => enviados.push(m.title), { idleDelayMs: 45_000 })
 
     notify(task('waiting_user'), true)
     vi.advanceTimersByTime(45_001)
@@ -125,7 +155,7 @@ describe('«te espera»: el aviso espera a ver si vuelves', () => {
   it('CANCELA el aviso si contestas antes', () => {
     vi.useFakeTimers()
     const enviados: string[] = []
-    const notify = createNotifier((m) => enviados.push(m.title), { waitingDelayMs: 45_000 })
+    const notify = createNotifier((m) => enviados.push(m.title), { idleDelayMs: 45_000 })
 
     notify(task('waiting_user'), true)
     // Escribes en la terminal: la tarea vuelve a trabajar.
@@ -139,7 +169,7 @@ describe('«te espera»: el aviso espera a ver si vuelves', () => {
   it('un ir y venir de turnos no genera ni un solo aviso', () => {
     vi.useFakeTimers()
     const enviados: string[] = []
-    const notify = createNotifier((m) => enviados.push(m.title), { waitingDelayMs: 45_000 })
+    const notify = createNotifier((m) => enviados.push(m.title), { idleDelayMs: 45_000 })
 
     // Cinco turnos seguidos contestando rápido, como cuando estás trabajando.
     for (let turno = 0; turno < 5; turno += 1) {
@@ -156,7 +186,7 @@ describe('«te espera»: el aviso espera a ver si vuelves', () => {
   it('pero al irte de verdad tras varios turnos, sí avisa', () => {
     vi.useFakeTimers()
     const enviados: string[] = []
-    const notify = createNotifier((m) => enviados.push(m.title), { waitingDelayMs: 45_000 })
+    const notify = createNotifier((m) => enviados.push(m.title), { idleDelayMs: 45_000 })
 
     notify(task('waiting_user'), true)
     vi.advanceTimersByTime(8_000)
@@ -171,7 +201,7 @@ describe('«te espera»: el aviso espera a ver si vuelves', () => {
   it('una espera larga no avisa dos veces', () => {
     vi.useFakeTimers()
     const enviados: string[] = []
-    const notify = createNotifier((m) => enviados.push(m.title), { waitingDelayMs: 45_000 })
+    const notify = createNotifier((m) => enviados.push(m.title), { idleDelayMs: 45_000 })
 
     notify(task('waiting_user'), true)
     vi.advanceTimersByTime(45_001)
@@ -184,7 +214,7 @@ describe('«te espera»: el aviso espera a ver si vuelves', () => {
 
   it('con la espera desactivada avisa al momento', () => {
     const enviados: string[] = []
-    const notify = createNotifier((m) => enviados.push(m.title), { waitingDelayMs: 0 })
+    const notify = createNotifier((m) => enviados.push(m.title), { idleDelayMs: 0 })
 
     notify(task('waiting_user'), true)
     expect(enviados).toEqual(['Te están esperando'])
@@ -194,7 +224,7 @@ describe('«te espera»: el aviso espera a ver si vuelves', () => {
 describe('reapertura', () => {
   it('si una tarea se reabre y vuelve a terminar, avisa de nuevo', () => {
     const enviados: string[] = []
-    const notify = createNotifier((m) => enviados.push(m.title), { waitingDelayMs: 0 })
+    const notify = createNotifier((m) => enviados.push(m.title), { idleDelayMs: 0 })
 
     notify(task('completed'), true)
     notify(task('running'), false)

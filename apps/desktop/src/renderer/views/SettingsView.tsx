@@ -57,14 +57,12 @@ export function SettingsView({
         </div>
 
         <label className="field">
-          <span className="field__label">Avisar de «te espera» tras</span>
+          <span className="field__label">Avisar de «terminada» y «te espera» tras</span>
           <select
             className="input"
-            value={String(settings.waitingNoticeDelaySeconds)}
-            data-testid="waiting-delay"
-            onChange={(event) =>
-              onUpdate({ waitingNoticeDelaySeconds: Number(event.target.value) })
-            }
+            value={String(settings.idleNoticeDelaySeconds)}
+            data-testid="idle-delay"
+            onChange={(event) => onUpdate({ idleNoticeDelaySeconds: Number(event.target.value) })}
           >
             <option value="0">Al momento</option>
             <option value="15">15 segundos sin que vuelvas</option>
@@ -72,9 +70,9 @@ export function SettingsView({
             <option value="120">2 minutos sin que vuelvas</option>
           </select>
           <span className="field__hint">
-            Claude Code termina cada turno esperándote. Sin esta espera te llegaría un aviso por
-            turno mientras trabajas en la terminal. Si vuelves antes, el aviso se cancela solo.
-            «Terminada» y «fallida» avisan siempre al instante.
+            Cada turno de Claude Code acaba en uno de esos dos estados. Sin esta espera te llegaría
+            un aviso por turno mientras trabajas en la terminal. Si vuelves y le escribes antes, el
+            aviso se cancela solo. «Fallida» avisa siempre al instante.
           </span>
         </label>
       </section>

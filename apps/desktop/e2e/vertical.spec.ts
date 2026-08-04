@@ -132,7 +132,7 @@ test('la vertical completa funciona de principio a fin', async () => {
       globalThis as unknown as {
         torre: { updateSettings: (patch: unknown) => Promise<unknown> }
       }
-    ).torre.updateSettings({ waitingNoticeDelaySeconds: 0 }),
+    ).torre.updateSettings({ idleNoticeDelaySeconds: 0 }),
   )
 
   // ── 1. Arranca vacía ──────────────────────────────────────────────────────
