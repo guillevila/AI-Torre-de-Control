@@ -1,6 +1,10 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { timingSafeEqual } from 'node:crypto'
-import type { EventIngestResult } from '@torre/contracts'
+import type {
+  EventIngestResult,
+  PermissionResolution,
+  SessionUpdateResult,
+} from '@torre/contracts'
 
 /**
  * Receptor local de eventos.
@@ -32,6 +36,20 @@ export interface LocalEventServerOptions {
   ports?: readonly number[]
   /** Procesa un evento ya recibido. La validación ocurre dentro. */
   onEvent: (raw: unknown) => EventIngestResult
+  /**
+   * Procesa una petición de permiso (D18-bis).
+   *
+   * A diferencia de un evento, esta llamada **no responde hasta que el usuario
+   * decide** o se agota el tiempo. La conexión se queda abierta mientras tanto.
+   * Si no se proporciona, la ruta de permisos devuelve 404: una aplicación sin
+   * permisos configurados no debe fingir que los acepta.
+   */
+  onPermission?: (raw: unknown) => Promise<PermissionResolution>
+  /**
+   * Procesa un aviso de estado que no conoce el identificador de la tarea, solo
+   * su carpeta y su sesión. Es lo que envía el enlace con Claude Code.
+   */
+  onSession?: (raw: unknown) => SessionUpdateResult
 }
 
 export interface LocalEventServerAddress {
@@ -121,7 +139,17 @@ export class LocalEventServer {
       return send(res, 200, { status: 'ok' })
     }
 
-    if (req.method !== 'POST' || url !== '/events') {
+    const isEvents = req.method === 'POST' && url === '/events'
+    const isPermissions = req.method === 'POST' && url === '/permissions'
+    const isSessions = req.method === 'POST' && url === '/sessions'
+
+    // Cada ruta solo existe si la aplicación sabe atenderla. Sin atendedor
+    // devuelve 404 en lugar de aceptar algo que nadie va a procesar.
+    const known =
+      isEvents ||
+      (isPermissions && this.options.onPermission) ||
+      (isSessions && this.options.onSession)
+    if (!known) {
       return send(res, 404, { accepted: false, reason: 'Ruta no encontrada' })
     }
 
@@ -150,9 +178,45 @@ export class LocalEventServer {
           return send(res, 400, { accepted: false, reason: 'El cuerpo no es JSON válido' })
         }
 
-        // Barrera 6: el contrato decide. Barrera 7: solo mueve estados.
-        const result = this.options.onEvent(parsed)
-        send(res, result.accepted ? 200 : 422, result)
+        if (isEvents) {
+          // Barrera 6: el contrato decide. Barrera 7: solo mueve estados.
+          const result = this.options.onEvent(parsed)
+          return send(res, result.accepted ? 200 : 422, result)
+        }
+
+        if (isSessions && this.options.onSession) {
+          const result = this.options.onSession(parsed)
+          return send(res, result.accepted ? 200 : 422, result)
+        }
+
+        // ── Permisos ─────────────────────────────────────────────────────────
+        // La respuesta se queda pendiente hasta que el usuario decide. Si quien
+        // preguntó se marcha antes (cierra la terminal, corta la sesión), se
+        // deja de esperar: nadie va a leer ya esa respuesta.
+        const handler = this.options.onPermission
+        if (!handler) return send(res, 404, { accepted: false, reason: 'Ruta no encontrada' })
+
+        let abandoned = false
+        req.once('close', () => {
+          abandoned = true
+        })
+
+        handler(parsed)
+          .then((resolution) => {
+            if (abandoned || res.writableEnded) return
+            send(res, 200, resolution)
+          })
+          .catch((error: unknown) => {
+            if (abandoned || res.writableEnded) return
+            // Ante cualquier fallo se devuelve `timeout`: es la salida segura,
+            // la que hace que la herramienta pregunte por su cuenta (D21).
+            send(res, 200, {
+              outcome: 'timeout',
+              reason: `La Torre no pudo atender la petición: ${
+                error instanceof Error ? error.message : 'error desconocido'
+              }`,
+            })
+          })
       })
       .catch((error: unknown) => {
         const tooLarge = error instanceof Error && error.message === 'BODY_TOO_LARGE'

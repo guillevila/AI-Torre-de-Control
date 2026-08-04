@@ -1,7 +1,12 @@
 import { statSync } from 'node:fs'
 import { join } from 'node:path'
 import { app, BrowserWindow, session, shell } from 'electron'
-import { IPC, type DevInfo, type Task } from '@torre/contracts'
+import { IPC, type DevInfo, type PendingPermission, type Task } from '@torre/contracts'
+import { HookInstaller } from './hooks/hook-installer.js'
+import { SessionLinker } from './hooks/session-linker.js'
+import { SessionStatusService } from './hooks/session-status-service.js'
+import { PermissionRegistry } from './permissions/permission-registry.js'
+import { PermissionService } from './permissions/permission-service.js'
 import { SqliteTaskRepository } from './db/sqlite-task-repository.js'
 import { LocalEventServer } from './events/local-event-server.js'
 import { endpointFilePath, loadOrCreateToken, writeEndpointFile } from './events/endpoint.js'
@@ -60,10 +65,17 @@ let repository: SqliteTaskRepository | null = null
 let eventServer: LocalEventServer | null = null
 let devInfo: DevInfo | null = null
 let sweepTimer: NodeJS.Timeout | null = null
+let permissionRegistry: PermissionRegistry | null = null
 
 function broadcastTasks(tasks: Task[]): void {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send(IPC.tasksChanged, tasks)
+  }
+}
+
+function broadcastPermissions(pending: PendingPermission[]): void {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send(IPC.permissionsChanged, pending)
   }
 }
 
@@ -168,9 +180,28 @@ async function bootstrap(): Promise<void> {
     onChange: broadcastTasks,
   })
 
+  // ── Enlace con Claude Code (D18-bis) ───────────────────────────────────────
+  //
+  // El registro de permisos vive SOLO en memoria (D20): nada de lo que se
+  // enseña en la tarjeta —incluido el comando completo— toca el disco.
+  permissionRegistry = new PermissionRegistry({ onChange: broadcastPermissions })
+  const linker = new SessionLinker(service)
+  const permissionService = new PermissionService({
+    registry: permissionRegistry,
+    linker,
+    taskService: service,
+  })
+  const sessionStatus = new SessionStatusService(linker, service)
+  const hookInstaller = new HookInstaller(userDataDir)
+
   // ── Receptor local de eventos ──────────────────────────────────────────────
   const token = loadOrCreateToken(userDataDir)
-  eventServer = new LocalEventServer({ token, onEvent: (raw) => service.ingestEvent(raw) })
+  eventServer = new LocalEventServer({
+    token,
+    onEvent: (raw) => service.ingestEvent(raw),
+    onPermission: (raw) => permissionService.request(raw),
+    onSession: (raw) => sessionStatus.apply(raw),
+  })
 
   let address: { host: string; port: number } | null = null
   try {
@@ -195,21 +226,43 @@ async function bootstrap(): Promise<void> {
     databasePath,
     dataDirectory: userDataDir,
     databaseBytes: databaseBytes(databasePath),
-    // Estado REAL de las integraciones. Ninguna existe todavía: decirlo es
-    // parte del contrato de honestidad del producto.
+    // Estado REAL de las integraciones. El de Claude Code se lee del disco cada
+    // vez que se pide, no se recuerda: si lo desinstalas por fuera, se nota.
     integrations: [
-      { provider: 'claude_code', label: 'Claude Code · hook', status: 'planned' },
+      { provider: 'claude_code', label: 'Claude Code · hook', status: 'not_configured' },
       { provider: 'chatgpt', label: 'ChatGPT · extensión', status: 'planned' },
       { provider: 'cowork', label: 'Cowork · extensión', status: 'planned' },
       { provider: 'codex', label: 'Codex · monitor', status: 'planned' },
     ],
   }
 
+  const currentDevInfo = (): DevInfo => {
+    const base = devInfo as DevInfo
+    let hookInstalled = false
+    try {
+      hookInstalled = hookInstaller.status().installed
+    } catch {
+      // Una configuración de Claude Code ilegible no debe impedir arrancar.
+    }
+    return {
+      ...base,
+      databaseBytes: databaseBytes(databasePath),
+      integrations: base.integrations.map((integration) =>
+        integration.provider === 'claude_code'
+          ? { ...integration, status: hookInstalled ? 'installed' : 'not_configured' }
+          : integration,
+      ),
+    }
+  }
+
   registerIpcHandlers({
     service,
     settings,
+    permissions: permissionService,
+    registry: permissionRegistry,
+    hooks: hookInstaller,
     dataDirectory: userDataDir,
-    getDevInfo: () => ({ ...(devInfo as DevInfo), databaseBytes: databaseBytes(databasePath) }),
+    getDevInfo: currentDevInfo,
   })
 
   applyContentSecurityPolicy()
@@ -250,6 +303,9 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   if (sweepTimer) clearInterval(sweepTimer)
+  // Se libera todo permiso pendiente antes de cerrar: si no, la sesión de
+  // Claude Code que esperaba se quedaría colgada hasta agotar su propio tiempo.
+  permissionRegistry?.releaseAll()
   void eventServer?.stop()
   repository?.close()
 })

@@ -1,6 +1,7 @@
 import type { Provider, Task } from './task.js'
 import type { RecentActivityEntry, StatusHistoryEntry } from './history.js'
 import type { Settings } from './settings.js'
+import type { PendingPermission, PermissionDecision } from './permissions.js'
 
 /**
  * Canales de comunicación entre el proceso principal de Electron (que tiene
@@ -36,11 +37,25 @@ export const IPC = {
   /** Renderer → main: exportar todas las tareas a un CSV elegido por el usuario. */
   dataExportCsv: 'data:export-csv',
 
+  /** Renderer → main: permisos que ahora mismo esperan una decisión tuya. */
+  permissionsList: 'permissions:list',
+  /** Renderer → main: transmitir tu decisión a la herramienta que pregunta. */
+  permissionsDecide: 'permissions:decide',
+
+  /** Renderer → main: ¿está instalado el enlace con Claude Code? */
+  hookStatus: 'hook:status',
+  /** Renderer → main: enseñar el cambio EXACTO antes de tocar nada (D13). */
+  hookPreview: 'hook:preview',
+  hookInstall: 'hook:install',
+  hookUninstall: 'hook:uninstall',
+
   /** Renderer → main: datos del panel de desarrollo (puerto y token del receptor). */
   devInfo: 'dev:info',
 
   /** Main → renderer: algo cambió, aquí tienes el estado nuevo completo. */
   tasksChanged: 'tasks:changed',
+  /** Main → renderer: la lista de permisos pendientes ha cambiado. */
+  permissionsChanged: 'permissions:changed',
 } as const
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC]
@@ -69,8 +84,49 @@ export interface DevInfo {
   dataDirectory: string
   /** Tamaño de la base de datos en bytes, para mostrarlo en Ajustes. */
   databaseBytes: number
-  /** Estado real de cada integración. Hoy ninguna está instalada. */
-  integrations: { provider: Provider; label: string; status: 'not_configured' | 'planned' }[]
+  /** Estado real de cada integración. Nunca se dice «instalada» sin comprobarlo. */
+  integrations: {
+    provider: Provider
+    label: string
+    status: 'installed' | 'not_configured' | 'planned'
+  }[]
+}
+
+/**
+ * Estado del enlace con Claude Code.
+ *
+ * Se calcula leyendo de verdad el fichero de configuración, nunca recordando lo
+ * que hicimos la última vez: si lo desinstalas a mano por fuera, la Torre tiene
+ * que enterarse.
+ */
+export interface HookStatus {
+  installed: boolean
+  /** Ruta del fichero de ajustes de Claude Code que habría que tocar. */
+  settingsPath: string
+  /** false cuando Claude Code todavía no ha creado su configuración. */
+  settingsExists: boolean
+  /** Ruta del script que se instalaría. */
+  hookScriptPath: string
+  /** true si el script existe donde debería. */
+  hookScriptExists: boolean
+  /** Copia de seguridad más reciente, si se hizo alguna. */
+  lastBackupPath: string | null
+}
+
+/**
+ * Lo que se te enseña ANTES de tocar tu configuración global (D13).
+ *
+ * `before` y `after` son el contenido literal del fichero, para que puedas
+ * compararlos tú mismo en lugar de fiarte de un resumen.
+ */
+export interface HookPreview {
+  settingsPath: string
+  before: string
+  after: string
+  /** Dónde se guardará la copia de seguridad antes de escribir. */
+  backupPath: string
+  /** Resumen en lenguaje normal de qué eventos se van a enganchar. */
+  summary: string[]
 }
 
 export interface ExportResult {
@@ -99,8 +155,21 @@ export interface TorreBridge {
   openDataFolder: () => Promise<IpcResult<null>>
   exportCsv: () => Promise<IpcResult<ExportResult>>
 
+  listPermissions: () => Promise<IpcResult<PendingPermission[]>>
+  decidePermission: (
+    requestId: string,
+    decision: PermissionDecision,
+  ) => Promise<IpcResult<null>>
+
+  hookStatus: () => Promise<IpcResult<HookStatus>>
+  hookPreview: () => Promise<IpcResult<HookPreview>>
+  hookInstall: () => Promise<IpcResult<HookStatus>>
+  hookUninstall: () => Promise<IpcResult<HookStatus>>
+
   getDevInfo: () => Promise<IpcResult<DevInfo>>
 
   /** Suscripción a cambios. Devuelve la función para darse de baja. */
   onTasksChanged: (listener: (tasks: Task[]) => void) => () => void
+  /** Suscripción a los permisos que esperan una decisión tuya. */
+  onPermissionsChanged: (listener: (pending: PendingPermission[]) => void) => () => void
 }

@@ -3,14 +3,21 @@ import { basename, join } from 'node:path'
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import {
   IPC,
+  permissionDecisionInputSchema,
   type DevInfo,
   type ExportResult,
+  type HookPreview,
+  type HookStatus,
   type IpcResult,
+  type PendingPermission,
   type RecentActivityEntry,
   type Settings,
   type StatusHistoryEntry,
   type Task,
 } from '@torre/contracts'
+import type { HookInstaller } from '../hooks/hook-installer.js'
+import type { PermissionRegistry } from '../permissions/permission-registry.js'
+import type { PermissionService } from '../permissions/permission-service.js'
 import { TaskServiceError, type TaskService } from '../services/task-service.js'
 import { tasksToCsv } from '../services/csv-export.js'
 import type { SettingsStore } from '../settings/settings-store.js'
@@ -28,6 +35,9 @@ import { openExternalUrl } from '../system/open-external.js'
 export interface IpcHandlerDeps {
   service: TaskService
   settings: SettingsStore
+  permissions: PermissionService
+  registry: PermissionRegistry
+  hooks: HookInstaller
   getDevInfo: () => DevInfo
   dataDirectory: string
 }
@@ -57,6 +67,9 @@ async function guardAsync<T>(operation: () => Promise<T>): Promise<IpcResult<T>>
 export function registerIpcHandlers({
   service,
   settings,
+  permissions,
+  registry,
+  hooks,
   getDevInfo,
   dataDirectory,
 }: IpcHandlerDeps): void {
@@ -148,6 +161,70 @@ export function registerIpcHandlers({
         await writeFile(result.filePath, tasksToCsv(tasks), 'utf8')
         return { written: true, path: basename(result.filePath), rows: tasks.length }
       }),
+  )
+
+  // ─── Permisos (D18-bis) ────────────────────────────────────────────────────
+
+  ipcMain.handle(
+    IPC.permissionsList,
+    (): IpcResult<PendingPermission[]> => guard(() => registry.list()),
+  )
+
+  ipcMain.handle(IPC.permissionsDecide, (_event, input: unknown): IpcResult<null> =>
+    guard(() => {
+      const parsed = permissionDecisionInputSchema.safeParse(input)
+      if (!parsed.success) throw new TaskServiceError('Decisión no válida.')
+
+      const transmitted = permissions.decide(parsed.data.requestId, parsed.data.decision)
+      if (!transmitted) {
+        // Pasa si tardaste más de lo que la herramienta esperaba. No es un
+        // fallo: es la salvaguarda de D21 haciendo su trabajo.
+        throw new TaskServiceError(
+          'Esa petición ya no espera respuesta: se agotó el tiempo y la herramienta te preguntó por su cuenta.',
+        )
+      }
+      return null
+    }),
+  )
+
+  // ─── Enlace con Claude Code ────────────────────────────────────────────────
+
+  ipcMain.handle(IPC.hookStatus, (): IpcResult<HookStatus> => guard(() => hooks.status()))
+
+  ipcMain.handle(IPC.hookPreview, (): IpcResult<HookPreview> =>
+    guard(() => {
+      try {
+        return hooks.preview()
+      } catch (error) {
+        throw new TaskServiceError(
+          error instanceof Error ? error.message : 'No se pudo leer la configuración de Claude Code.',
+        )
+      }
+    }),
+  )
+
+  ipcMain.handle(IPC.hookInstall, (): IpcResult<HookStatus> =>
+    guard(() => {
+      try {
+        return hooks.install()
+      } catch (error) {
+        throw new TaskServiceError(
+          error instanceof Error ? error.message : 'No se pudo instalar el enlace.',
+        )
+      }
+    }),
+  )
+
+  ipcMain.handle(IPC.hookUninstall, (): IpcResult<HookStatus> =>
+    guard(() => {
+      try {
+        return hooks.uninstall()
+      } catch (error) {
+        throw new TaskServiceError(
+          error instanceof Error ? error.message : 'No se pudo desinstalar el enlace.',
+        )
+      }
+    }),
   )
 
   ipcMain.handle(IPC.devInfo, (): IpcResult<DevInfo> => guard(() => getDevInfo()))

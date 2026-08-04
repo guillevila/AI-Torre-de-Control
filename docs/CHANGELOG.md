@@ -10,6 +10,35 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Añadido — Sprint 003: Claude Code conectado
+
+**La primera integración real.** Claude Code ya avisa solo a la Torre.
+
+- **Permisos resueltos desde la Torre.** Cuando Claude Code pide permiso, salta
+  una notificación y aparece una tarjeta con **el comando entero**; tu clic
+  viaja de vuelta y Claude Code continúa o se detiene.
+- **Tres salvaguardas** que hacen eso aceptable: las peticiones no se guardan en
+  disco (D20), si no decides en 90 segundos Claude Code pregunta en su terminal
+  como siempre (D21), y el comando se enseña íntegro, sin resumir.
+- **Avisos automáticos** de cuándo te reclama, cuándo termina un turno y cuándo
+  acaba la sesión.
+- **Las tareas se crean solas** a partir de la carpeta del proyecto: no hace
+  falta registrar a mano lo que delegas a Claude Code.
+- **Instalador que enseña el cambio antes de tocarlo** (D13): el fichero antes,
+  después y dónde queda la copia. El botón de instalar no aparece hasta que lo
+  has visto. Conserva los automatismos que ya tuvieras y tiene desinstalación
+  limpia.
+
+### Cambiado
+
+- **Decisión D18 reabierta** a petición del dueño del proyecto y sustituida por
+  **D18-bis**: la Torre puede transmitir una decisión humana, nunca decidir
+  sola. Riesgo expuesto, alternativas ofrecidas y descartadas, y todo razonado
+  en [ADR-007](decisiones/ADR-007-permisos-remotos.md).
+- **Decisión abierta O3 resuelta**: Claude Code primero, ChatGPT después.
+- El receptor local suma dos rutas: `/permissions` —que espera tu decisión— y
+  `/sessions`, para avisos que no conocen el identificador de la tarea.
+
 ### Corregido
 
 - **La aplicación no declaraba su identidad ante Windows.** Las notificaciones

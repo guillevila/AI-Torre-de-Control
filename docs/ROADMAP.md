@@ -13,7 +13,7 @@
 |------|-------------|--------|----------------|
 | Fase 0 | Definición: visión, arquitectura, modelo de estados | ✅ Completado | 2026-08-03 |
 | Fase 1 | Vertical local: escritorio, SQLite, estados, avisos, enlaces | 🔄 En progreso | — |
-| Fase 2 | Claude Code: recibir eventos por hooks | ⬜ Pendiente | Bloqueada por O3 |
+| Fase 2 | Claude Code: recibir eventos por hooks y resolver permisos | ✅ Completado | 2026-08-04 |
 | Fase 3 | Navegador: extensión para plataformas web | ⬜ Pendiente | — |
 | Fase 4 | Oficina visual avanzada | ⬜ Pendiente | Bloqueada por O4 |
 | Fase 5 | Más herramientas: Codex, otras CLIs | ⬜ Pendiente | — |

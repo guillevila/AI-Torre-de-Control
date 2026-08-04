@@ -83,6 +83,25 @@ la aplicación de verdad, todos en verde a 3 de agosto de 2026:
 - El aspecto general coincide con el documento de diseño: papel cálido,
   tipografías correctas, contadores, planta de oficina por zonas y ficha lateral.
 
+**El enlace con Claude Code (Sprint 003), comprobado ejecutando el script real:**
+
+- **Claude Code avisa solo.** Cuando pide permiso, cuando te reclama, cuando
+  termina un turno y cuando acaba la sesión.
+- **Los permisos se resuelven desde la Torre.** Salta una notificación, aparece
+  una tarjeta con **el comando entero**, y tu clic viaja de vuelta a Claude Code.
+  Comprobado ejecutando el script tal y como lo ejecutará Claude Code —con el
+  JSON del evento por la entrada estándar— y verificando la respuesta exacta que
+  Claude Code leerá.
+- **Si la Torre está cerrada o tardas, no pasa nada.** El script sale en
+  silencio y Claude Code pregunta en su terminal, como siempre (D21).
+- **Las tareas de Claude Code se crean solas** a partir de la carpeta del
+  proyecto. No hay que registrarlas a mano.
+- **El instalador enseña el cambio antes de tocar tu configuración** (D13),
+  guarda copia, conserva los automatismos que ya tuvieras y se niega a escribir
+  sobre un fichero que no entienda. Todo ello comprobado con tests.
+- **Las peticiones de permiso no se guardan en ningún sitio** (D20): viven en
+  memoria y desaparecen al decidirse.
+
 **Comprobado contra el propio Windows:**
 
 - **La notificación llega al sistema operativo.** Se disparó una real (sin
@@ -109,9 +128,9 @@ la aplicación de verdad, todos en verde a 3 de agosto de 2026:
 
 **Lo que falta para llegar a MVP:**
 
-- **No hay ninguna integración real.** Ni Claude Code, ni ChatGPT, ni Claude web,
-  ni Codex avisan solos. Hoy los eventos hay que simularlos con `pnpm evento`.
-  El canal por el que llegarán está construido y probado; falta quien los envíe.
+- **ChatGPT, Claude web y Codex siguen sin avisar solos.** Claude Code sí, desde
+  el Sprint 003. Los demás necesitan una extensión de navegador o un monitor de
+  procesos, que son mecanismos bastante más frágiles.
 - **No se puede instalar.** No hay un `.exe` ni un instalador: hay que arrancarla
   con `pnpm dev` desde una terminal. Depende de decidir para qué sistema
   operativo se empaqueta primero (decisión abierta O1).

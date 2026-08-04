@@ -75,8 +75,11 @@ El stack puede revisarse después del MVP únicamente si aparecen problemas demo
 | D15 | El repositorio puede ser público, pero nunca contendrá secretos, tokens, credenciales ni datos reales                             | Es una exigencia de seguridad                                                                                |
 | D16 | Electron, React, TypeScript y SQLite serán el stack del MVP                                                                       | Permiten construir la aplicación, la lógica local y futuras extensiones principalmente con un mismo lenguaje |
 | D17 | La aplicación escuchará eventos exclusivamente en localhost                                                                       | No debe exponer el monitor a la red local ni a internet                                                      |
-| D18 | Ninguna integración debe enviar mensajes, aceptar permisos ni ejecutar acciones sensibles en nombre del usuario durante el MVP    | La primera versión solo observa y registra estados                                                           |
+| D18 | ~~Ninguna integración debe enviar mensajes, aceptar permisos ni ejecutar acciones sensibles en nombre del usuario durante el MVP~~ **REVISADA el 4/8/2026 → ver D18-bis** | La primera versión solo observa y registra estados |
+| D18-bis | Ninguna integración enviará mensajes ni ejecutará acciones por su cuenta. **Sí podrá transmitir una decisión que el usuario tome explícitamente en la Torre**, como aceptar o rechazar un permiso que una herramienta esté pidiendo | El dueño del proyecto reabrió D18 el 4 de agosto de 2026: quiere resolver los permisos de Claude Code sin cambiar de ventana. La aplicación sigue sin decidir NADA por su cuenta — solo transmite un clic humano. Riesgo aceptado y razonado en [ADR-007](docs/decisiones/ADR-007-permisos-remotos.md) |
 | D19 | Cada tarea guardará el historial completo de sus cambios de estado, no solo el estado actual                                      | Es la prueba de honestidad del sistema: permite ver cuándo se perdió el contacto, quién dijo qué y cuánto lleva algo esperando. Aprobada el 3 de agosto de 2026 |
+| D20 | Las peticiones de permiso **nunca se guardan en la base de datos**: viven en memoria y desaparecen al decidirse                    | Para poder enseñar el comando completo —necesario para aprobar con criterio— sin romper D5. Nada de lo que se muestra queda escrito en disco |
+| D21 | Si el usuario no responde a un permiso en 90 segundos, o la Torre está cerrada, la herramienta vuelve a preguntar por su vía normal | La Torre es un atajo, nunca un cuello de botella. Ninguna sesión puede quedarse colgada esperándola |
 
 ---
 
@@ -86,7 +89,7 @@ El stack puede revisarse después del MVP únicamente si aparecen problemas demo
 | -- | ------------------------------------------------------------------------------------- | ------------------ | ---------------------------------------------------- |
 | O1 | ¿Cuál será el sistema operativo prioritario para empaquetar y probar primero?         | Dueño del proyecto | Antes de preparar la primera distribución instalable |
 | O2 | ¿Chrome, Edge o Firefox será el navegador prioritario?                                | Dueño del proyecto | Antes de iniciar la extensión de navegador           |
-| O3 | ¿La primera integración real será Claude Code, Codex CLI o una plataforma web?        | Dueño del proyecto | Antes del Sprint 2                                   |
+| ~~O3~~ | ~~¿La primera integración real será Claude Code, Codex CLI o una plataforma web?~~ **RESUELTA 4/8/2026: Claude Code primero, ChatGPT después** | — | — |
 | O4 | ¿Qué estilo visual tendrá la oficina: pixel art, isométrico, ilustrado o minimalista? | Dueño del proyecto | Antes de la fase visual avanzada                     |
 | O5 | ¿Se necesitará sincronización entre ordenadores en el futuro?                         | Dueño del proyecto | Después de validar el MVP local                      |
 | O6 | ¿El producto terminará siendo una herramienta interna o se ofrecerá a terceros?       | Dueño del proyecto | Después de validar el uso personal                   |
@@ -113,7 +116,9 @@ los trabajadores, y una tarea terminada pasa directamente a archivada.
 * No es una memoria compartida entre agentes en el MVP.
 * No gestiona correo, Drive, calendario ni contabilidad en las primeras fases.
 * No envía correos ni mensajes por el usuario.
-* No acepta automáticamente permisos solicitados por agentes.
+* No acepta **automáticamente** permisos solicitados por agentes. Desde el 4 de
+  agosto de 2026 sí puede transmitir tu decisión explícita: la Torre te enseña
+  qué se pide y tú clicas. Nunca decide sola (D18-bis).
 * No realiza pagos ni acciones empresariales sensibles.
 * No será multiusuario en el MVP.
 * No tendrá sincronización en la nube en el MVP.
