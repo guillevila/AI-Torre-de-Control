@@ -6,6 +6,7 @@ import {
   permissionDecisionInputSchema,
   type DevInfo,
   type ExportResult,
+  type HookActivityEntry,
   type HookPreview,
   type HookStatus,
   type IpcResult,
@@ -15,6 +16,7 @@ import {
   type StatusHistoryEntry,
   type Task,
 } from '@torre/contracts'
+import type { HookActivityLog } from '../hooks/hook-activity-log.js'
 import type { HookInstaller } from '../hooks/hook-installer.js'
 import type { PermissionRegistry } from '../permissions/permission-registry.js'
 import type { PermissionService } from '../permissions/permission-service.js'
@@ -38,6 +40,7 @@ export interface IpcHandlerDeps {
   permissions: PermissionService
   registry: PermissionRegistry
   hooks: HookInstaller
+  hookActivity: HookActivityLog
   getDevInfo: () => DevInfo
   dataDirectory: string
 }
@@ -70,6 +73,7 @@ export function registerIpcHandlers({
   permissions,
   registry,
   hooks,
+  hookActivity,
   getDevInfo,
   dataDirectory,
 }: IpcHandlerDeps): void {
@@ -225,6 +229,11 @@ export function registerIpcHandlers({
         )
       }
     }),
+  )
+
+  ipcMain.handle(
+    IPC.hookActivity,
+    (): IpcResult<HookActivityEntry[]> => guard(() => hookActivity.list()),
   )
 
   ipcMain.handle(IPC.devInfo, (): IpcResult<DevInfo> => guard(() => getDevInfo()))

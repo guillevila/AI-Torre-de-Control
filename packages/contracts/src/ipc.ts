@@ -48,6 +48,8 @@ export const IPC = {
   hookPreview: 'hook:preview',
   hookInstall: 'hook:install',
   hookUninstall: 'hook:uninstall',
+  /** Renderer → main: qué ha llegado del enlace últimamente. */
+  hookActivity: 'hook:activity',
 
   /** Renderer → main: datos del panel de desarrollo (puerto y token del receptor). */
   devInfo: 'dev:info',
@@ -127,6 +129,28 @@ export interface HookStatus {
  * `before` y `after` son el contenido literal del fichero, para que puedas
  * compararlos tú mismo en lugar de fiarte de un resumen.
  */
+/**
+ * Una señal que ha llegado del enlace, y qué ha hecho la Torre con ella.
+ *
+ * Existe para poder responder «¿esto está llegando?» sin abrir la base de datos.
+ * Sin esto, cuando el enlace no funciona no hay forma de saber si el problema
+ * es que no llega nada o que llega y se rechaza.
+ *
+ * Vive en memoria y se pierde al cerrar, igual que los permisos (D20).
+ */
+export interface HookActivityEntry {
+  at: string
+  /** Qué dijo la herramienta: el nombre del evento o «permiso». */
+  event: string
+  /** Carpeta desde la que hablaba. */
+  cwd: string
+  accepted: boolean
+  /** Estado resultante, o el motivo del rechazo. */
+  detail: string
+  /** Tarea con la que se emparejó, si se llegó a emparejar. */
+  taskTitle: string | null
+}
+
 export interface HookPreview {
   settingsPath: string
   before: string
@@ -173,6 +197,7 @@ export interface TorreBridge {
   hookPreview: () => Promise<IpcResult<HookPreview>>
   hookInstall: () => Promise<IpcResult<HookStatus>>
   hookUninstall: () => Promise<IpcResult<HookStatus>>
+  hookActivity: () => Promise<IpcResult<HookActivityEntry[]>>
 
   getDevInfo: () => Promise<IpcResult<DevInfo>>
 

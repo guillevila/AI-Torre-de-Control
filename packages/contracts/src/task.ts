@@ -19,6 +19,14 @@ export const TASK_STATUSES = [
   'waiting_user',
   'completed',
   'failed',
+  /**
+   * Ya lo has mirado y no hay nada pendiente, pero el trabajo sigue vivo.
+   *
+   * Es el estado de reposo de un proyecto: no reclama nada, no ha desaparecido,
+   * y en cuanto le mandes algo vuelve a ponerse a trabajar solo. Distinto de
+   * `archived`, que es retirarlo de verdad.
+   */
+  'reviewed',
   'unknown',
   'archived',
 ] as const

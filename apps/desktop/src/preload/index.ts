@@ -41,6 +41,7 @@ const bridge: TorreBridge = {
   hookPreview: () => ipcRenderer.invoke(IPC.hookPreview),
   hookInstall: () => ipcRenderer.invoke(IPC.hookInstall),
   hookUninstall: () => ipcRenderer.invoke(IPC.hookUninstall),
+  hookActivity: () => ipcRenderer.invoke(IPC.hookActivity),
 
   getDevInfo: () => ipcRenderer.invoke(IPC.devInfo),
 

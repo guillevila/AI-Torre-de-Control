@@ -50,6 +50,7 @@ export function TowerView({ tasks, activity, onOpen, onGoAttention, onGoOffice }
     waiting_user: summary.waiting,
     completed: summary.completed,
     failed: summary.failed,
+    reviewed: summary.reviewed,
     unknown: summary.unknown,
     queued: summary.queued,
     draft: summary.draft,

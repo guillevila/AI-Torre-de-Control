@@ -22,7 +22,13 @@ interface TaskDetailProps {
 }
 
 /** Correcciones rápidas que se ofrecen siempre que sean transiciones válidas. */
-const QUICK_FIXES: readonly TaskStatus[] = ['running', 'waiting_user', 'completed', 'archived']
+const QUICK_FIXES: readonly TaskStatus[] = [
+  'running',
+  'waiting_user',
+  'completed',
+  'reviewed',
+  'archived',
+]
 
 /**
  * Ficha de la tarea: panel lateral de 480 px sobre la vista actual.
@@ -72,6 +78,21 @@ export function TaskDetail({
             >
               Abrir conversación ↗
             </button>
+            {/*
+              Para algo terminado, la acción natural no es archivar —eso es
+              retirarlo— sino decir «ya lo he mirado». La tarea se va al backlog
+              y vuelve sola en cuanto le mandes algo nuevo.
+            */}
+            {(task.status === 'completed' || task.status === 'failed') && (
+              <button
+                type="button"
+                className="btn btn--ghost"
+                data-testid="detail-review"
+                onClick={() => onChangeStatus(task.id, 'reviewed')}
+              >
+                Ya lo he revisado
+              </button>
+            )}
             {task.status !== 'archived' && (
               <button
                 type="button"
