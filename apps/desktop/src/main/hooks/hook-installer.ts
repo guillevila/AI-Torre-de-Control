@@ -41,12 +41,14 @@ const HOOKED_EVENTS = [
   {
     event: 'Stop',
     timeoutSeconds: 10,
-    summary: 'Cuando Claude Code termine su turno, la tarea pasa a «te espera» y te avisa Windows.',
+    summary:
+      'Cuando Claude Code termine un turno, la tarea pasa a «terminada» y va a la mesa de entregas, esperando que la revises.',
   },
   {
     event: 'Notification',
     timeoutSeconds: 10,
-    summary: 'Cuando Claude Code te reclame por su cuenta, la tarea pasa a «te espera».',
+    summary:
+      'Cuando Claude Code te pida algo, la tarea pasa a «te espera» y se planta en tu puerta.',
   },
   {
     event: 'SessionEnd',

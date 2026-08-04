@@ -18,16 +18,19 @@ export const settingsSchema = z.object({
   notifyFailed: z.boolean().default(true),
 
   /**
-   * Segundos que espera el aviso de «te espera» antes de salir.
+   * Segundos que espera un aviso antes de salir, para ver si vuelves.
    *
-   * Existe por el enlace con Claude Code: cada turno del asistente termina
-   * esperándote, así que sin esta espera te llovería un aviso por turno
-   * mientras trabajas en la terminal. Si vuelves antes, el aviso se cancela
-   * solo. 0 avisa al momento.
+   * Existe por el enlace con Claude Code: **cada turno** del asistente acaba en
+   * «terminada» o «te espera», así que sin esta espera te llovería un aviso por
+   * turno mientras trabajas en la terminal, y acabarías apagándolos.
    *
-   * No afecta a «terminada» ni «fallida»: esos salen siempre al instante.
+   * Si vuelves y le escribes antes de que pase el tiempo, el aviso se cancela
+   * solo sin haber llegado a molestar. Solo sale si de verdad te has ido.
+   *
+   * 0 avisa al momento. No afecta a «fallida», que sale siempre al instante:
+   * un error merece saberse ya.
    */
-  waitingNoticeDelaySeconds: z.number().int().min(0).max(600).default(45),
+  idleNoticeDelaySeconds: z.number().int().min(0).max(600).default(45),
 
   /**
    * Minutos sin señal tras los cuales una tarea automática pasa a «sin

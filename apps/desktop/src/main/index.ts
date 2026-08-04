@@ -174,7 +174,7 @@ async function bootstrap(): Promise<void> {
   const settings = new SettingsStore(join(userDataDir, 'settings.json'))
   const notify = createNotifier(showDesktopNotification, {
     // Se lee el ajuste en cada aviso, no al arrancar: si lo cambias, aplica ya.
-    waitingDelayMs: () => settings.get().waitingNoticeDelaySeconds * 1000,
+    idleDelayMs: () => settings.get().idleNoticeDelaySeconds * 1000,
   })
 
   const service = new TaskService({

@@ -22,14 +22,17 @@
  *                       Si decides, transmite tu decisión. Si no, se rinde y
  *                       Claude Code te pregunta en la terminal como siempre.
  *   UserPromptSubmit  → le acabas de pedir algo: la tarea pasa a «trabajando».
- *   Stop              → Claude Code ha terminado su turno y la pelota está en
- *                       tu tejado: la tarea pasa a «te espera».
- *   Notification      → Claude Code te reclama: «te espera» también.
- *   SessionEnd        → la sesión ha acabado: la tarea pasa a «terminada».
+ *   Stop              → ha terminado su turno y te ha ENTREGADO algo: la tarea
+ *                       pasa a «terminada», a la mesa de entregas, esperando
+ *                       que la revises.
+ *   Notification      → te está PIDIENDO algo: la tarea pasa a «te espera».
+ *   SessionEnd        → la sesión ha acabado: «terminada» también.
  *
- * OJO con `Stop`: significa que el asistente ha PARADO, no que siga trabajando.
- * Mapearlo a «trabajando» —como se hizo al principio— deja las sesiones
- * terminadas mintiendo en el tablero.
+ * La distinción entre las dos de en medio es deliberada y la marcó el dueño del
+ * proyecto: «te espera» está reservado a cuando el agente te pide que aceptes
+ * algo. Terminar un turno no es pedirte permiso, es entregarte trabajo. Si todo
+ * acabara en «te espera», la puerta del despacho estaría siempre llena y dejaría
+ * de significar nada.
  */
 
 import { readFileSync } from 'node:fs'
@@ -219,11 +222,13 @@ async function main() {
 
   // ── Avisos de estado: se mandan y se sigue ────────────────────────────────
   if (event === 'UserPromptSubmit') await sendStatus(endpoint, payload, 'running')
-  else if (event === 'Stop' || event === 'Notification') {
-    // Las dos cosas significan lo mismo para la Torre: ya no está trabajando,
-    // te toca a ti.
+  else if (event === 'Stop' || event === 'SessionEnd') {
+    // Ha entregado trabajo: a la mesa de entregas, pendiente de que lo revises.
+    await sendStatus(endpoint, payload, 'completed')
+  } else if (event === 'Notification') {
+    // Te está pidiendo algo: a tu puerta. Este estado se reserva para eso.
     await sendStatus(endpoint, payload, 'waiting_user')
-  } else if (event === 'SessionEnd') await sendStatus(endpoint, payload, 'completed')
+  }
 
   process.exit(0)
 }

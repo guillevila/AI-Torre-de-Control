@@ -27,7 +27,16 @@ export interface NotificationMessage {
  * Los estados finales —terminada, fallida— no esperan: ahí no hay nada que
  * atender en caliente, y saber que ha acabado es justo lo que quieres.
  */
-export const WAITING_NOTICE_DELAY_MS = 45_000
+export const IDLE_NOTICE_DELAY_MS = 45_000
+
+/**
+ * Estados cuyo aviso espera a ver si vuelves.
+ *
+ * Son los dos en los que acaba cada turno del asistente. `failed` queda fuera a
+ * propósito: un error merece saberse al momento, y además no se repite turno a
+ * turno.
+ */
+const DEFERRED_STATUSES: readonly TaskStatus[] = ['waiting_user', 'completed']
 
 /**
  * Segunda barrera anti-duplicados.
@@ -72,12 +81,12 @@ export function buildNotification(task: Task): NotificationMessage | null {
 
 export interface NotifierOptions {
   /**
-   * Espera antes de avisar de «te espera». 0 avisa al momento.
+   * Espera antes de avisar de los estados diferidos. 0 avisa al momento.
    *
    * Admite una función para poder leer el ajuste vigente en cada aviso, en
    * lugar de quedarse con el que hubiera al arrancar.
    */
-  waitingDelayMs?: number | (() => number)
+  idleDelayMs?: number | (() => number)
   deduplicator?: NotificationDeduplicator
 }
 
@@ -95,9 +104,8 @@ export function createNotifier(
   show: (message: NotificationMessage) => void,
   options: NotifierOptions = {},
 ): (task: Task, notify: boolean) => void {
-  const delayOption = options.waitingDelayMs ?? WAITING_NOTICE_DELAY_MS
-  const waitingDelay = (): number =>
-    typeof delayOption === 'function' ? delayOption() : delayOption
+  const delayOption = options.idleDelayMs ?? IDLE_NOTICE_DELAY_MS
+  const idleDelay = (): number => (typeof delayOption === 'function' ? delayOption() : delayOption)
   const deduplicator = options.deduplicator ?? new NotificationDeduplicator()
   const pending = new Map<string, NodeJS.Timeout>()
 
@@ -122,8 +130,8 @@ export function createNotifier(
 
     if (!notify) return
 
-    const delay = waitingDelay()
-    if (task.status === 'waiting_user' && delay > 0) {
+    const delay = idleDelay()
+    if (DEFERRED_STATUSES.includes(task.status) && delay > 0) {
       const timer = setTimeout(() => {
         pending.delete(task.id)
         if (deduplicator.shouldSend(task.id, task.status)) show(message)
