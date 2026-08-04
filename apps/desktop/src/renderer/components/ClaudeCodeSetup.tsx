@@ -23,6 +23,13 @@ export function ClaudeCodeSetup() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [activity, setActivity] = useState<HookActivityEntry[]>([])
+  /**
+   * Acabas de instalar o actualizar en esta misma visita.
+   *
+   * Se guarda para poder recordarte lo único que la aplicación NO puede hacer
+   * por ti: reiniciar tus sesiones abiertas de Claude Code.
+   */
+  const [justInstalled, setJustInstalled] = useState(false)
 
   const refresh = useCallback(async () => {
     const result = await window.torre.hookStatus()
@@ -58,6 +65,7 @@ export function ClaudeCodeSetup() {
     if (result.ok) {
       setStatus(result.data)
       setPreview(null)
+      setJustInstalled(true)
     } else setError(result.error)
   }
 
@@ -104,6 +112,25 @@ export function ClaudeCodeSetup() {
               pida permiso, termine o te reclame, esta Torre se entera y te avisa.
             </p>
           )}
+
+          {/*
+            El paso que la aplicación no puede dar por ti, y el que más caro
+            sale olvidar: Claude Code lee qué avisos tiene que mandar UNA sola
+            vez, al abrir la sesión. Si acabas de instalar o actualizar, las
+            sesiones que ya tenías abiertas siguen ciegas por mucho que aquí
+            ponga «instalado» — y desde fuera parece que el enlace no funciona.
+          */}
+          {justInstalled && (
+            <div className="banner banner--warm" data-testid="hook-restart">
+              <span>
+                <strong>Falta un paso, y solo puedes darlo tú: reinicia Claude Code.</strong> Los
+                avisos se leen al abrir la sesión. Las que tengas abiertas ahora mismo seguirán sin
+                avisar a la Torre aunque aquí ya ponga «instalado». Ciérralas y vuelve a abrirlas —
+                también las de dentro de tu editor.
+              </span>
+            </div>
+          )}
+
           <pre className="codeblock mono">{status.settingsPath}</pre>
           <div className="card__actions">
             <button
@@ -131,8 +158,10 @@ export function ClaudeCodeSetup() {
             {activity.length === 0 ? (
               <p className="card__text card__text--muted">
                 Todavía no ha llegado nada. Escribe algo en Claude Code dentro de un proyecto y
-                debería aparecer aquí en segundos. Si no aparece, el enlace no está llegando a la
-                Torre y el problema está antes de esta aplicación.
+                debería aparecer aquí en segundos. Si no aparece, la causa casi siempre es la misma:{' '}
+                <strong>esa sesión se abrió antes de instalar el enlace</strong>. Ciérrala y vuelve
+                a abrirla. Si aun así sigue vacío, el enlace no está llegando a la Torre y el
+                problema está antes de esta aplicación.
               </p>
             ) : (
               <ol className="hook-activity__list">

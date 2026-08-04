@@ -10,6 +10,25 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Corregido — el botón «Aceptar» no llegaba a Claude Code
+
+- **El enlace contestaba a las peticiones de permiso en el formato equivocado.**
+  El evento `PermissionRequest` espera `decision.behavior`; se le estaba
+  enviando `permissionDecision`, que pertenece a otro evento. Claude Code no
+  avisa de un campo que no conoce: descartaba la decisión en silencio y
+  preguntaba en la terminal. Desde fuera parecía que la Torre no recibía nada,
+  cuando lo único mal era el nombre de un campo.
+- **Prueba nueva que ejecuta el script de verdad** —proceso real, entrada real,
+  salida real— y comprueba el sobre exacto de cada evento. El test de interfaz
+  que existía daba por bueno el formato incorrecto; ahora comprueba el correcto.
+- **El enlace ya no contesta decisiones que la petición no admite.** Claude Code
+  indica qué opciones caben en cada caso; si la tuya no está, se aparta y deja
+  que pregunte él.
+- **Ajustes avisa de que hay que reiniciar Claude Code** tras instalar o
+  actualizar el enlace. Los avisos se leen al abrir la sesión, así que las que ya
+  estuvieran abiertas seguían calladas mientras la pantalla decía «instalado» —
+  y eso costó buscar un fallo donde no lo había.
+
 ### Añadido — Sprint 003: Claude Code conectado
 
 **La primera integración real.** Claude Code ya avisa solo a la Torre.
