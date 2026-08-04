@@ -261,3 +261,35 @@ no se le dijo.
 
 **Contexto:** Todo instalador o integración del proyecto, y toda pantalla que
 informe de que algo «está listo».
+
+## 2026-08-04 14:35 — Una defensa que descarta la intención del usuario es peor que no tenerla
+
+**Error o aprendizaje:** Al corregir el formato de las peticiones de permiso se
+añadió, «por prudencia», una comprobación extra: si Claude Code indicaba qué
+decisiones admitía esa petición y la tomada no estaba en la lista, el enlace se
+apartaba sin contestar. La comprobación no miraba la FORMA de ese dato. En
+cuanto llegó distinto de lo previsto, el enlace empezó a descartar decisiones
+humanas reales en silencio: el dueño del proyecto pulsaba «Aceptar» y no pasaba
+absolutamente nada. La corrección introdujo un fallo tan mudo como el que venía
+a arreglar.
+
+**Causa raíz:** Se añadió una salvaguarda **no pedida** en el mismo cambio que
+arreglaba un fallo, y se le dio poder para anular una decisión ya tomada por una
+persona. Al fallar, falló en la dirección más cara: hacia el silencio.
+
+**Lección:**
+1. Una comprobación defensiva **nunca** debe poder anular una acción explícita
+   del usuario por no entender un dato. Si el dato no se entiende, se ignora el
+   dato, no la decisión. **Ante la duda, la intención humana gana.**
+2. Toda salvaguarda tiene que declarar en qué dirección falla, y elegir la
+   barata. Aquí: contestar de más solo habría hecho que Claude Code descartara
+   una respuesta que no esperaba; tragarse un clic dejó el producto roto.
+3. No mezclar en un mismo cambio el arreglo de un fallo y una precaución que
+   nadie ha pedido. Si la precaución falla, se atribuye el fallo al arreglo y se
+   pierde el rastro.
+4. Un dato que llega de fuera se valida por su **forma** antes de darle poder de
+   decisión. `Array.isArray()` no basta: importa qué hay dentro.
+
+**Contexto:** Todo lo que interpreta datos de sistemas que no controlamos —hooks
+de Claude Code, la futura extensión de Chrome— y, en general, cualquier
+comprobación colocada entre una persona y lo que acaba de pedir.

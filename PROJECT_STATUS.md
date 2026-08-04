@@ -102,12 +102,26 @@ la aplicación de verdad, todos en verde a 3 de agosto de 2026:
   > `decision.behavior`). Claude Code descarta en silencio un campo que no
   > conoce: el botón «Aceptar» no hacía nada y no había manera de notarlo.
   >
-  > ⚠️ **Lo que sigue sin comprobarse:** que Claude Code dispare la petición él
-  > solo durante el trabajo normal. Decide por su cuenta casi todo lo que
-  > considera inofensivo —leer, escribir, borrar un fichero suelto— y solo
-  > pregunta en casos que no se han conseguido provocar a voluntad. Cuando
-  > pregunte, la Torre ya está lista para recibirlo; hasta verlo una vez, no se
-  > da por cerrado.
+  > ✅ **Y comprobado también en el trabajo normal, ese mismo día.** Claude Code
+  > pidió permiso por su cuenta para ejecutar un comando; apareció la tarjeta,
+  > el dueño del proyecto la aceptó desde la Torre 51 segundos después, la
+  > decisión llegó a Claude Code y **el comando se ejecutó**. Sin tocar la
+  > terminal en ningún momento. Queda apuntado en el cuaderno del enlace.
+  >
+  > En esa misma sesión otra petición **caducó sin decidirse**: el enlace se
+  > apartó y Claude Code preguntó por su vía normal, sin bloquear nada. La red
+  > de seguridad (D21) también hace su trabajo.
+  >
+  > Antes de eso hubo un segundo fallo mudo, del mismo día: una comprobación de
+  > más descartaba la decisión humana cuando Claude Code enviaba las opciones
+  > admitidas con una forma inesperada. De ahí salió la regla que ahora gobierna
+  > este canal: **ante un dato que no se entiende, la decisión humana gana**.
+  >
+  > ⚠️ **Cuánto pregunta depende del modo de permisos de la sesión.** En modo
+  > automático Claude Code aprueba por su cuenta casi todo lo que considera
+  > inofensivo y apenas verás tarjetas. Eso no es un fallo del enlace: es el
+  > modo. El cuaderno apunta el modo de cada señal, así que se distingue de un
+  > vistazo.
 - **Después de instalar o actualizar el enlace hay que reiniciar las sesiones de
   Claude Code.** Lee qué avisos debe mandar una sola vez, al abrirse: las
   sesiones que ya estén abiertas seguirán calladas. La pantalla de Ajustes ahora
