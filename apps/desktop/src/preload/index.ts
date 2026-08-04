@@ -5,7 +5,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 // Este módulo son constantes y tipos: al compilar no queda ninguna dependencia.
 import { IPC, type TorreBridge } from '@torre/contracts/ipc'
 // `import type` se borra al compilar: no genera ninguna carga en ejecución.
-import type { Task } from '@torre/contracts'
+import type { PendingPermission, Task } from '@torre/contracts'
 
 /**
  * Puente entre la interfaz y el proceso principal.
@@ -33,6 +33,15 @@ const bridge: TorreBridge = {
   openDataFolder: () => ipcRenderer.invoke(IPC.dataOpenFolder),
   exportCsv: () => ipcRenderer.invoke(IPC.dataExportCsv),
 
+  listPermissions: () => ipcRenderer.invoke(IPC.permissionsList),
+  decidePermission: (requestId, decision) =>
+    ipcRenderer.invoke(IPC.permissionsDecide, { requestId, decision }),
+
+  hookStatus: () => ipcRenderer.invoke(IPC.hookStatus),
+  hookPreview: () => ipcRenderer.invoke(IPC.hookPreview),
+  hookInstall: () => ipcRenderer.invoke(IPC.hookInstall),
+  hookUninstall: () => ipcRenderer.invoke(IPC.hookUninstall),
+
   getDevInfo: () => ipcRenderer.invoke(IPC.devInfo),
 
   onTasksChanged: (listener) => {
@@ -40,6 +49,14 @@ const bridge: TorreBridge = {
     ipcRenderer.on(IPC.tasksChanged, handler)
     return () => {
       ipcRenderer.removeListener(IPC.tasksChanged, handler)
+    }
+  },
+
+  onPermissionsChanged: (listener) => {
+    const handler = (_event: unknown, pending: PendingPermission[]): void => listener(pending)
+    ipcRenderer.on(IPC.permissionsChanged, handler)
+    return () => {
+      ipcRenderer.removeListener(IPC.permissionsChanged, handler)
     }
   },
 }

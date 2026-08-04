@@ -49,3 +49,30 @@ export type LocalEvent = z.infer<typeof localEventSchema>
 export type EventIngestResult =
   | { accepted: true; taskId: string; status: string }
   | { accepted: false; reason: string; details?: string[] }
+
+/**
+ * Aviso de estado de una sesión que NO conoce el identificador de la tarea.
+ *
+ * Es el caso de Claude Code: sabe desde qué carpeta trabaja y cuál es su
+ * sesión, pero no qué tarea has creado tú en la Torre. Aquí se manda lo que sí
+ * sabe, y la aplicación se encarga de encontrar —o crear— la tarea.
+ *
+ * Estricto igual que los eventos: un campo de más y se rechaza entero. Y por
+ * las mismas razones, no hay ningún campo de texto libre por el que pudiera
+ * colarse contenido de una conversación (D5).
+ */
+export const sessionUpdateSchema = z
+  .object({
+    sessionId: z.string().trim().max(200).nullable(),
+    /** Carpeta desde la que trabaja la sesión. Es la vía para casar con la tarea. */
+    cwd: z.string().trim().min(1).max(1024),
+    status: taskStatusSchema,
+    timestamp: isoTimestampSchema,
+  })
+  .strict()
+
+export type SessionUpdate = z.infer<typeof sessionUpdateSchema>
+
+export type SessionUpdateResult =
+  | { accepted: true; taskId: string; status: string }
+  | { accepted: false; reason: string; details?: string[] }

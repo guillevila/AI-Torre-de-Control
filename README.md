@@ -20,8 +20,9 @@ donde ves las tres a la vez**, con un enlace para volver a cada conversación.
 | Registra tareas y su estado, con su historial | Ejecutar prompts por ti |
 | Avisa cuando algo termina o te necesita | Guardar tus conversaciones |
 | Te devuelve a la conversación original de un clic | Consumir APIs de pago de OpenAI, Anthropic ni nadie |
-| Recibe avisos automáticos de herramientas locales | Enviar tus datos a ningún servidor |
-| Funciona aunque falle toda la automatización | Tocar la configuración de tus otras herramientas |
+| Recibe avisos automáticos de Claude Code | Enviar tus datos a ningún servidor |
+| Te deja resolver sus permisos sin cambiar de ventana | **Decidir nada por su cuenta**: solo transmite tu clic |
+| Funciona aunque falle toda la automatización | Tocar tu configuración sin enseñarte antes el cambio |
 
 **Todo ocurre en tu ordenador.** No hay cuenta, ni nube, ni coste por uso.
 El producto solo guarda *metadatos*: título, plataforma, estado, enlace y fechas.
@@ -54,6 +55,26 @@ Se abre una ventana. A partir de ahí:
 Cinco sitios en la barra izquierda: **Torre de control** (qué pasa ahora),
 **Centro de atención** (qué espera algo tuyo), **Tareas**, **Historial** y
 **Ajustes**.
+
+### Conectar Claude Code
+
+**Ajustes → Enlace con Claude Code → Ver el cambio exacto.**
+
+Se te enseña el fichero de configuración antes y después, y dónde queda la copia
+de seguridad. El botón de instalar **no aparece hasta que lo has visto**: instalar
+modifica `~/.claude/settings.json`, que gobierna todas tus sesiones de Claude
+Code, no solo las de este proyecto.
+
+Una vez instalado:
+
+- Cuando Claude Code **pida permiso**, salta un aviso y aparece una tarjeta con
+  el comando entero. Aceptas o rechazas desde la Torre.
+- Cuando **te reclame** o **termine**, la tarea se mueve sola.
+- Las tareas **se crean solas** a partir de la carpeta del proyecto.
+
+> Si la Torre está cerrada, o tardas más de 90 segundos en decidir, Claude Code
+> te pregunta en su terminal como siempre. Nunca se queda una sesión colgada
+> esperando a esta aplicación.
 
 ### Simular un aviso automático
 
@@ -119,6 +140,9 @@ Este repositorio es **público**, así que conviene decirlo claro:
   Es la barrera que impide que una integración cuele contenido de conversaciones.
 - Un evento **no puede ejecutar nada**. Solo mover una tarea entre estados
   conocidos.
+- Los **permisos** que llegan de Claude Code viven solo en memoria: se enseñan,
+  se deciden y desaparecen. Nunca tocan el disco. Y la aplicación **no decide
+  ninguno por su cuenta** — sin un clic tuyo, no hay respuesta.
 - Los enlaces se validan antes de abrirse: solo `http://` y `https://`.
 - La interfaz no tiene acceso al disco, ni a la red, ni a Node.
 

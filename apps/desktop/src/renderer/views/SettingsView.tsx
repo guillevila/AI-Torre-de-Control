@@ -1,4 +1,5 @@
 import type { DevInfo, Settings, SettingsPatch } from '@torre/contracts'
+import { ClaudeCodeSetup } from '../components/ClaudeCodeSetup.js'
 import { formatBytes } from '../utils/format.js'
 
 interface SettingsViewProps {
@@ -131,26 +132,24 @@ export function SettingsView({
         </p>
       </section>
 
+      <ClaudeCodeSetup />
+
       <section className="card">
-        <h2 className="card__title">Integraciones</h2>
+        <h2 className="card__title">Otras integraciones</h2>
         <p className="card__text">
-          <strong>Ninguna está instalada todavía.</strong> Hoy los estados se fijan a mano o
-          llegando un evento al receptor local. El canal por el que llegarán las integraciones ya
-          está construido y probado; falta escribir quien los envíe.
+          Todavía no existen. Cuando una lo haga, aparecerá aquí con su instalador, igual que la de
+          Claude Code.
         </p>
         <ul className="integration-list">
-          {(devInfo?.integrations ?? []).map((integration, index) => (
-            <li key={`${integration.provider}-${index}`}>
-              <span>{integration.label}</span>
-              <span className="tag">Próximamente</span>
-            </li>
-          ))}
+          {(devInfo?.integrations ?? [])
+            .filter((integration) => integration.provider !== 'claude_code')
+            .map((integration, index) => (
+              <li key={`${integration.provider}-${index}`}>
+                <span>{integration.label}</span>
+                <span className="tag">Próximamente</span>
+              </li>
+            ))}
         </ul>
-        <p className="card__text card__text--muted">
-          Cuando llegue el momento, instalar el hook de Claude Code modificará un archivo de
-          configuración tuyo. Se te enseñará el cambio exacto y se guardará una copia antes de tocar
-          nada.
-        </p>
       </section>
 
       <section className="card card--wide">
