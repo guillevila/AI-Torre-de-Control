@@ -6,6 +6,7 @@ import {
   groupOf,
   groupTasks,
   groupTasksByStatus,
+  officeLabel,
   officeWorkers,
   STATUS_GLYPHS,
   summarise,
@@ -235,5 +236,48 @@ describe('resumen de cabecera', () => {
       makeTask({ id: '2', status: 'archived' }),
     ])
     expect(resumen.total).toBe(1)
+  })
+})
+
+/**
+ * La etiqueta que se lee bajo cada muñeco en la planta.
+ *
+ * El enlace titula sus tareas «Claude Code · nombre-del-proyecto». Como la
+ * etiqueta mide 96 px, al recortarse solo se leía «Claude Code ·…» en todos los
+ * muñecos: ocupaba sitio sin distinguir a ninguno del resto.
+ */
+describe('etiqueta del muñeco en la oficina', () => {
+  it('enseña el proyecto, no la herramienta', () => {
+    const task = makeTask({
+      title: 'Claude Code · ai-torre-de-control',
+      projectPath: 'c:/Users/x/Desarrollo/ai-torre-de-control',
+    })
+    expect(officeLabel(task)).toBe('ai-torre-de-control')
+  })
+
+  it('distingue dos proyectos que la herramienta titulaba igual', () => {
+    const uno = makeTask({ title: 'Claude Code · tienda', projectPath: 'c:/dev/tienda' })
+    const dos = makeTask({ title: 'Claude Code · facturas', projectPath: 'c:/dev/facturas' })
+    expect(officeLabel(uno)).not.toBe(officeLabel(dos))
+  })
+
+  it('no se deja engañar por una barra final', () => {
+    const task = makeTask({ title: 'x', projectPath: 'c:/dev/tienda/' })
+    expect(officeLabel(task)).toBe('tienda')
+  })
+
+  it('se entiende con las barras de Windows', () => {
+    const task = makeTask({ title: 'x', projectPath: String.raw`C:\Users\x\dev\tienda` })
+    expect(officeLabel(task)).toBe('tienda')
+  })
+
+  it('una tarea registrada a mano conserva SU título', () => {
+    const task = makeTask({ title: 'Informe trimestral', projectPath: null })
+    expect(officeLabel(task)).toBe('Informe trimestral')
+  })
+
+  it('ante una ruta que no da nombre, se queda con el título', () => {
+    const task = makeTask({ title: 'Informe trimestral', projectPath: '/' })
+    expect(officeLabel(task)).toBe('Informe trimestral')
   })
 })
