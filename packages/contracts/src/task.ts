@@ -136,6 +136,16 @@ export const taskSchema = z.object({
    * reinicio de sesión dejaba un muñeco huérfano en la oficina.
    */
   sessionEnded: z.boolean(),
+  /**
+   * El nombre de la conversación, tal y como lo enseña la herramienta (D5-bis).
+   *
+   * Viene del registro de sesiones de Claude Code —un fichero de METADATOS—,
+   * nunca de leer la transcripción. Puede ser un nombre automático («mi-app-a3»)
+   * o el que el dueño puso con /rename. Es la única pieza de texto de la
+   * conversación que la Torre acepta, y está acotada; los mensajes siguen
+   * siendo territorio prohibido (D5).
+   */
+  sessionTitle: z.string().trim().min(1).max(200).nullable(),
   projectPath: z.string().trim().max(1024).nullable(),
   status: taskStatusSchema,
   statusSource: statusSourceSchema,
@@ -159,6 +169,7 @@ export const createTaskInputSchema = z.object({
   externalSessionId: z.string().trim().max(200).nullable().default(null),
   /** Solo tiene sentido con `externalSessionId`. Por omisión, la conversación se considera viva. */
   sessionEnded: z.boolean().default(false),
+  sessionTitle: z.string().trim().min(1).max(200).nullable().default(null),
   projectPath: z.string().trim().max(1024).nullable().default(null),
   notes: z.string().max(2000).nullable().default(null),
   status: taskStatusSchema.default('draft'),
@@ -188,6 +199,7 @@ export const updateTaskInputSchema = z.object({
   externalUrl: externalUrlSchema.nullable().optional(),
   externalSessionId: z.string().trim().max(200).nullable().optional(),
   sessionEnded: z.boolean().optional(),
+  sessionTitle: z.string().trim().min(1).max(200).nullable().optional(),
   projectPath: z.string().trim().max(1024).nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
 })

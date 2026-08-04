@@ -57,9 +57,13 @@ export type EventIngestResult =
  * sesión, pero no qué tarea has creado tú en la Torre. Aquí se manda lo que sí
  * sabe, y la aplicación se encarga de encontrar —o crear— la tarea.
  *
- * Estricto igual que los eventos: un campo de más y se rechaza entero. Y por
- * las mismas razones, no hay ningún campo de texto libre por el que pudiera
- * colarse contenido de una conversación (D5).
+ * Estricto igual que los eventos: un campo de más y se rechaza entero.
+ *
+ * Sobre el texto libre: el único campo de texto de conversación admitido es
+ * `sessionTitle` —el NOMBRE de la conversación, sacado del registro de
+ * metadatos de la herramienta, no de la transcripción— y está acotado a 200
+ * caracteres (D5-bis, decidido por el dueño el 4/8/2026). Los mensajes siguen
+ * sin tener ningún campo por el que colarse (D5).
  */
 export const sessionUpdateSchema = z
   .object({
@@ -74,6 +78,11 @@ export const sessionUpdateSchema = z
      * incluye el campo cuando es true; su ausencia significa «sigue viva».
      */
     sessionEnded: z.boolean().optional(),
+    /**
+     * Nombre de la conversación según el registro de sesiones de la herramienta
+     * (D5-bis). Opcional: si el enlace no lo encuentra, simplemente no lo manda.
+     */
+    sessionTitle: z.string().trim().min(1).max(200).optional(),
     timestamp: isoTimestampSchema,
   })
   .strict()

@@ -69,6 +69,15 @@ export const MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE tasks ADD COLUMN session_ended INTEGER NOT NULL DEFAULT 1;
   `,
+
+  // ── v4 — nombre de la conversación (D5-bis) ────────────────────────────────
+  //
+  // El NOMBRE que la herramienta da a la sesión («mi-app-a3», o el que el dueño
+  // puso con /rename). Sale del registro de metadatos de la herramienta, nunca
+  // de la transcripción: los mensajes siguen sin tener columna donde caber.
+  `
+  ALTER TABLE tasks ADD COLUMN session_title TEXT;
+  `,
 ]
 
 /**

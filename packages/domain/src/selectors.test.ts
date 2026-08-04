@@ -7,6 +7,7 @@ import {
   groupTasks,
   groupTasksByStatus,
   officeLabel,
+  officeTag,
   officeWorkers,
   STATUS_GLYPHS,
   summarise,
@@ -279,5 +280,33 @@ describe('etiqueta del muñeco en la oficina', () => {
   it('ante una ruta que no da nombre, se queda con el título', () => {
     const task = makeTask({ title: 'Informe trimestral', projectPath: '/' })
     expect(officeLabel(task)).toBe('Informe trimestral')
+  })
+})
+
+describe('la etiqueta en dos líneas (O9)', () => {
+  it('con nombre de conversación: proyecto arriba, nombre debajo', () => {
+    const task = makeTask({
+      title: 'Claude Code · tienda',
+      projectPath: 'c:/dev/tienda',
+      sessionTitle: 'repasar facturas',
+    })
+    expect(officeTag(task)).toEqual({ repo: 'tienda', nombre: 'repasar facturas' })
+  })
+
+  it('sin nombre de conversación, la etiqueta de una línea de siempre', () => {
+    const task = makeTask({ title: 'Claude Code · tienda', projectPath: 'c:/dev/tienda' })
+    expect(officeTag(task)).toEqual({ repo: null, nombre: 'tienda' })
+  })
+
+  it('una tarea manual sin carpeta enseña su título, sin línea de proyecto', () => {
+    const task = makeTask({ title: 'Informe trimestral', projectPath: null, sessionTitle: null })
+    expect(officeTag(task)).toEqual({ repo: null, nombre: 'Informe trimestral' })
+  })
+
+  it('dos conversaciones del mismo repo se distinguen por su nombre', () => {
+    const una = makeTask({ id: 't1', projectPath: 'c:/dev/tienda', sessionTitle: 'tienda-a1' })
+    const otra = makeTask({ id: 't2', projectPath: 'c:/dev/tienda', sessionTitle: 'tienda-b2' })
+    expect(officeTag(una, [una, otra]).nombre).not.toBe(officeTag(otra, [una, otra]).nombre)
+    expect(officeTag(una, [una, otra]).repo).toBe('tienda')
   })
 })

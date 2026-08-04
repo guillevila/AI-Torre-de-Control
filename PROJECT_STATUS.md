@@ -39,7 +39,7 @@ comandos. Hasta eso, no es una herramienta que puedas usar cómodamente cada dí
 
 > Lista SOLO lo que has probado tú mismo y funciona de verdad.
 
-**Comprobado automáticamente** — 332 tests unitarios y 10 pruebas que arrancan
+**Comprobado automáticamente** — 342 tests unitarios y 10 pruebas que arrancan
 la aplicación de verdad, todos ejecutados y en verde el 4 de agosto de 2026:
 
 - **Instalar y arrancar.** `pnpm install` termina en segundos sin compilar nada.
@@ -135,6 +135,12 @@ la aplicación de verdad, todos ejecutados y en verde el 4 de agosto de 2026:
   sigue siendo un solo icono aunque salte de subcarpeta; y una tarea revisada se
   recicla para la conversación siguiente, así que la oficina no se llena.
   Comprobado con 7 tests, incluido el caso que antes perdía el «te espera».
+- **El muñeco dice qué conversación es** (D5-bis, dos líneas: proyecto arriba,
+  nombre de la conversación debajo). El nombre sale del registro de metadatos de
+  Claude Code, nunca de la transcripción; un `/rename` en la sesión se ve bajo
+  el muñeco en la señal siguiente. Comprobado con 10 tests.
+  > ⚠️ Probado, no visto en pantalla: falta que el dueño lo vea con una sesión
+  > real tras actualizar el enlace.
 - **Cerrar una sesión y abrir otra recicla el muñeco**, no deja uno huérfano por
   reinicio. El enlace distingue «terminó un turno» de «la sesión se cerró», y la
   conversación siguiente adopta la tarea con su historial. Lo entregado sin

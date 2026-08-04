@@ -1578,6 +1578,25 @@ body {
   white-space: nowrap;
 }
 
+/* Dos líneas (O9): el proyecto arriba en pequeño, el nombre de la conversación
+   debajo. Solo aparece cuando la tarea tiene nombre de conversación. */
+.worker__tag-lines {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  text-align: left;
+}
+
+.worker__tag-repo {
+  font-size: 8.5px;
+  line-height: 1.2;
+  color: var(--ink-2);
+  opacity: 0.75;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .bubble {
   padding: 2px 7px;
   border-radius: var(--r3);

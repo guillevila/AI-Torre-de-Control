@@ -39,7 +39,7 @@
  * de significar nada.
  */
 
-import { appendFileSync, readFileSync, rmSync, statSync } from 'node:fs'
+import { appendFileSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { homedir, platform } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
@@ -109,6 +109,45 @@ function userDataDir() {
         ? join(home, 'Library', 'Application Support')
         : (process.env.XDG_CONFIG_HOME ?? join(home, '.config'))
   return join(appData, 'ai-torre-de-control')
+}
+
+/** Dónde guarda Claude Code su registro de sesiones vivas. Sobrescribible en tests. */
+function sessionsRegistryDir() {
+  if (process.env.TORRE_CLAUDE_SESSIONS) return process.env.TORRE_CLAUDE_SESSIONS
+  return join(homedir(), '.claude', 'sessions')
+}
+
+/**
+ * El NOMBRE de la conversación, desde el registro de sesiones de Claude Code.
+ *
+ * Ese registro es un fichero de METADATOS por sesión viva (identificador,
+ * carpeta, nombre). Aquí no se abre jamás la transcripción: el nombre es lo
+ * único de la conversación que viaja a la Torre, y acotado (D5-bis). Puede ser
+ * el automático («mi-app-a3») o el que el dueño puso con /rename.
+ *
+ * Si no se encuentra —versión antigua, registro limpio— se devuelve null y el
+ * aviso viaja sin nombre, como siempre. Ninguna razón para fallar por esto.
+ */
+function readSessionTitle(sessionId) {
+  if (!sessionId) return null
+  try {
+    const dir = sessionsRegistryDir()
+    for (const file of readdirSync(dir)) {
+      if (!file.endsWith('.json')) continue
+      try {
+        const registro = JSON.parse(readFileSync(join(dir, file), 'utf8'))
+        if (registro?.sessionId === sessionId && typeof registro.name === 'string') {
+          const nombre = registro.name.trim()
+          if (nombre) return nombre.slice(0, 200)
+        }
+      } catch {
+        /* un registro corrupto no invalida los demás */
+      }
+    }
+  } catch {
+    /* sin carpeta de registro no hay nombre, y no pasa nada */
+  }
+  return null
 }
 
 function readEndpoint() {
@@ -242,6 +281,7 @@ function buildAnswer(event, resolution, payload) {
  */
 async function sendStatus(endpoint, payload, status, { sessionEnded = false } = {}) {
   try {
+    const sessionTitle = readSessionTitle(payload?.session_id ?? null)
     await post(
       endpoint,
       '/sessions',
@@ -250,6 +290,7 @@ async function sendStatus(endpoint, payload, status, { sessionEnded = false } = 
         cwd: payload?.cwd ?? process.cwd(),
         status,
         ...(sessionEnded ? { sessionEnded: true } : {}),
+        ...(sessionTitle ? { sessionTitle } : {}),
         timestamp: new Date().toISOString(),
       },
       FIRE_AND_FORGET_TIMEOUT_MS,

@@ -47,6 +47,17 @@ export class SessionStatusService {
       ending: update.sessionEnded === true,
     })
 
+    // El nombre de la conversación (D5-bis) se refresca cuando llega o cambia:
+    // un /rename a mitad de sesión debe verse bajo el muñeco en la señal
+    // siguiente. Si no viene, no se toca — no borrar información por silencio.
+    if (update.sessionTitle && update.sessionTitle !== task.sessionTitle) {
+      try {
+        this.tasks.update({ id: task.id, sessionTitle: update.sessionTitle })
+      } catch {
+        // Sin nombre no se pierde nada esencial; la señal de estado es lo urgente.
+      }
+    }
+
     try {
       const moved = this.tasks.changeStatus({
         id: task.id,

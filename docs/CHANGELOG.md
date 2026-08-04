@@ -10,6 +10,27 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Añadido — el muñeco dice qué conversación es (D5-bis, resuelve O9)
+
+**Etiqueta en dos líneas**: el proyecto arriba, en pequeño, y el **nombre de la
+conversación** debajo — el automático («mi-app-a3») o el que pongas con
+`/rename`, que se convierte en la forma natural de etiquetar el trabajo. Un
+`/rename` a mitad de sesión se ve bajo el muñeco en la señal siguiente. Sin
+nombre (tarea manual, enlace antiguo), la línea única de siempre.
+
+**De dónde sale el nombre — y de dónde NO.** El dueño autorizó expresamente leer
+la conversación entera; no hizo falta y no se hace: el enlace lo lee del
+**registro de metadatos de sesiones vivas** de Claude Code, jamás de la
+transcripción. D5 queda matizada como **D5-bis**: una línea de nombre sí,
+mensajes nunca — y el test «no manda nada del contenido de la conversación»
+sigue de guardia. Matiz honesto: el nombre automático puede derivar del tema de
+la conversación, y se persiste (migración v4, columna `session_title`).
+
+**10 tests nuevos** (el nombre viaja, el registro ajeno no contamina, un
+registro corrupto no tumba el aviso, un /rename actualiza, una señal sin nombre
+no borra el que había, y la etiqueta en sus cuatro variantes). **342 tests**
+unitarios y 10 de interfaz, en verde.
+
 ### Corregido — los muñecos de sesiones cerradas se acumulaban en la oficina
 
 **Apareció el primer día de uso real de D23-bis.** Al reiniciar las sesiones

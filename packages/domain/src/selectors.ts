@@ -129,6 +129,31 @@ export function officeLabel(task: Task, todas: readonly Task[] = []): string {
 }
 
 /**
+ * La etiqueta del muñeco en dos líneas (O9, resuelta el 4/8/2026): el proyecto
+ * arriba y el nombre de la conversación debajo.
+ *
+ * Solo hay dos líneas cuando hay dos cosas que decir: si la tarea no tiene
+ * nombre de conversación (D5-bis) —una tarea manual, una versión antigua del
+ * enlace— se queda la etiqueta de una línea de siempre. Un renglón vacío debajo
+ * de cada muñeco sería ruido para el caso más común.
+ */
+export interface OfficeTagLines {
+  /** El proyecto, arriba. `null` cuando no hay dos líneas que enseñar. */
+  repo: string | null
+  /** Lo principal: el nombre de la conversación, o la etiqueta clásica. */
+  nombre: string
+}
+
+export function officeTag(task: Task, todas: readonly Task[] = []): OfficeTagLines {
+  if (!task.sessionTitle) return { repo: null, nombre: officeLabel(task, todas) }
+
+  const carpeta = task.projectPath ? folderName(task.projectPath).trim() : ''
+  const carpetaValida = carpeta !== '' && !/^[/\\]+$/.test(carpeta) && !/^[a-z]:$/i.test(carpeta)
+
+  return { repo: carpetaValida ? carpeta : null, nombre: task.sessionTitle }
+}
+
+/**
  * Estados en los que una tarea NO reclama nada pero sigue viva.
  *
  * Es el reposo de un proyecto: no aparece en la cola de atención, pero tampoco

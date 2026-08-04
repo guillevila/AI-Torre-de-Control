@@ -271,6 +271,39 @@ describe('cerrar y volver a abrir recicla el icono', () => {
     expect(adoptada?.title).toBe(`Claude Code · mi-app · ${'sesion-C-1234'.slice(0, 6)}`)
   })
 
+  it('el nombre de la conversación se guarda y un /rename lo actualiza', () => {
+    sessions.apply({
+      sessionId: 'sesion-A',
+      cwd: CARPETA,
+      status: 'running',
+      sessionTitle: 'mi-app-a3',
+      timestamp: now(),
+    })
+    expect(tasks.list()[0]?.sessionTitle).toBe('mi-app-a3')
+
+    sessions.apply({
+      sessionId: 'sesion-A',
+      cwd: CARPETA,
+      status: 'running',
+      sessionTitle: 'repasar facturas',
+      timestamp: now(),
+    })
+    expect(tasks.list()[0]?.sessionTitle).toBe('repasar facturas')
+  })
+
+  it('una señal sin nombre no borra el que ya había', () => {
+    sessions.apply({
+      sessionId: 'sesion-A',
+      cwd: CARPETA,
+      status: 'running',
+      sessionTitle: 'repasar facturas',
+      timestamp: now(),
+    })
+    señal('waiting_user', CARPETA, 'sesion-A')
+
+    expect(tasks.list()[0]?.sessionTitle).toBe('repasar facturas')
+  })
+
   it('una señal posterior de la misma conversación la marca viva otra vez', () => {
     // El caso de la migración: tareas marcadas como terminadas sin serlo se
     // corrigen solas en cuanto su conversación vuelve a hablar.

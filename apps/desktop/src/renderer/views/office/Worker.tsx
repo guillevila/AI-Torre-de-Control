@@ -1,5 +1,5 @@
 import type { Task } from '@torre/contracts'
-import { officeLabel, PROVIDER_LABELS, STATUS_GLYPHS, STATUS_LABELS } from '@torre/domain'
+import { officeTag, PROVIDER_LABELS, STATUS_GLYPHS, STATUS_LABELS } from '@torre/domain'
 import { WorkPulse } from '../../components/Indicators.js'
 
 /**
@@ -79,9 +79,11 @@ export function Worker({ task, left, top, onSelect, todas = [] }: WorkerProps) {
         </button>
 
         {/*
-          La etiqueta lleva el PROYECTO, no el título entero: es lo que
-          distingue a un muñeco de otro. El título completo sigue estando en el
-          texto emergente y en la ficha, así que no se pierde nada.
+          La etiqueta en dos líneas (O9): el proyecto arriba, en pequeño, y el
+          NOMBRE de la conversación debajo, que es lo que distingue a un muñeco
+          de otro cuando hay varias conversaciones. Sin nombre —tarea manual,
+          enlace antiguo— se queda la línea única de siempre: un renglón vacío
+          sería ruido. El título completo sigue en el texto emergente y la ficha.
         */}
         <button
           type="button"
@@ -93,7 +95,17 @@ export function Worker({ task, left, top, onSelect, todas = [] }: WorkerProps) {
           <span className="worker__tag-glyph" aria-hidden="true">
             {STATUS_GLYPHS[status]}
           </span>
-          <span className="worker__tag-title">{officeLabel(task, todas)}</span>
+          {(() => {
+            const tag = officeTag(task, todas)
+            return tag.repo ? (
+              <span className="worker__tag-lines">
+                <span className="worker__tag-repo">{tag.repo}</span>
+                <span className="worker__tag-title">{tag.nombre}</span>
+              </span>
+            ) : (
+              <span className="worker__tag-title">{tag.nombre}</span>
+            )
+          })()}
         </button>
       </div>
     </div>

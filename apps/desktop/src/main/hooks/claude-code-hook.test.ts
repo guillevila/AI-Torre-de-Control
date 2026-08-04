@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process'
 import { createServer, type Server } from 'node:http'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -70,7 +70,13 @@ afterEach(async () => {
 function ejecutar(payload: unknown): Promise<{ salida: string; codigo: number }> {
   return new Promise((resolve) => {
     const hijo = spawn(process.execPath, [SCRIPT], {
-      env: { ...process.env, TORRE_USER_DATA: dataDir },
+      // El registro de sesiones se aísla SIEMPRE a una carpeta del test: si no,
+      // el hook leería el registro real del ordenador donde corren los tests.
+      env: {
+        ...process.env,
+        TORRE_USER_DATA: dataDir,
+        TORRE_CLAUDE_SESSIONS: join(dataDir, 'registro-sesiones'),
+      },
       stdio: ['pipe', 'pipe', 'pipe'],
     })
 
@@ -322,6 +328,57 @@ describe('qué estado manda cada evento', () => {
     const enviado = recibidas.find((r) => r.path === '/sessions')
     expect(JSON.stringify(enviado?.body)).not.toContain('jamás debe salir')
     expect(JSON.stringify(enviado?.body)).not.toContain('transcripcion')
+  })
+})
+
+/**
+ * El nombre de la conversación (D5-bis). Sale del registro de METADATOS de
+ * sesiones vivas, jamás de la transcripción; el test de arriba sigue vigilando
+ * que del contenido no salga nada.
+ */
+describe('el nombre de la conversación', () => {
+  const registrar = (sessionId: string, name: unknown) => {
+    const dir = join(dataDir, 'registro-sesiones')
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(join(dir, '12345.json'), JSON.stringify({ pid: 12345, sessionId, name }))
+  }
+
+  it('viaja con el aviso cuando el registro lo conoce', async () => {
+    registrar('sesion-1', 'repasar facturas de julio')
+    await ejecutar({ hook_event_name: 'Stop', session_id: 'sesion-1', cwd: 'C:/proyectos/mi-app' })
+
+    expect(recibidas.find((r) => r.path === '/sessions')?.body.sessionTitle).toBe(
+      'repasar facturas de julio',
+    )
+  })
+
+  it('sin registro, el aviso viaja sin nombre — ni campo vacío ni fallo', async () => {
+    await ejecutar({ hook_event_name: 'Stop', session_id: 'sesion-1', cwd: 'C:/proyectos/mi-app' })
+
+    const body = recibidas.find((r) => r.path === '/sessions')?.body
+    expect(body?.status).toBe('completed')
+    expect('sessionTitle' in (body ?? {})).toBe(false)
+  })
+
+  it('el registro de OTRA sesión no contamina: cada aviso lleva su nombre o ninguno', async () => {
+    registrar('sesion-ajena', 'otro trabajo')
+    await ejecutar({ hook_event_name: 'Stop', session_id: 'sesion-1', cwd: 'C:/proyectos/mi-app' })
+
+    expect('sessionTitle' in (recibidas.find((r) => r.path === '/sessions')?.body ?? {})).toBe(false)
+  })
+
+  it('un registro corrupto no tumba el aviso', async () => {
+    const dir = join(dataDir, 'registro-sesiones')
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(join(dir, '12345.json'), 'esto no es JSON {')
+    const { codigo } = await ejecutar({
+      hook_event_name: 'Stop',
+      session_id: 'sesion-1',
+      cwd: 'C:/proyectos/mi-app',
+    })
+
+    expect(codigo).toBe(0)
+    expect(recibidas.find((r) => r.path === '/sessions')?.body.status).toBe('completed')
   })
 })
 

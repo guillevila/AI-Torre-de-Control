@@ -14,6 +14,7 @@ export function makeTask(overrides: Partial<Task> = {}): Task {
     externalUrl: null,
     externalSessionId: null,
     sessionEnded: false,
+    sessionTitle: null,
     projectPath: null,
     status: 'draft',
     statusSource: 'manual',
