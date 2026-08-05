@@ -372,6 +372,89 @@ describe('responder desde la Torre (D25)', () => {
     expect(recibidas.find((r) => r.path === '/sessions')?.body.status).toBe('completed')
   })
 
+  const entradaUsuario = (texto: string) => JSON.stringify({ type: 'user', message: { content: texto } })
+  const resultadoHerramienta = () =>
+    JSON.stringify({
+      type: 'user',
+      message: { content: [{ type: 'tool_result', tool_use_id: 'tu_1', content: 'ok' }] },
+    })
+  const razonamiento = () =>
+    JSON.stringify({ type: 'assistant', message: { content: [{ type: 'thinking', thinking: 'mmm' }] } })
+
+  const salidaDelTurno = async (...partes: string[]) => {
+    respuesta = { action: 'pass' }
+    await ejecutar({
+      hook_event_name: 'Stop',
+      session_id: 'sesion-1',
+      cwd: 'C:/proyectos/mi-app',
+      transcript_path: transcripcion(...partes),
+    })
+    return recibidas.find((r) => r.path === '/turns')?.body.output as string
+  }
+
+  /*
+   * Un turno NO es un mensaje: es varios. El asistente narra, usa herramientas,
+   * cuenta lo que encuentra y concluye. Enseñar solo el último trozo dejaba
+   * fuera la explicación, y en el peor caso enseñaba una frase intermedia como
+   * si fuera la conclusión.
+   */
+  it('junta el turno ENTERO, no solo el último mensaje', async () => {
+    const salida = await salidaDelTurno(
+      entradaUsuario('arregla los tests'),
+      entradaAsistente('Voy a mirar qué falla.'),
+      resultadoHerramienta(),
+      entradaAsistente('Son tres, todos del mismo módulo.'),
+      resultadoHerramienta(),
+      entradaAsistente('Hecho.'),
+    )
+
+    expect(salida).toBe('Voy a mirar qué falla.\n\nSon tres, todos del mismo módulo.\n\nHecho.')
+  })
+
+  it('un resultado de herramienta no corta el turno aunque viaje como mensaje de «user»', async () => {
+    const salida = await salidaDelTurno(
+      entradaUsuario('hazlo'),
+      entradaAsistente('Empiezo.'),
+      resultadoHerramienta(),
+      entradaAsistente('Listo.'),
+    )
+
+    expect(salida).toContain('Empiezo.')
+    expect(salida).toContain('Listo.')
+  })
+
+  it('se para en tu mensaje anterior: no arrastra el turno de antes', async () => {
+    const salida = await salidaDelTurno(
+      entradaAsistente('esto es del turno ANTERIOR'),
+      entradaUsuario('ahora otra cosa'),
+      entradaAsistente('esto es del turno de ahora'),
+    )
+
+    expect(salida).toBe('esto es del turno de ahora')
+  })
+
+  it('el razonamiento del asistente no se enseña', async () => {
+    const salida = await salidaDelTurno(
+      entradaUsuario('dale'),
+      razonamiento(),
+      entradaAsistente('La respuesta.'),
+    )
+
+    expect(salida).toBe('La respuesta.')
+  })
+
+  it('si el turno no cabe, se conserva el FINAL, que es lo que hay que leer', async () => {
+    const salida = await salidaDelTurno(
+      entradaUsuario('dale'),
+      entradaAsistente('R'.repeat(4500)),
+      entradaAsistente('LA CONCLUSIÓN'),
+    )
+
+    expect(salida.length).toBeLessThanOrEqual(4000)
+    expect(salida.endsWith('LA CONCLUSIÓN')).toBe(true)
+    expect(salida.startsWith('…')).toBe(true)
+  })
+
   it('manda a la Torre la última respuesta del asistente, recortada de la transcripción', async () => {
     respuesta = { action: 'pass' }
     const ruta = transcripcion(

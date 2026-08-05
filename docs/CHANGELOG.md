@@ -10,6 +10,30 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Corregido — la tarjeta enseñaba trozos sueltos del turno (D26-ter)
+
+**Lo detectó el dueño preguntando**: «el output no se debería mandar hasta que
+no se terminara de procesar la info; VSCode muchas veces manda mensajes
+intermedios». Tenía razón, y el fallo era peor de lo que parecía.
+
+- **Un turno no es un mensaje, son varios.** El asistente narra lo que va a
+  hacer, usa una herramienta, cuenta lo que encontró, usa otra, y concluye. Se
+  leía **solo la última entrada**, así que un turno acabado en «Listo» enseñaba
+  eso y nada más — sin la explicación, que es justo lo que hace falta para poder
+  contestar. Y si el turno terminaba tras una frase intermedia, esa frase se
+  enseñaba **como si fuera la respuesta final**.
+- **Ahora se recoge el turno entero**, desde tu último mensaje: lo mismo que
+  verías en la ventana de VSCode. Los resultados de las herramientas también
+  viajan como mensajes de «user» y **no** cortan el turno; el razonamiento
+  interno no se enseña; y si no cabe en 4000 caracteres se conserva el **final**,
+  que es la conclusión.
+- **Lo que no cambia, y responde a la pregunta de fondo:** esto se lee solo
+  cuando Claude Code emite `Stop`, o sea cuando ya ha terminado de responder y
+  se queda esperando. La tarjeta **nunca** aparece mientras el asistente trabaja.
+- **386 tests** unitarios (5 nuevos: el turno entero, el resultado de herramienta
+  que no debe cortarlo, el corte en tu mensaje anterior, el razonamiento
+  excluido y el recorte que conserva el final).
+
 ### Añadido — la respuesta se lee como en VSCode (D26-bis)
 
 **A petición del dueño**: «un recuadro que no ocupe la pantalla entera pero que

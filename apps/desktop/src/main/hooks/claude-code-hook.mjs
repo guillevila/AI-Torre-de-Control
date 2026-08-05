@@ -293,12 +293,32 @@ const TURN_OUTPUT_MAX = 4000
 const TURN_REPLY_TIMEOUT_MS = 310_000
 
 /**
- * La respuesta del asistente en este turno, leída del FINAL de la transcripción.
+ * El TURNO ENTERO del asistente, leído del final de la transcripción (D26-ter).
  *
  * Es la única lectura de contenido de conversación de todo el enlace, existe
  * porque el dueño la pidió expresamente (D5-ter), y su destino es una tarjeta
  * en memoria: la Torre la enseña y no la guarda. Se lee solo la cola del
  * fichero —las transcripciones crecen mucho— y se recorta al tope.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * POR QUÉ EL TURNO ENTERO Y NO EL ÚLTIMO MENSAJE
+ *
+ * Un turno no es un mensaje: es varios. El asistente narra lo que va a hacer,
+ * usa una herramienta, cuenta lo que encontró, usa otra, y concluye. Leer solo
+ * la última entrada tenía dos fallos, y el segundo es el grave:
+ *
+ *  1. Si el turno acaba con un «Listo», eso es TODO lo que se veía. La
+ *     explicación —lo que hace falta para poder contestar— se quedaba fuera.
+ *  2. Si el turno terminaba justo después de una frase intermedia («ahora edito
+ *     el fichero…»), esa frase se enseñaba COMO SI FUERA la respuesta final.
+ *
+ * Así que se recoge todo el texto del asistente desde el último mensaje del
+ * dueño. Eso es exactamente lo que se vería en la ventana de VSCode.
+ *
+ * Lo que NO cambia: esto sigue leyéndose solo cuando Claude Code emite `Stop`,
+ * es decir, cuando ha terminado de responder y se queda esperando. Nunca
+ * mientras trabaja.
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 function leerRespuestaDelTurno(transcriptPath) {
   try {
@@ -312,30 +332,64 @@ function leerRespuestaDelTurno(transcriptPath) {
     closeSync(fd)
 
     const lineas = buffer.toString('utf8').split('\n')
-    // De atrás hacia delante: la última entrada del asistente del hilo
-    // principal (las de los subagentes van marcadas como sidechain).
+    const piezas = []
+
+    // De atrás hacia delante hasta TU último mensaje: eso delimita el turno.
     for (let i = lineas.length - 1; i >= 0; i -= 1) {
-      const linea = lineas[i]
-      if (!linea.includes('"assistant"')) continue
+      let entrada
       try {
-        const entrada = JSON.parse(linea)
-        if (entrada?.type !== 'assistant' || entrada?.isSidechain) continue
-        const contenido = entrada?.message?.content
-        if (!Array.isArray(contenido)) continue
-        const texto = contenido
-          .filter((parte) => parte?.type === 'text' && typeof parte.text === 'string')
-          .map((parte) => parte.text)
-          .join('\n')
-          .trim()
-        if (texto) return texto.length > TURN_OUTPUT_MAX ? `${texto.slice(0, TURN_OUTPUT_MAX - 1)}…` : texto
+        entrada = JSON.parse(lineas[i])
       } catch {
-        /* una línea partida por el corte de la cola no es un error */
+        continue // una línea partida por el corte de la cola no es un error
       }
+      // Los subagentes van marcados como sidechain: su charla no es el turno.
+      if (!entrada || entrada.isSidechain) continue
+
+      // Aquí empezó el turno. Lo anterior es la conversación de antes.
+      if (entrada.type === 'user' && !entrada.isMeta && esMensajeDelDueño(entrada)) break
+
+      if (entrada.type !== 'assistant') continue
+      const texto = textoDe(entrada.message?.content)
+      if (texto) piezas.push(texto)
     }
+
+    if (piezas.length === 0) return ''
+    const texto = piezas.reverse().join('\n\n').trim()
+    if (texto.length <= TURN_OUTPUT_MAX) return texto
+    // Si no cabe, se conserva el FINAL. La conclusión es lo que hay que leer
+    // para decidir; la narración de por medio es contexto que se puede perder.
+    return `…${texto.slice(texto.length - (TURN_OUTPUT_MAX - 1))}`
   } catch {
     /* sin transcripción no hay texto, y la tarjeta lo dice */
   }
   return ''
+}
+
+/** El texto visible de un mensaje. El razonamiento (`thinking`) no cuenta. */
+function textoDe(contenido) {
+  if (!Array.isArray(contenido)) return ''
+  return contenido
+    .filter((parte) => parte?.type === 'text' && typeof parte.text === 'string')
+    .map((parte) => parte.text)
+    .join('\n')
+    .trim()
+}
+
+/**
+ * ¿Es esto un mensaje TUYO, de los que empiezan un turno?
+ *
+ * Ojo: los resultados de las herramientas también viajan como mensajes de
+ * «user». No son tuyos y no separan turnos — si se contaran, el turno se
+ * cortaría en la primera herramienta y volveríamos a enseñar solo el último
+ * trozo.
+ */
+function esMensajeDelDueño(entrada) {
+  const contenido = entrada?.message?.content
+  if (typeof contenido === 'string') return contenido.trim() !== ''
+  if (!Array.isArray(contenido)) return false
+  return contenido.some(
+    (parte) => parte?.type === 'text' && typeof parte.text === 'string' && parte.text.trim() !== '',
+  )
 }
 
 /**

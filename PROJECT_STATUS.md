@@ -157,6 +157,11 @@ la aplicación de verdad, todos ejecutados y en verde el 5 de agosto de 2026:
   «Responder desde la Torre» está encendido.
   > ⚠️ Verificado en la prueba automática de interfaz, que sí abre la ventana
   > real. Lo que falta es lo mismo que arriba: un turno de una sesión de verdad.
+- **La tarjeta enseña el turno entero** (D26-ter), no la última frase suelta: todo
+  el texto del asistente desde tu último mensaje, igual que lo verías en VSCode.
+  Solo se lee cuando Claude Code ha **terminado** de responder — nunca mientras
+  trabaja. Comprobado con 5 tests, incluido el caso que antes cortaba el turno en
+  la primera herramienta.
 - **La respuesta se lee con formato, como en VSCode** (D26-bis). Bloques de
   código en su recuadro, con lenguaje y botón de copiar, sin partir líneas;
   títulos, listas, negritas y código en línea. La ventanita crece a 560×640 y se
