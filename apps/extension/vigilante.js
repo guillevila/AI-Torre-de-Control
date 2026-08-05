@@ -68,6 +68,22 @@ let generando = false
 let ultimoEnviado = null
 let temporizadorFin = null
 
+/**
+ * La Torre no conocía la última conversación de la que avisamos.
+ *
+ * Pasa siempre que registras una conversación **mientras ya está respondiendo**:
+ * el aviso de «ha empezado» ocurrió antes de que la tarea existiera, se
+ * descartó, y como solo se avisa de los CAMBIOS, nadie vuelve a decirlo. La
+ * tarea se quedaba en «en cola» hasta el siguiente cambio, que podía tardar.
+ *
+ * Con esto se repite el aviso hasta que la Torre lo reconozca.
+ */
+let reanunciar = false
+let ultimoReintento = 0
+
+/** Entre reintentos, para no machacar a la Torre con algo que no conoce. */
+const ESPERA_REINTENTO_MS = 4000
+
 /** Qué señales reconoce ahora mismo. Vacío = no ve nada generándose. */
 function señalesQueCoinciden() {
   const vistas = []
@@ -114,14 +130,27 @@ function saludar() {
 function avisar(estado, reconocidas = []) {
   const url = location.href
   const huella = `${estado}·${url}`
-  // Ni repetir el mismo aviso, ni marear a la Torre con lo que ya sabe.
-  if (huella === ultimoEnviado) return
+  // Ni repetir el mismo aviso, ni marear a la Torre con lo que ya sabe. Salvo
+  // que el anterior no llegara a ninguna tarea: entonces sí hay que insistir.
+  if (huella === ultimoEnviado && !reanunciar) return
   ultimoEnviado = huella
+  reanunciar = false
+  ultimoReintento = Date.now()
 
   try {
     // `reconoce` viaja solo para el cuaderno: dice QUÉ señal acertó, que es lo
     // que hará falta el día que ChatGPT cambie su interfaz.
-    chrome.runtime.sendMessage({ tipo: 'actividad', estado, url, reconoce: reconocidas })
+    chrome.runtime.sendMessage(
+      { tipo: 'actividad', estado, url, reconoce: reconocidas },
+      (respuesta) => {
+        // Sin `lastError` consultado, Chrome se queja por consola cuando no hay
+        // nadie escuchando. No es un problema: solo hay que mirarlo.
+        if (chrome.runtime.lastError) return
+        // La Torre no conocía esta conversación: seguramente aún no la habías
+        // registrado. Se repetirá hasta que la reconozca.
+        reanunciar = respuesta?.emparejada === false
+      },
+    )
   } catch {
     // La extensión se ha recargado o desactivado. No es asunto de la página.
   }
@@ -137,6 +166,21 @@ function revisar() {
       clearTimeout(temporizadorFin)
       temporizadorFin = null
     }
+    avisar('running', coinciden)
+    return
+  }
+
+  /*
+   * Sin cambio, pero la Torre no reconoció el último aviso.
+   *
+   * Es el caso de registrar una conversación que YA estaba respondiendo: se
+   * repite «trabajando» hasta que exista la tarea a la que aplicarlo.
+   *
+   * Solo se repite `running`, nunca `completed`: es el único estado que se
+   * puede ver ahora mismo. Anunciar que algo terminó sin haberlo visto empezar
+   * sería inventarse un dato.
+   */
+  if (ahora && reanunciar && Date.now() - ultimoReintento > ESPERA_REINTENTO_MS) {
     avisar('running', coinciden)
     return
   }

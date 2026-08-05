@@ -122,7 +122,7 @@ chrome.permissions.onRemoved.addListener(() => void sincronizarVigilante())
  * vigilante corre dentro de una página web, así que se le trata como a
  * cualquier otra cosa que venga de fuera: no se da nada por bueno.
  */
-chrome.runtime.onMessage.addListener((mensaje, remitente) => {
+chrome.runtime.onMessage.addListener((mensaje, remitente, responder) => {
   // El saludo del vigilante. Sirve para distinguir «no está puesto» de «está
   // puesto pero no reconoce nada», que desde fuera se ven exactamente igual.
   if (mensaje?.tipo === 'vigilante-vivo') {
@@ -142,8 +142,20 @@ chrome.runtime.onMessage.addListener((mensaje, remitente) => {
   const url = remitente?.tab?.url
   if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) return
 
-  void enviar(mensaje.estado, url, mensaje.reconoce)
-  // Sin respuesta: al vigilante no le hace falta saber cómo acabó.
+  /*
+   * Se contesta al vigilante si la Torre reconoció la conversación.
+   *
+   * Le hace falta para un caso concreto: registrar una conversación que YA
+   * estaba respondiendo. El aviso de «ha empezado» ocurre antes de que exista
+   * la tarea, así que no encaja con nada; sabiéndolo, el vigilante lo repite
+   * hasta que sí encaje, y la tarea sale de «en cola» sola.
+   */
+  enviar(mensaje.estado, url, mensaje.reconoce).then(
+    (emparejada) => responder({ emparejada }),
+    () => responder({ emparejada: null }),
+  )
+  // `true` mantiene abierto el canal: la respuesta llega más tarde.
+  return true
 })
 
 async function enviar(estado, url, reconoce) {
@@ -160,37 +172,50 @@ async function enviar(estado, url, reconoce) {
     detalle: `en ${sitio}${reconoce?.length ? ` · por ${reconoce.join(', ')}` : ''}`,
   })
 
+  /*
+   * Devuelve si la Torre emparejó el aviso con alguna tarea.
+   *
+   *   true  → hecho.
+   *   false → no conoce esa conversación; merece la pena repetirlo, porque
+   *           igual la estás registrando justo ahora.
+   *   null  → no se pudo ni preguntar. Repetir no arreglaría nada.
+   */
   try {
     const token = await leerClave()
     if (!token) {
       await apuntar({ que: 'no se envió', detalle: 'falta la clave local', mal: true })
-      return
+      return null
     }
 
     const puerto = await buscarTorre()
     if (!puerto) {
       await apuntar({ que: 'no se envió', detalle: 'la Torre no está abierta', mal: true })
-      return
+      return null
     }
 
     const resultado = await avisarActividad({ puerto, token, externalUrl: url, status: estado })
 
     if (!resultado.ok) {
       await apuntar({ que: 'la Torre lo rechazó', detalle: resultado.mensaje, mal: true })
-    } else if (!resultado.emparejada) {
+      return null
+    }
+
+    if (!resultado.emparejada) {
       await apuntar({
         que: 'conversación sin registrar',
-        detalle: 'la Torre no tiene ninguna tarea con esta dirección; regístrala primero',
-        mal: true,
+        detalle: 'la Torre no tiene ninguna tarea con esta dirección; regístrala y se pondrá al día sola',
       })
-    } else {
-      await apuntar({ que: `la Torre la puso en «${resultado.estado ?? estado}»`, detalle: sitio })
+      return false
     }
+
+    await apuntar({ que: `la Torre la puso en «${resultado.estado ?? estado}»`, detalle: sitio })
+    return true
   } catch (error) {
     await apuntar({
       que: 'no se pudo hablar con la Torre',
       detalle: error?.message ?? 'motivo desconocido',
       mal: true,
     })
+    return null
   }
 }
