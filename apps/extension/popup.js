@@ -1,4 +1,11 @@
-import { buscarTorre, leerClave, leerCuenta, nombrePlataforma, registrar } from './torre.js'
+import {
+  buscarTorre,
+  conversacionEmpezada,
+  leerClave,
+  leerCuenta,
+  nombrePlataforma,
+  registrar,
+} from './torre.js'
 
 const $titulo = document.getElementById('titulo')
 const $sitio = document.getElementById('sitio')
@@ -52,6 +59,18 @@ async function arrancar() {
 
   if (!title) {
     avisar('atencion', 'La pestaña no tiene título, y hace falta uno para registrarla.')
+    return
+  }
+
+  // Un chat sin empezar cambia de dirección en cuanto escribes, y la tarea se
+  // quedaría atada a la vieja: nunca se movería. Mejor decirlo que crear un
+  // muñeco muerto.
+  if (!conversacionEmpezada(url)) {
+    avisar(
+      'atencion',
+      'Todavía no has empezado esta conversación. Escribe tu primer mensaje y entonces regístrala: hasta que exista, su dirección cambia y la tarea no podría seguirla.',
+    )
+    await montarDeteccion(url)
     return
   }
 
@@ -195,6 +214,23 @@ async function enviar({ token, title, externalUrl, cuenta }) {
   } else {
     avisar('ok', 'Registrada. Ya la tienes en la Torre, en «en cola».')
     $boton.textContent = 'Registrada ✓'
+  }
+
+  /*
+   * El permiso de detección se concede POR PERFIL de Chrome.
+   *
+   * Con varias cuentas —un perfil para cada una— es facilísimo activarlo en uno
+   * y olvidarlo en el otro. Desde fuera se ve como «unos chats se mueven solos
+   * y otros no», sin ninguna pista de por qué: costó una consulta entera
+   * averiguarlo. Se dice aquí, justo cuando acabas de registrar y estás
+   * mirando la pantalla.
+   */
+  if (origenVigilado && !deteccionActiva) {
+    const nota = document.createElement('span')
+    nota.className = 'aviso__nota'
+    nota.textContent =
+      'Ojo: la detección automática está apagada en este perfil de Chrome, así que esta tarea no se moverá sola. Actívala aquí abajo.'
+    $aviso.append(nota)
   }
 }
 
