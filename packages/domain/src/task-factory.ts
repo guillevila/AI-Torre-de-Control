@@ -29,6 +29,7 @@ export function createTask(rawInput: unknown, ctx: TaskCreationContext): Task {
     externalUrl: input.externalUrl,
     externalSessionId: input.externalSessionId,
     projectPath: input.projectPath,
+    account: input.account,
     status: input.status,
     // Por omisión, manual y alta: el caso normal es que la registres tú, y de
     // eso no hay duda. Quien la cree por otra vía debe decirlo, porque la
@@ -62,6 +63,7 @@ export function applyTaskUpdate(task: Task, rawInput: unknown, now: string): Tas
     externalSessionId:
       input.externalSessionId !== undefined ? input.externalSessionId : task.externalSessionId,
     projectPath: input.projectPath !== undefined ? input.projectPath : task.projectPath,
+    account: input.account !== undefined ? input.account : task.account,
     notes: input.notes !== undefined ? input.notes : task.notes,
     updatedAt: now,
   }

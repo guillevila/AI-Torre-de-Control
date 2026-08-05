@@ -47,6 +47,30 @@ export async function guardarClave(token) {
   await chrome.storage.local.set({ token: String(token ?? '').trim() })
 }
 
+/**
+ * Nombre de la cuenta de este perfil de navegador.
+ *
+ * Cada perfil de Chrome guarda lo suyo, así que basta con escribirlo una vez
+ * por perfil y todas las conversaciones que registres desde ahí lo llevan.
+ *
+ * Existe porque tener tres chats de una cuenta y dos de otra abiertos a la vez
+ * es normal, y sin esto los cinco muñecos se ven exactamente igual.
+ *
+ * Lo escribes tú: la extensión **no sabe** con qué cuenta de ChatGPT estás
+ * —tendría que leer la página para averiguarlo, y no lo hace—.
+ */
+export async function leerCuenta() {
+  const guardado = await chrome.storage.local.get('cuenta')
+  const cuenta = typeof guardado.cuenta === 'string' ? guardado.cuenta.trim() : ''
+  return cuenta || null
+}
+
+export async function guardarCuenta(cuenta) {
+  // 40 es el tope que acepta la Torre. Recortar aquí evita que un nombre largo
+  // se traduzca en un rechazo incomprensible al registrar.
+  await chrome.storage.local.set({ cuenta: String(cuenta ?? '').trim().slice(0, 40) })
+}
+
 /* ── Cuaderno de bitácora ──────────────────────────────────────────────────── */
 
 /** Cuántos apuntes se guardan. Interesa lo reciente, no el archivo histórico. */
@@ -135,11 +159,13 @@ async function respondeEn(puerto) {
  * entera —su contrato es estricto—, así que este archivo no puede filtrar nada
  * por descuido.
  */
-export async function registrar({ puerto, token, title, externalUrl }) {
+export async function registrar({ puerto, token, title, externalUrl, cuenta }) {
   const respuesta = await fetch(`http://127.0.0.1:${puerto}/tasks`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-torre-token': token },
-    body: JSON.stringify({ title, externalUrl }),
+    // La cuenta solo viaja si la has escrito. Sin ella el paquete sigue siendo
+    // exactamente el de antes: título y dirección.
+    body: JSON.stringify(cuenta ? { title, externalUrl, account: cuenta } : { title, externalUrl }),
     signal: AbortSignal.timeout(ESPERA_MS * 4),
   })
 

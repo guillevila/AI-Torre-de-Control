@@ -41,19 +41,24 @@ export class IntakeService {
       }
     }
 
-    const { title, externalUrl } = parsed.data
+    const { title, externalUrl, account } = parsed.data
 
     const existente = this.tasks.list().find((task) => sameConversation(task.externalUrl, externalUrl))
     if (existente) {
-      return existente.status === 'archived'
-        ? this.recuperar(existente)
+      // Si has etiquetado el perfil DESPUÉS de registrar la conversación, este
+      // es el momento de que la tarea se entere. Volver a registrar es la única
+      // señal que tenemos de que quieres reetiquetarla.
+      const puestaAlDia = this.etiquetar(existente, account)
+
+      return puestaAlDia.status === 'archived'
+        ? this.recuperar(puestaAlDia)
         : {
             accepted: true,
             duplicate: true,
-            taskId: existente.id,
-            title: existente.title,
-            provider: existente.provider,
-            status: existente.status,
+            taskId: puestaAlDia.id,
+            title: puestaAlDia.title,
+            provider: puestaAlDia.provider,
+            status: puestaAlDia.status,
           }
     }
 
@@ -62,6 +67,7 @@ export class IntakeService {
       // Sin dominio reconocido no se inventa plataforma: `other` es la verdad.
       provider: detectProvider(externalUrl) ?? 'other',
       externalUrl,
+      account: account ?? null,
       status: 'queued',
       statusSource: 'browser_extension',
       statusConfidence: 'low',
@@ -74,6 +80,23 @@ export class IntakeService {
       title: created.title,
       provider: created.provider,
       status: created.status,
+    }
+  }
+
+  /**
+   * Pone al día la etiqueta de cuenta de una tarea que ya existía.
+   *
+   * Solo escribe si hay etiqueta nueva y es distinta. Nunca la borra: que un
+   * perfil sin etiquetar registre una conversación no debe quitarle la cuenta
+   * que ya tenía, porque «no lo sé» no es lo mismo que «no tiene».
+   */
+  private etiquetar(task: Task, account: string | undefined): Task {
+    if (!account || task.account === account) return task
+    try {
+      return this.tasks.update({ id: task.id, account })
+    } catch {
+      // Una etiqueta que no se puede escribir no vale una petición fallida.
+      return task
     }
   }
 

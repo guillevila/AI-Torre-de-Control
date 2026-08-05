@@ -185,3 +185,56 @@ describe('datos mal formados', () => {
     expect(resultado.reason).toBeTruthy()
   })
 })
+
+/**
+ * El escenario real del dueño del proyecto: varios chats a la vez.
+ *
+ * «Uso al mismo tiempo a lo mejor 3 chats de ChatGPT de una cuenta haciendo
+ * cosas y otros 2 de otra cuenta, y quiero que todos puedan estar en la Torre».
+ *
+ * Cada conversación tiene su propia dirección, así que cada una es su propia
+ * tarea y se mueve por su cuenta. Esto lo comprueba de verdad en lugar de
+ * suponerlo.
+ */
+describe('cinco conversaciones a la vez, de dos cuentas', () => {
+  const CUENTA_A = ['uno', 'dos', 'tres'].map((n) => `https://chatgpt.com/c/a-${n}`)
+  const CUENTA_B = ['uno', 'dos'].map((n) => `https://chatgpt.com/c/b-${n}`)
+  const TODAS = [...CUENTA_A, ...CUENTA_B]
+
+  beforeEach(() => {
+    TODAS.forEach((url, i) => intake.register({ title: `Conversación ${i + 1}`, externalUrl: url }))
+  })
+
+  it('las cinco caben en la Torre, cada una con su tarea', () => {
+    expect(tasks.list()).toHaveLength(5)
+  })
+
+  it('mover una no mueve a las demás', () => {
+    señal('running', TODAS[2])
+
+    const estados = tasks.list().map((t) => t.status)
+    expect(estados.filter((e) => e === 'running')).toHaveLength(1)
+    expect(estados.filter((e) => e === 'queued')).toHaveLength(4)
+  })
+
+  it('las cinco pueden estar trabajando a la vez', () => {
+    for (const url of TODAS) señal('running', url)
+    expect(tasks.list().every((t) => t.status === 'running')).toBe(true)
+  })
+
+  it('cada una termina cuando le toca, sin arrastrar a las otras', () => {
+    for (const url of TODAS) señal('running', url)
+
+    // Terminan las de una cuenta; las de la otra siguen trabajando.
+    for (const url of CUENTA_A) señal('completed', url)
+
+    const porUrl = new Map(tasks.list().map((t) => [t.externalUrl, t.status]))
+    for (const url of CUENTA_A) expect(porUrl.get(url)).toBe('completed')
+    for (const url of CUENTA_B) expect(porUrl.get(url)).toBe('running')
+  })
+
+  it('registrarlas otra vez no crea ni una repetida', () => {
+    TODAS.forEach((url, i) => intake.register({ title: `Conversación ${i + 1}`, externalUrl: url }))
+    expect(tasks.list()).toHaveLength(5)
+  })
+})

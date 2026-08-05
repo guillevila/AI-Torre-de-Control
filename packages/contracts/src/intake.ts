@@ -1,5 +1,11 @@
 import { z } from 'zod'
-import { externalUrlSchema, providerSchema, taskIdSchema, taskStatusSchema } from './task.js'
+import {
+  accountSchema,
+  externalUrlSchema,
+  providerSchema,
+  taskIdSchema,
+  taskStatusSchema,
+} from './task.js'
 
 /**
  * Alta de una tarea desde fuera de la aplicación.
@@ -29,6 +35,16 @@ export const taskIntakeSchema = z
     title: z.string().trim().min(1).max(200),
     /** La dirección de la conversación. Solo http o https (ver `externalUrlSchema`). */
     externalUrl: externalUrlSchema,
+    /**
+     * Cuenta o espacio de trabajo, si lo has etiquetado.
+     *
+     * Es el tercer y último campo, y merece explicarse porque este contrato
+     * presume de ser diminuto: lo escribe **el usuario**, una vez por perfil de
+     * navegador, y la extensión se limita a repetirlo. No se deduce de la
+     * página ni sale de la conversación. Va limitado a 40 caracteres: es una
+     * etiqueta para leer de un vistazo, no un hueco donde quepa nada más.
+     */
+    account: accountSchema.optional(),
   })
   .strict()
 

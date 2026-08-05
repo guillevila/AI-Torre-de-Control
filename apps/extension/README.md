@@ -139,6 +139,27 @@ entera es un incordio; una que miente es un problema de verdad.
 Si notas que ha dejado de detectar, avísame y se ajusta: son cuatro líneas en
 [`vigilante.js`](vigilante.js), agrupadas y comentadas justo para eso.
 
+### Varias cuentas a la vez
+
+Si trabajas con varias cuentas de ChatGPT —unos chats de una, otros de otra—,
+todos caben en la Torre: cada conversación es su propia tarea y se mueve por su
+cuenta. Pero se ven todos iguales, así que conviene etiquetarlos.
+
+En **Opciones → Cuenta de este perfil** escribes cómo llamas a esa cuenta
+(«Personal», «Alsari», lo que sea). Todas las conversaciones que registres desde
+ese perfil de Chrome llevarán esa etiqueta, y la verás bajo el muñeco.
+
+Como **cada perfil de Chrome guarda lo suyo**, basta con un perfil por cuenta y
+escribirlo una vez en cada uno.
+
+> **La escribes tú.** La extensión no sabe con qué cuenta de ChatGPT estás:
+> tendría que leer la página para averiguarlo, y no lo hace. Si lo dejas vacío,
+> las tareas se registran sin cuenta.
+
+Si etiquetas el perfil *después* de haber registrado una conversación, vuelve a
+pulsar «Registrar» sobre ella y se pone al día. Y registrar desde un perfil sin
+etiquetar **no le quita** la cuenta a una que ya la tenía.
+
 ### Si la registras dos veces
 
 No pasa nada: la extensión te dirá *«ya estaba en la Torre»* y no creará una

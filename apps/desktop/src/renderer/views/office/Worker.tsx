@@ -61,7 +61,9 @@ export function Worker({ task, left, top, onSelect }: WorkerProps) {
           className="worker__figure"
           onClick={() => onSelect(task)}
           title={`${task.title} — ${STATUS_LABELS[status]}`}
-          aria-label={`${task.title}. ${PROVIDER_LABELS[task.provider]}. Estado: ${STATUS_LABELS[status]}. Abrir ficha.`}
+          aria-label={`${task.title}. ${PROVIDER_LABELS[task.provider]}${
+            task.account ? `, cuenta ${task.account}` : ''
+          }. Estado: ${STATUS_LABELS[status]}. Abrir ficha.`}
         >
           <span className="worker__head" style={{ borderColor: color }} />
           <span className="worker__body" style={{ background: color }} />
@@ -84,6 +86,18 @@ export function Worker({ task, left, top, onSelect }: WorkerProps) {
           </span>
           <span className="worker__tag-title">{officeLabel(task)}</span>
         </button>
+
+        {/*
+          La cuenta, cuando la hay. Va en su propia línea y en pequeño: con
+          varios chats de cuentas distintas abiertos a la vez, es lo único que
+          distingue un muñeco de otro. Sin cuenta no se dibuja nada, para no
+          dejar un hueco en quien no la usa.
+        */}
+        {task.account && (
+          <span className="worker__cuenta" title={`Cuenta: ${task.account}`}>
+            {task.account}
+          </span>
+        )}
       </div>
     </div>
   )

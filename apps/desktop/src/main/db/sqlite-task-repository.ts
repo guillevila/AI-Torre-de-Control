@@ -74,16 +74,17 @@ export class SqliteTaskRepository implements TaskRepository {
   save(task: Task): void {
     this.db.run(
       `INSERT INTO tasks (
-         id, title, provider, external_url, external_session_id, project_path,
+         id, title, provider, external_url, external_session_id, project_path, account,
          status, status_source, status_confidence,
          started_at, finished_at, last_activity_at, created_at, updated_at, notes
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          title               = excluded.title,
          provider            = excluded.provider,
          external_url        = excluded.external_url,
          external_session_id = excluded.external_session_id,
          project_path        = excluded.project_path,
+         account             = excluded.account,
          status              = excluded.status,
          status_source       = excluded.status_source,
          status_confidence   = excluded.status_confidence,
@@ -99,6 +100,7 @@ export class SqliteTaskRepository implements TaskRepository {
         task.externalUrl,
         task.externalSessionId,
         task.projectPath,
+        task.account,
         task.status,
         task.statusSource,
         task.statusConfidence,
@@ -192,6 +194,7 @@ export class SqliteTaskRepository implements TaskRepository {
       externalUrl: text(row['external_url']),
       externalSessionId: text(row['external_session_id']),
       projectPath: text(row['project_path']),
+      account: text(row['account']),
       status: required(row['status']),
       statusSource: required(row['status_source']),
       statusConfidence: required(row['status_confidence']),
