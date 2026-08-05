@@ -10,6 +10,21 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Cambiado — la ropa de los muñecos vuelve a ser la herramienta
+
+Con Claude Code y ChatGPT funcionando de verdad, el color por fin separa algo
+que importa: de un vistazo se ve quién lleva cada trabajo.
+
+- **Naranja de Claude** (`#D97757`) y **verde de ChatGPT** (`#10A37F`), sus
+  colores de marca. Las tres herramientas de Anthropic comparten tono porque
+  comparten marca; cuál de las tres lo dicen la etiqueta y la ficha. Codex va en
+  la familia de ChatGPT pero más oscuro: se hermanan sin confundirse.
+- Deshace el «todos azules» de hace un día. Entonces era razonable —había una
+  sola herramienta y el color no distinguía nada—; ahora ya no.
+- **El estado sigue por otro camino**: glifo, globo de texto y sitio en la
+  planta. Los dos datos conviven sin pisarse y, quitando el color, la pantalla
+  se sigue leyendo entera.
+
 ### Añadido — Sprint 004, etapa 2: ChatGPT se mueve solo
 
 Registras la conversación una vez y, a partir de ahí, la tarea pasa sola a
