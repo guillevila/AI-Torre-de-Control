@@ -277,6 +277,54 @@ test('los ajustes se guardan y gobiernan los avisos', async () => {
   expect((await readNotifications(app)).length).toBe(before)
 })
 
+/**
+ * Una tarea recién registrada tiene que poder tocarse.
+ *
+ * Encontrado en uso real: el dueño del proyecto no podía seleccionar —ni por
+ * tanto borrar— las tareas «en cola». La Torre solo listaba lo que trabaja y lo
+ * que te reclama, y una conversación recién registrada no es ninguna de las
+ * dos: desaparecía de la pantalla principal.
+ *
+ * Daba igual mientras «en cola» era un estado raro. Con la extensión, TODA
+ * conversación que registras nace ahí.
+ */
+test('una tarea en cola se ve en la Torre y se puede abrir', async () => {
+  const crear = (title: string, url: string) =>
+    page.evaluate(
+      ([t, u]) =>
+        (
+          globalThis as unknown as {
+            torre: { createTask: (input: unknown) => Promise<unknown> }
+          }
+        ).torre.createTask({
+          title: t,
+          provider: 'chatgpt',
+          externalUrl: u,
+          status: 'queued',
+        }),
+      [title, url],
+    )
+
+  await crear('Conversación en cola', 'https://chatgpt.com/c/en-cola-1')
+
+  await page.getByTestId('nav-tower').click()
+
+  // Está en la Torre, no escondida en otra pantalla.
+  const enCola = page.getByTestId('tower-queued')
+  await expect(enCola).toBeVisible()
+  await expect(enCola.getByText('Conversación en cola')).toBeVisible()
+
+  // Y se puede abrir para actuar sobre ella: es lo que faltaba.
+  await enCola.getByText('Conversación en cola').click()
+  await expect(page.getByTestId('task-detail')).toBeVisible()
+
+  // Hasta borrarla, que era exactamente lo que no se podía hacer.
+  await page.getByTestId('delete-task').click()
+  await page.getByTestId('confirm-delete').click()
+
+  await expect(page.getByTestId('tower-queued')).toBeHidden()
+})
+
 test('los datos siguen ahí después de cerrar y volver a abrir', async () => {
   await app.close()
 

@@ -1585,6 +1585,12 @@ body {
  * distingue un muñeco de otro. Va debajo de la etiqueta y más apagada: importa,
  * pero menos que el nombre del trabajo.
  */
+/* Coletilla de una tarjeta: explica el título sin competir con él. */
+.card__note {
+  font-size: var(--size-meta);
+  color: var(--ink-3);
+}
+
 .worker__cuenta {
   display: block;
   max-width: 96px;
