@@ -133,6 +133,16 @@ petición entera si llega uno más.
 Por eso el permiso es opcional y reversible: la decisión es tuya y puedes
 deshacerla en dos clics.
 
+### Si se queda en «trabajando» y no sale de ahí
+
+Es el fallo más probable de esta parte, y el cuaderno lo dice: si el vigilante
+lleva más de cinco minutos viendo «se está generando», lo apunta como
+sospechoso **con el selector que está acertando**. Ese selector es justo lo que
+hace falta para arreglarlo.
+
+Casi siempre significa que está reconociendo algo que no es la respuesta en
+curso —otro botón de parar, o uno que ChatGPT deja oculto en la página—.
+
 ### Se va a romper, y lo sabemos
 
 ChatGPT cambia su interfaz cada pocas semanas. Cuando cambie el botón de parar,
