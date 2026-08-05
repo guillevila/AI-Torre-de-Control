@@ -157,6 +157,15 @@ la aplicación de verdad, todos ejecutados y en verde el 5 de agosto de 2026:
   «Responder desde la Torre» está encendido.
   > ⚠️ Verificado en la prueba automática de interfaz, que sí abre la ventana
   > real. Lo que falta es lo mismo que arriba: un turno de una sesión de verdad.
+- **La tarjeta se lee como el chat del editor** (D26-quater): alterna lo que el
+  asistente dice con lo que hace. Cada herramienta es un renglón (qué, sobre qué,
+  `+12 −3`) y los cambios se despliegan en **diff con color**, plegados por
+  omisión. Comprobado con 7 tests y uno de interfaz que despliega el diff en la
+  ventana real.
+  > ⚠️ **Lo que no se puede replicar del editor** son los botones de aceptar o
+  > descartar un cambio: cuando la tarjeta aparece el turno ya terminó y los
+  > cambios están hechos. Tenerlos exigiría que la Torre alojase la conversación
+  > (O12), que sigue sin decidir.
 - **La tarjeta enseña el turno entero** (D26-ter), no la última frase suelta: todo
   el texto del asistente desde tu último mensaje, igual que lo verías en VSCode.
   Solo se lee cuando Claude Code ha **terminado** de responder — nunca mientras

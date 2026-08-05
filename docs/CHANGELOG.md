@@ -10,6 +10,40 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Añadido — la tarjeta se lee como el chat del editor (D26-quater)
+
+**A petición del dueño**: «¿se puede copiar la pantalla de VSCode con las
+opciones que tiene en el chat para que el pop-up se vea igual?». La apariencia
+sí; las opciones no — y conviene saber por qué, está más abajo.
+
+- **El turno alterna lo dicho con lo hecho.** Cada herramienta es un renglón:
+  qué (`Edit`, `Bash`, `Read`), sobre qué (el **nombre** del fichero, con la
+  ruta entera al pasar el ratón) y cuánto cambia (`+12 −3`).
+- **Los cambios se despliegan en diff con color**, plegados por omisión: la
+  tarjeta se lee de un vistazo y el detalle se pide. Añadido y quitado se
+  distinguen por color **y** por el signo, para quien no distinga bien los
+  colores.
+- **Sin dependencias nuevas.** El diff lo calcula el propio enlace quitando lo
+  que ambos lados tienen igual al principio y al final. No es un algoritmo de
+  comparación completo, y para lo que hace una edición —sustituir un trozo
+  concreto— da exactamente lo que se ve en el editor.
+- **Un turno grande no manda un envío gigante.** Hay un presupuesto para los
+  diffs: al agotarse, la herramienta **sigue apareciendo con sus cuentas** pero
+  sin detalle. Saber qué se tocó importa más que ver cada línea. El receptor
+  admite ahora 128 KB en la ruta de turnos (antes 16 KB), como red de seguridad.
+- **Amplía D5-ter**: además de la prosa del asistente, la tarjeta contiene ahora
+  **rutas, comandos y trozos de código**. Sigue todo en memoria y muere al
+  decidir o al cerrar la Torre.
+- **Compatible hacia atrás**: con el enlace sin actualizar no llegan pasos y la
+  tarjeta enseña el texto de siempre.
+- **Lo que NO se puede replicar, y por qué:** los botones de aceptar o descartar
+  un cambio. No es dificultad — cuando la tarjeta aparece, el turno **ya
+  terminó** y los cambios están hechos. Esto es lo ocurrido, no una propuesta
+  pendiente. Tenerlos exigiría que la Torre alojase la conversación (O12).
+- **393 tests** unitarios (7 nuevos: el diff y sus cuentas, el comando, el
+  fichero nuevo, la edición que no cambia nada, el presupuesto y el tope de
+  pasos) y **15 de interfaz** (1 nuevo, que despliega el diff en la ventana real).
+
 ### Corregido — la tarjeta enseñaba trozos sueltos del turno (D26-ter)
 
 **Lo detectó el dueño preguntando**: «el output no se debería mandar hasta que

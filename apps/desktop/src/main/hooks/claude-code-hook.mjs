@@ -289,6 +289,19 @@ function buildAnswer(event, resolution, payload) {
 
 /** Tope de lo que se lee y se envía de la respuesta del turno (D5-ter). */
 const TURN_OUTPUT_MAX = 4000
+/** Tope de un diff suelto. Uno enorme no se lee: se abre el editor. */
+const TURN_DIFF_MAX = 2000
+/** Tope de pasos. Un turno con cientos de herramientas no cabe en una tarjeta. */
+const TURN_STEPS_MAX = 60
+/**
+ * Sitio total para los diffs de un turno.
+ *
+ * Reparte por orden de llegada: los primeros cambios traen su diff y, al
+ * agotarse, los siguientes aparecen igual con sus cuentas pero sin detalle.
+ * Es lo que impide que un turno que reescribe medio proyecto mande un envío
+ * gigante — y lo que hace que el receptor pueda mantener un límite estricto.
+ */
+const PRESUPUESTO_DIFFS = 60_000
 /** Cuánto se espera como máximo la respuesta del dueño (ventana máx. + margen). */
 const TURN_REPLY_TIMEOUT_MS = 310_000
 
@@ -321,8 +334,9 @@ const TURN_REPLY_TIMEOUT_MS = 310_000
  * ─────────────────────────────────────────────────────────────────────────────
  */
 function leerRespuestaDelTurno(transcriptPath) {
+  const vacio = { output: '', steps: [] }
   try {
-    if (!transcriptPath || !statSync(transcriptPath).isFile()) return ''
+    if (!transcriptPath || !statSync(transcriptPath).isFile()) return vacio
     const tam = statSync(transcriptPath).size
     const COLA = 262_144
     const desde = Math.max(0, tam - COLA)
@@ -332,7 +346,7 @@ function leerRespuestaDelTurno(transcriptPath) {
     closeSync(fd)
 
     const lineas = buffer.toString('utf8').split('\n')
-    const piezas = []
+    const delTurno = []
 
     // De atrás hacia delante hasta TU último mensaje: eso delimita el turno.
     for (let i = lineas.length - 1; i >= 0; i -= 1) {
@@ -348,31 +362,154 @@ function leerRespuestaDelTurno(transcriptPath) {
       // Aquí empezó el turno. Lo anterior es la conversación de antes.
       if (entrada.type === 'user' && !entrada.isMeta && esMensajeDelDueño(entrada)) break
 
-      if (entrada.type !== 'assistant') continue
-      const texto = textoDe(entrada.message?.content)
-      if (texto) piezas.push(texto)
+      if (entrada.type === 'assistant') delTurno.push(entrada)
     }
 
-    if (piezas.length === 0) return ''
-    const texto = piezas.reverse().join('\n\n').trim()
-    if (texto.length <= TURN_OUTPUT_MAX) return texto
-    // Si no cabe, se conserva el FINAL. La conclusión es lo que hay que leer
-    // para decidir; la narración de por medio es contexto que se puede perder.
-    return `…${texto.slice(texto.length - (TURN_OUTPUT_MAX - 1))}`
+    delTurno.reverse()
+
+    const piezas = []
+    const steps = []
+    let presupuesto = PRESUPUESTO_DIFFS
+
+    for (const entrada of delTurno) {
+      const contenido = entrada.message?.content
+      if (!Array.isArray(contenido)) continue
+
+      // En ORDEN: así el paso a paso se lee como ocurrió, igual que en VSCode.
+      for (const parte of contenido) {
+        if (parte?.type === 'text' && typeof parte.text === 'string' && parte.text.trim()) {
+          piezas.push(parte.text.trim())
+          if (steps.length < TURN_STEPS_MAX) {
+            steps.push({ kind: 'text', text: recortarFinal(parte.text.trim(), TURN_OUTPUT_MAX) })
+          }
+          continue
+        }
+        if (parte?.type !== 'tool_use' || steps.length >= TURN_STEPS_MAX) continue
+
+        const paso = describirHerramienta(parte)
+        // El presupuesto reparte el sitio entre todos los diffs del turno. Al
+        // agotarse, la herramienta SIGUE apareciendo con sus cuentas: saber qué
+        // se tocó importa más que ver cada línea.
+        if (paso.diff) {
+          if (paso.diff.length > presupuesto) paso.diff = null
+          else presupuesto -= paso.diff.length
+        }
+        steps.push(paso)
+      }
+    }
+
+    const texto = piezas.join('\n\n').trim()
+    return { output: recortarFinal(texto, TURN_OUTPUT_MAX), steps }
   } catch {
     /* sin transcripción no hay texto, y la tarjeta lo dice */
   }
-  return ''
+  return vacio
 }
 
-/** El texto visible de un mensaje. El razonamiento (`thinking`) no cuenta. */
-function textoDe(contenido) {
-  if (!Array.isArray(contenido)) return ''
-  return contenido
-    .filter((parte) => parte?.type === 'text' && typeof parte.text === 'string')
-    .map((parte) => parte.text)
-    .join('\n')
-    .trim()
+/**
+ * Recorta conservando el FINAL.
+ *
+ * La conclusión es lo que hay que leer para decidir; la narración de por medio
+ * es contexto que se puede perder sin quedarse sin saber qué contestar.
+ */
+function recortarFinal(texto, tope) {
+  if (texto.length <= tope) return texto
+  return `…${texto.slice(texto.length - (tope - 1))}`
+}
+
+/**
+ * Una llamada a herramienta, resumida como la enseña el chat del editor: qué
+ * herramienta, sobre qué, y —si edita— cuánto cambia y en qué consiste.
+ *
+ * Lo que va en `target` es deliberadamente corto: es el renglón que se lee de
+ * un vistazo. El detalle, si lo hay, va en el diff.
+ */
+function describirHerramienta(parte) {
+  const nombre = typeof parte.name === 'string' && parte.name.trim() ? parte.name.trim() : 'herramienta'
+  const entrada = parte.input && typeof parte.input === 'object' ? parte.input : {}
+  const paso = { kind: 'tool', name: nombre.slice(0, 60), target: '', added: null, removed: null, diff: null }
+
+  const ruta = typeof entrada.file_path === 'string' ? entrada.file_path : ''
+
+  if (nombre === 'Edit' && typeof entrada.old_string === 'string' && typeof entrada.new_string === 'string') {
+    const cambio = calcularDiff(entrada.old_string, entrada.new_string)
+    paso.target = ruta
+    paso.added = cambio.added
+    paso.removed = cambio.removed
+    paso.diff = cambio.diff
+    return paso
+  }
+
+  if (nombre === 'Write' && typeof entrada.content === 'string') {
+    const lineas = entrada.content === '' ? [] : entrada.content.split('\n')
+    paso.target = ruta
+    paso.added = lineas.length
+    paso.removed = 0
+    paso.diff = recortar(lineas.map((linea) => `+ ${linea}`).join('\n'), TURN_DIFF_MAX)
+    return paso
+  }
+
+  if (typeof entrada.command === 'string') {
+    paso.target = recortar(entrada.command, 400)
+    return paso
+  }
+
+  if (ruta) {
+    paso.target = ruta.slice(0, 400)
+    return paso
+  }
+
+  const suelto = [entrada.pattern, entrada.description, entrada.prompt, entrada.url, entrada.query].find(
+    (valor) => typeof valor === 'string' && valor.trim(),
+  )
+  paso.target = suelto ? recortar(suelto.trim(), 400) : ''
+  return paso
+}
+
+/**
+ * El cambio entre dos textos, en formato diff.
+ *
+ * No es un algoritmo de comparación completo y no pretende serlo: quita lo que
+ * ambos lados tienen igual al principio y al final, y enseña el resto como
+ * quitado y puesto. Para lo que hace una edición —sustituir un trozo concreto—
+ * da exactamente lo que se ve en el editor, y cabe en un fichero sin
+ * dependencias, que es la condición del enlace.
+ */
+function calcularDiff(viejo, nuevo) {
+  const a = viejo === '' ? [] : viejo.split('\n')
+  const b = nuevo === '' ? [] : nuevo.split('\n')
+
+  let inicio = 0
+  while (inicio < a.length && inicio < b.length && a[inicio] === b[inicio]) inicio += 1
+
+  let fin = 0
+  while (fin < a.length - inicio && fin < b.length - inicio && a[a.length - 1 - fin] === b[b.length - 1 - fin]) {
+    fin += 1
+  }
+
+  const quitadas = a.slice(inicio, a.length - fin)
+  const puestas = b.slice(inicio, b.length - fin)
+  if (quitadas.length === 0 && puestas.length === 0) return { diff: null, added: 0, removed: 0 }
+
+  // Dos líneas de contexto a cada lado: lo justo para ubicarse sin llenar la
+  // tarjeta de código que no ha cambiado.
+  const CONTEXTO = 2
+  const antes = a.slice(Math.max(0, inicio - CONTEXTO), inicio)
+  const despues = a.slice(a.length - fin, Math.min(a.length, a.length - fin + CONTEXTO))
+
+  const lineas = [
+    ...antes.map((linea) => `  ${linea}`),
+    ...quitadas.map((linea) => `- ${linea}`),
+    ...puestas.map((linea) => `+ ${linea}`),
+    ...despues.map((linea) => `  ${linea}`),
+  ]
+
+  return { diff: recortar(lineas.join('\n'), TURN_DIFF_MAX), added: puestas.length, removed: quitadas.length }
+}
+
+/** Recorta por el principio, que es donde está lo que identifica al cambio. */
+function recortar(texto, tope) {
+  return texto.length <= tope ? texto : `${texto.slice(0, tope - 1)}…`
 }
 
 /**
@@ -398,6 +535,7 @@ function esMensajeDelDueño(entrada) {
  */
 async function askTurnReply(endpoint, payload) {
   try {
+    const turno = leerRespuestaDelTurno(payload?.transcript_path)
     const res = await post(
       endpoint,
       '/turns',
@@ -405,7 +543,8 @@ async function askTurnReply(endpoint, payload) {
         requestId: randomUUID(),
         sessionId: payload?.session_id ?? null,
         cwd: payload?.cwd ?? process.cwd(),
-        output: leerRespuestaDelTurno(payload?.transcript_path),
+        output: turno.output,
+        steps: turno.steps,
         timestamp: new Date().toISOString(),
       },
       TURN_REPLY_TIMEOUT_MS,

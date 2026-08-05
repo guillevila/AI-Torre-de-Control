@@ -455,6 +455,106 @@ describe('responder desde la Torre (D25)', () => {
     expect(salida.startsWith('…')).toBe(true)
   })
 
+  // ── El turno paso a paso, como el chat del editor (D26-quater) ─────────────
+
+  const entradaHerramienta = (name: string, input: Record<string, unknown>) =>
+    JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', name, input }] } })
+
+  const pasosDelTurno = async (...partes: string[]) => {
+    respuesta = { action: 'pass' }
+    await ejecutar({
+      hook_event_name: 'Stop',
+      session_id: 'sesion-1',
+      cwd: 'C:/proyectos/mi-app',
+      transcript_path: transcripcion(...partes),
+    })
+    return recibidas.find((r) => r.path === '/turns')?.body.steps as Array<Record<string, unknown>>
+  }
+
+  it('cuenta lo que el asistente HIZO, no solo lo que dijo', async () => {
+    const pasos = await pasosDelTurno(
+      entradaUsuario('cambia el título'),
+      entradaAsistente('Voy.'),
+      entradaHerramienta('Read', { file_path: 'C:/proyectos/mi-app/src/app.tsx' }),
+      entradaAsistente('Hecho.'),
+    )
+
+    expect(pasos.map((p) => p['kind'])).toEqual(['text', 'tool', 'text'])
+    expect(pasos[1]).toMatchObject({ name: 'Read', target: 'C:/proyectos/mi-app/src/app.tsx' })
+  })
+
+  it('una edición trae su diff y sus cuentas', async () => {
+    const pasos = await pasosDelTurno(
+      entradaUsuario('dale'),
+      entradaHerramienta('Edit', {
+        file_path: 'C:/p/schema.ts',
+        old_string: 'const a = 1\nconst b = 2\nconst c = 3',
+        new_string: 'const a = 1\nconst b = 99\nconst extra = 0\nconst c = 3',
+      }),
+    )
+
+    // Lo igual del principio y del final no se repite: solo se enseña el cambio.
+    expect(pasos[0]).toMatchObject({ name: 'Edit', target: 'C:/p/schema.ts', added: 2, removed: 1 })
+    expect(pasos[0]?.['diff']).toContain('- const b = 2')
+    expect(pasos[0]?.['diff']).toContain('+ const b = 99')
+    expect(pasos[0]?.['diff']).toContain('+ const extra = 0')
+  })
+
+  it('un comando se enseña entero: es lo que hay que leer para decidir', async () => {
+    const pasos = await pasosDelTurno(
+      entradaUsuario('dale'),
+      entradaHerramienta('Bash', { command: 'pnpm test --run' }),
+    )
+
+    expect(pasos[0]).toMatchObject({ name: 'Bash', target: 'pnpm test --run', diff: null })
+  })
+
+  it('un fichero nuevo sale como todo añadido', async () => {
+    const pasos = await pasosDelTurno(
+      entradaUsuario('dale'),
+      entradaHerramienta('Write', { file_path: 'C:/p/nuevo.ts', content: 'uno\ndos' }),
+    )
+
+    expect(pasos[0]).toMatchObject({ name: 'Write', added: 2, removed: 0 })
+    expect(pasos[0]?.['diff']).toBe('+ uno\n+ dos')
+  })
+
+  it('una edición que no cambia nada no inventa un diff', async () => {
+    const pasos = await pasosDelTurno(
+      entradaUsuario('dale'),
+      entradaHerramienta('Edit', { file_path: 'C:/p/x.ts', old_string: 'igual', new_string: 'igual' }),
+    )
+
+    expect(pasos[0]).toMatchObject({ added: 0, removed: 0, diff: null })
+  })
+
+  /*
+   * Un turno que reescribe medio proyecto no puede mandar un envío gigante. Al
+   * agotarse el sitio, la herramienta SIGUE apareciendo con sus cuentas: saber
+   * qué se ha tocado importa más que ver cada línea.
+   */
+  it('con muchísimos cambios deja de mandar diffs, pero nunca deja de listar qué se tocó', async () => {
+    const enorme = Array.from({ length: 400 }, (_, i) => `linea ${i}`).join('\n')
+    const partes = [entradaUsuario('reescríbelo todo')]
+    for (let i = 0; i < 40; i += 1) {
+      partes.push(entradaHerramienta('Write', { file_path: `C:/p/f${i}.ts`, content: enorme }))
+    }
+
+    const pasos = await pasosDelTurno(...partes)
+    const conDiff = pasos.filter((p) => p['diff'] !== null)
+
+    expect(pasos).toHaveLength(40)
+    expect(conDiff.length).toBeLessThan(40)
+    expect(pasos.every((p) => p['added'] === 400)).toBe(true)
+  })
+
+  it('nunca manda más pasos de los que caben en una tarjeta', async () => {
+    const partes = [entradaUsuario('dale')]
+    for (let i = 0; i < 90; i += 1) partes.push(entradaHerramienta('Read', { file_path: `f${i}.ts` }))
+
+    expect((await pasosDelTurno(...partes)).length).toBeLessThanOrEqual(60)
+  })
+
   it('manda a la Torre la última respuesta del asistente, recortada de la transcripción', async () => {
     respuesta = { action: 'pass' }
     const ruta = transcripcion(

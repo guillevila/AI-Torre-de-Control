@@ -38,7 +38,7 @@ const readEndpoint = (): Endpoint =>
   JSON.parse(readFileSync(join(userDataDir, 'event-endpoint.json'), 'utf8')) as Endpoint
 
 /** Manda un fin de turno y devuelve la promesa SIN esperarla. */
-function endTurn(output: string, cwd: string) {
+function endTurn(output: string, cwd: string, steps?: unknown[]) {
   const endpoint = readEndpoint()
   return fetch(`http://${endpoint.host}:${endpoint.port}/turns`, {
     method: 'POST',
@@ -48,6 +48,7 @@ function endTurn(output: string, cwd: string) {
       sessionId: randomUUID(),
       cwd,
       output,
+      ...(steps ? { steps } : {}),
       timestamp: new Date().toISOString(),
     }),
   })
@@ -166,6 +167,48 @@ test('la respuesta se ve con formato: el código en su bloque, y el HTML como te
   // hubiera interpretado, este texto no estaría en pantalla y habría un <script>.
   await expect(popup.getByTestId('turn-output')).toContainText('<script>alert(1)</script>')
   expect(await popup.locator('.rich script').count()).toBe(0)
+
+  await popup.getByTestId('popup-close').click()
+  await page.getByTestId('nav-tower').click()
+  await page.getByTestId('turn-review').click()
+  await pendiente
+})
+
+test('el turno se lee paso a paso, y el cambio se despliega en diff', async () => {
+  const pendiente = endTurn('', 'C:/proyectos/rialsa-financiero', [
+    { kind: 'text', text: 'Toco el esquema:' },
+    {
+      kind: 'tool',
+      name: 'Edit',
+      target: 'C:/proyectos/rialsa-financiero/src/db/schema.ts',
+      added: 1,
+      removed: 1,
+      diff: '  const version = 3\n- const tabla = "viejo"\n+ const tabla = "nuevo"\n  export {}',
+    },
+    { kind: 'tool', name: 'Bash', target: 'pnpm test --run', added: null, removed: null, diff: null },
+  ])
+
+  const popup = await popupWindow()
+
+  // El renglón dice qué, sobre qué y cuánto cambia — con el NOMBRE del fichero,
+  // no la ruta entera, que no cabe y no aporta.
+  const filas = popup.getByTestId('turn-step-tool')
+  await expect(filas).toHaveCount(2)
+  await expect(filas.first()).toContainText('Edit')
+  await expect(filas.first()).toContainText('schema.ts')
+  await expect(filas.first()).toContainText('+1')
+  await expect(filas.first()).toContainText('−1')
+
+  // El diff nace plegado: la tarjeta se lee de un vistazo y el detalle se pide.
+  await expect(popup.getByTestId('turn-diff')).toHaveCount(0)
+  await filas.first().locator('.paso__fila').click()
+  await expect(popup.getByTestId('turn-diff')).toBeVisible()
+  await expect(popup.locator('.diff__linea--menos')).toContainText('const tabla = "viejo"')
+  await expect(popup.locator('.diff__linea--mas')).toContainText('const tabla = "nuevo"')
+
+  // Un comando no tiene diff, así que su renglón no finge que se despliega.
+  await expect(filas.nth(1).locator('.paso__fila')).toBeDisabled()
+  await expect(filas.nth(1)).toContainText('pnpm test --run')
 
   await popup.getByTestId('popup-close').click()
   await page.getByTestId('nav-tower').click()

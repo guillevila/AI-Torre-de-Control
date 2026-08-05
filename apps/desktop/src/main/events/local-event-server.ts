@@ -30,6 +30,16 @@ export const DEFAULT_EVENT_PORTS = [4319, 4320, 4321, 4322, 4323] as const
 /** 16 KB es holgadísimo para un evento de estado y cierra la puerta a abusos. */
 const MAX_BODY_BYTES = 16 * 1024
 
+/**
+ * Los turnos van aparte y con más sitio (D26-quater): además del texto traen el
+ * paso a paso del asistente, con los cambios en formato diff. 16 KB se quedaban
+ * cortos en cuanto un turno tocaba dos ficheros.
+ *
+ * El límite sigue existiendo, y el que de verdad manda es el del enlace, que
+ * recorta antes de enviar. Este es la red de seguridad del receptor.
+ */
+const MAX_TURN_BODY_BYTES = 128 * 1024
+
 const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1'])
 
 export interface LocalEventServerOptions {
@@ -189,7 +199,7 @@ export class LocalEventServer {
     }
 
     // Barrera 5: tamaño.
-    readBody(req, MAX_BODY_BYTES)
+    readBody(req, isTurns ? MAX_TURN_BODY_BYTES : MAX_BODY_BYTES)
       .then((body) => {
         let parsed: unknown
         try {

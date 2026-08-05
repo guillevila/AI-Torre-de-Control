@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { PendingTurn } from '@torre/contracts'
 import { RichText } from './RichText.js'
+import { TurnSteps } from './TurnSteps.js'
 
 interface TurnCardProps {
   turn: PendingTurn
@@ -58,7 +59,11 @@ export function TurnCard({ turn, now, onDecide }: TurnCardProps) {
       </header>
 
       <div className="permission__detail turn__output" data-testid="turn-output">
-        {turn.output ? (
+        {/* Con el paso a paso se lee como en el editor; sin él —enlace sin
+            actualizar— queda el texto de siempre, que sigue sirviendo. */}
+        {turn.steps.length > 0 ? (
+          <TurnSteps steps={turn.steps} />
+        ) : turn.output ? (
           <RichText source={turn.output} />
         ) : (
           '(no se pudo leer la respuesta de este turno; está en su ventana)'

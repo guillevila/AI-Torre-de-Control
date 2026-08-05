@@ -80,6 +80,9 @@ export class TurnService {
         taskTitle: task.title,
         sessionTitle: task.sessionTitle,
         output: input.output,
+        // Un enlace sin actualizar no manda los pasos; la tarjeta enseña
+        // entonces solo el texto, como antes de D26-quater.
+        steps: input.steps ?? [],
         cwd: input.cwd,
         requestedAt: this.now(),
       },

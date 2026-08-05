@@ -2635,6 +2635,98 @@ body {
   tab-size: 2;
 }
 
+/* ─── Turno paso a paso, como el chat del editor (D26-quater) ──────────────── */
+
+.pasos > * + * {
+  margin-top: var(--s3);
+}
+
+.paso__fila {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2, 4px);
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 2px 4px;
+  border-radius: 4px;
+  text-align: left;
+  font: inherit;
+  font-size: var(--size-meta);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+/* Sin diff no hay nada que desplegar: el renglón deja de fingir que se pulsa. */
+.paso__fila:disabled {
+  cursor: default;
+}
+
+.paso__fila:not(:disabled):hover {
+  background: var(--paper-deep);
+}
+
+.paso__punto {
+  flex: none;
+  width: 0.9em;
+  color: var(--ink-4);
+}
+
+.paso__nombre {
+  flex: none;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.paso__objetivo {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--size-mono);
+  color: var(--ink-2);
+}
+
+.paso__cuentas {
+  flex: none;
+  display: flex;
+  gap: 6px;
+  font-size: var(--size-mono);
+}
+
+.paso__mas { color: #2f7a45; }
+.paso__menos { color: #a33a2e; }
+
+.diff {
+  margin: var(--s2, 4px) 0 0;
+  padding: var(--s3) 0;
+  background: #1c1a17;
+  border-radius: 6px;
+  overflow-x: auto;
+  white-space: pre;
+  font-size: var(--size-mono);
+  line-height: 1.5;
+  color: #cfc9be;
+}
+
+.diff__linea {
+  display: block;
+  padding: 0 var(--s3);
+}
+
+/* Añadido y quitado se distinguen por color Y por el signo del principio: quien
+   no distinga bien los colores sigue leyendo el cambio igual de bien. */
+.diff__linea--mas {
+  background: rgba(60, 160, 90, 0.16);
+  color: #a9e6bd;
+}
+
+.diff__linea--menos {
+  background: rgba(200, 70, 55, 0.16);
+  color: #f0b3aa;
+}
+
 /* ─── Ventanita junto al puntero (D26) ─────────────────────────────────────── */
 
 /* La ventana no tiene marco del sistema: el alto lo pone ella, y el cuerpo es
