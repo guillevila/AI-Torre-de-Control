@@ -419,3 +419,42 @@ que se le habían ocurrido, no las que existen.
 **Contexto:** Cualquier cosa que decida sobre entrada que no controlamos:
 guardias, validadores, detectores. Y la forma de auditar algo antes de que se
 convierta en la ley del repositorio.
+
+## 2026-08-05 15:35 — Estar en la página no es verse en la pantalla
+
+**Error o aprendizaje:** El vigilante de la extensión detecta si una herramienta
+web está generando una respuesta mirando si existe su botón de parar. Funcionó
+al primer intento… y luego la tarea se quedaba en «trabajando» para siempre: no
+pasaba a terminada al acabar, y al preguntar de nuevo tampoco volvía a
+trabajando, porque para el vigilante nunca había dejado de trabajar.
+
+La causa: **`querySelector` encuentra también los elementos ocultos**. ChatGPT
+tiene el botón de parar permanentemente en el HTML y solo lo muestra o lo
+esconde, como hacen casi todas las interfaces modernas. El vigilante lo
+encontraba siempre.
+
+**Causa raíz:** Se confundió «existe en la página» con «se ve». Son cosas
+distintas desde que las interfaces se construyen con componentes: lo normal es
+que todo esté siempre en el HTML y lo que cambie sea la visibilidad. Detectar
+por presencia es detectar el andamiaje, no el estado.
+
+**Lección:**
+1. **Para saber qué está pasando en una interfaz, no basta con que el elemento
+   exista: tiene que VERSE.** Comprobar tamaño real, `visibility`, `display`,
+   `hidden` y `aria-hidden`.
+2. **Recorrer todas las coincidencias, no la primera.** Un elemento oculto
+   delante del bueno produce el fallo simétrico: un falso negativo.
+3. **Cuidado con los patrones amplios en interfaces con varios botones
+   parecidos.** Un «Stop» a secas coincidía también con el dictado por voz y con
+   leer en voz alta. Confundirlos deja el estado atascado para siempre, que es
+   mucho peor que no detectar nada.
+4. **Un estado que no puede salir de sí mismo necesita una alarma.** Se añadió
+   que, si lleva más de cinco minutos «generando», lo apunte en el cuaderno con
+   el selector que está acertando. No corrige el estado —inventarse un dato sería
+   peor— pero deja de callarse, que es lo que costó encontrarlo.
+5. Esto **no se puede probar sin un navegador**, y el proyecto no tiene jsdom.
+   Se dijo tal cual en la PR en vez de simular una prueba que no comprobaría
+   nada. Un test verde que no prueba lo que dice es peor que no tenerlo.
+
+**Contexto:** El vigilante de la extensión y cualquier detección futura sobre
+una interfaz que no controlamos.
