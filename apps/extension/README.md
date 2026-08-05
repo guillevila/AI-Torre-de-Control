@@ -83,6 +83,12 @@ haciendo nada: lo único que sabemos es que existe y que tú la has marcado. La
 tarea nace con **confianza baja** y con la fuente «extensión de navegador», para
 que en el historial se vea de dónde salió.
 
+**Si la registras mientras ChatGPT está respondiendo**, pasará sola a
+«trabajando» en unos segundos —siempre que tengas activada la detección
+automática—. El vigilante solo avisa de los *cambios*, y ese cambio ocurrió
+antes de que la tarea existiera; al ver que la Torre no conocía la conversación,
+lo repite hasta que sí la conoce.
+
 Cuando quieras, cambias su estado a mano desde la Torre. O activas la detección
 automática, que es lo siguiente.
 
