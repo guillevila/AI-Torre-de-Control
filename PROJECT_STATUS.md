@@ -47,10 +47,13 @@ la aplicación de verdad, todos en verde a 5 de agosto de 2026:
 - **Registrar una tarea en segundos** con `⌘N` desde cualquier pantalla. Al pegar
   el enlace, **la plataforma se deduce sola** del dominio. Los datos incorrectos
   se rechazan con un mensaje en lenguaje normal.
-- **Cinco pantallas**: Torre de control, Centro de atención, Tareas, Historial y
-  Ajustes, más el conmutador Operativa ⇄ Oficina. La Oficina se ve **a pantalla
-  completa**, sin menús alrededor: se sale por su rueda de ajustes o por su
-  consola de mando.
+- **Cuatro pantallas**: Torre de control, Centro de atención, Tareas e
+  Historial, más el conmutador Operativa ⇄ Oficina. La Oficina se ve **a
+  pantalla completa**, sin menús alrededor: se sale por su rueda de ajustes o
+  por su consola de mando.
+- **Ajustes es una ventana flotante**, no una pantalla: se abre encima de lo que
+  estés mirando y te devuelve ahí al cerrarla. Dentro está todo, incluido el
+  receptor local de eventos.
 - **Cambiar el estado a mano** desde la ficha. Solo se ofrecen los cambios que
   tienen sentido desde el estado actual.
 - **Guardar en disco de verdad.** Cierras la aplicación, la vuelves a abrir y
@@ -322,8 +325,9 @@ fábrica: un robot por tarea. Los que trabajan de verdad se mueven; el que te
 espera levanta la mano; el que ha fallado tiene los ojos en rojo. Lo terminado
 está en la mesa de **entregas**, a la derecha; lo revisado duerme abajo en su
 cápsula. Pulsa a cualquiera: se abre su ficha.
-→ Aquí no hay menús. Para volver, la **rueda** de arriba a la derecha lleva a
-Ajustes y la **consola de mando** de abajo, al detalle de todo.
+→ Aquí no hay menús. La **rueda** de arriba a la derecha abre los Ajustes en una
+ventana encima, sin sacarte de la nave; la **consola de mando** de abajo te
+lleva al detalle de todo.
 
 **5. Recibir un evento automático simulado.**
 Abre la ficha de una tarea y copia el comando que aparece abajo del todo (botón
@@ -423,5 +427,5 @@ un par de días, esto pasa a alto.
 
 ---
 
-*Última actualización: 5 de agosto de 2026 por Claude (la Oficina pasa a ser una fábrica a pantalla completa).*
+*Última actualización: 5 de agosto de 2026 por Claude (fábrica a pantalla completa; Ajustes en ventana flotante).*
 *Mantiene: Claude (con validación del dueño del proyecto).*

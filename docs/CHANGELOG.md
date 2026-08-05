@@ -10,6 +10,32 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Cambiado — Ajustes es una ventana, no una pantalla
+
+Pulsar Ajustes te sacaba de donde estabas. Desde la fábrica eso era
+especialmente malo: la nave ocupa la pantalla entera, así que tocar un
+interruptor obligaba a abandonarla y volver. Y el panel dejaba fuera el
+**receptor local de eventos**, que colgaba aparte en una esquina: había que
+saber que existía.
+
+- **Se abre encima de lo que estés mirando** y se cierra dejándote justo ahí.
+  Da igual si vienes de la rueda de la fábrica o de la barra lateral: es la
+  misma ventana, y ya no hay ninguna forma de ver Ajustes a pantalla completa.
+- **Dentro está todo**, receptor local incluido. Y al cerrar el receptor se
+  vuelve a Ajustes, no a la pantalla de fondo.
+- **En el estilo de la sala de control**, oscuro, igual que la fábrica.
+
+Lo interesante es cómo: no se ha reestilizado componente por componente, se han
+**reescrito los tokens de color dentro de la ventana**. Todo lo que hay dentro
+—tarjetas, interruptores, desplegables, el instalador de Claude Code— estaba
+escrito con `var(--surface)`, `var(--ink)`… así que cambió solo, y un ajuste que
+se añada mañana nacerá ya oscuro sin tocar nada.
+
+Eso dejó a la vista los dos únicos sitios que no seguían esa disciplina: el
+carril del selector segmentado, con un color escrito a mano, y el panel del
+receptor, que heredaba la tinta en lugar de declararla —y se quedaba negro
+sobre negro—. Los dos corregidos.
+
 ### Cambiado — la fábrica ocupa la pantalla entera
 
 La nave ya no comparte pantalla con la barra lateral ni con la cabecera. Una

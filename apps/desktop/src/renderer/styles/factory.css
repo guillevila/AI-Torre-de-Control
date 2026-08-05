@@ -1402,3 +1402,358 @@
     animation: none !important;
   }
 }
+
+/* ══ Ajustes, en ventana flotante ═════════════════════════════════════════ */
+
+/*
+ * Los ajustes se abren encima de lo que estés mirando, en el estilo de la
+ * fábrica.
+ *
+ * El truco es que NO se reestiliza componente por componente: se reescriben
+ * aquí dentro los tokens de la oficina de papel. Todo lo que hay dentro
+ * —tarjetas, interruptores, desplegables, el instalador de Claude Code— está
+ * escrito con `var(--surface)`, `var(--ink)`, `var(--line)`… así que cambia
+ * solo, y un ajuste que se añada mañana nacerá ya oscuro sin tocar nada.
+ *
+ * Es también la razón de que la paleta clara viva en tokens y no en cada
+ * regla: hoy se cobra ese trabajo.
+ */
+
+.setdlg-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: rgba(4, 6, 7, 0.66);
+  backdrop-filter: blur(3px);
+}
+
+/*
+ * La paleta oscura, para las superficies de opciones.
+ *
+ * La comparten los ajustes y el receptor local de eventos, que se abre desde
+ * dentro de ellos: una ventana negra que escupe una hoja color papel se lee
+ * como un fallo, no como otra pantalla.
+ */
+.setdlg,
+.detail--oscuro {
+  /* ── Papel y tinta, en oscuro ─────────────────────────────────────────── */
+  --paper-deep: #090c0e;
+  --paper: #0b0e10;
+  --surface: #161b1e;
+  --surface-sunken: #0e1214;
+  --line: #262d31;
+  --line-strong: #333c41;
+  --line-soft: #1c2225;
+
+  --ink: #e6e9ea;
+  --ink-2: #c3cbce;
+  --ink-3: #8b959a;
+  --ink-4: #6f7c81;
+
+  /* La acción primaria pasa a ser el verde azulado de la sala de control. */
+  --command: #3ad6c8;
+  --command-strong: #2bb3a7;
+  --command-hover: #4ae3d5;
+  --command-soft: #1f5f5a;
+
+  /*
+   * Los estados conservan su significado y su glifo; solo se oscurecen los
+   * fondos. Un verde claro de papel sobre panel negro no se lee.
+   */
+  --running: #6fe0c4;
+  --running-bg: rgba(58, 214, 200, 0.12);
+  --running-line: rgba(58, 214, 200, 0.3);
+
+  --waiting: #ffbe5c;
+  --waiting-bg: rgba(255, 190, 92, 0.12);
+  --waiting-line: rgba(255, 190, 92, 0.32);
+  --waiting-ink: #e0aa5e;
+
+  --completed: #7ee04a;
+  --completed-bg: rgba(126, 224, 74, 0.12);
+  --completed-line: rgba(126, 224, 74, 0.3);
+
+  --failed: #ff8a75;
+  --failed-bg: rgba(255, 106, 82, 0.13);
+  --failed-line: rgba(255, 106, 82, 0.33);
+
+  --unknown: #c9b98f;
+  --unknown-bg: rgba(201, 185, 143, 0.12);
+  --unknown-line: rgba(201, 185, 143, 0.3);
+
+  --queued: #a8a4d8;
+  --queued-bg: rgba(168, 164, 216, 0.12);
+  --queued-line: rgba(168, 164, 216, 0.3);
+
+  --reviewed: #9fb3bc;
+  --reviewed-bg: rgba(159, 179, 188, 0.12);
+  --reviewed-line: rgba(159, 179, 188, 0.3);
+
+  --draft: #8f9a9e;
+  --draft-bg: rgba(143, 154, 158, 0.12);
+  /* Doble uso: es también el carril de un interruptor apagado. */
+  --draft-line: #333c41;
+
+  --archived: #7d878b;
+  --archived-bg: rgba(125, 135, 139, 0.1);
+  --archived-line: #333c41;
+
+  --e1: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --e2: 0 14px 30px -14px rgba(0, 0, 0, 0.8);
+  --e3: 0 40px 80px -24px rgba(0, 0, 0, 0.85);
+}
+
+.setdlg {
+  width: 980px;
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  color: var(--ink);
+  border: 1px solid var(--f-line, #22282c);
+  border-radius: 16px;
+  background-color: #0b0e10;
+  background-image:
+    radial-gradient(90% 70% at 20% 0%, rgba(58, 214, 200, 0.09), rgba(0, 0, 0, 0) 60%),
+    linear-gradient(180deg, #0e1214, #090b0c);
+  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.9);
+  overflow: hidden;
+}
+
+.setdlg__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 0 0 auto;
+  padding: 18px 22px;
+  border-bottom: 1px solid #22282c;
+  background: linear-gradient(180deg, #14181b, #101416);
+}
+
+.setdlg__glyph {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  border-radius: 11px;
+  border: 1px solid rgba(58, 214, 200, 0.32);
+  background: rgba(58, 214, 200, 0.1);
+  color: #3ad6c8;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.setdlg__titles {
+  min-width: 0;
+  flex: 1;
+}
+
+.setdlg__title {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #e6e9ea;
+}
+
+.setdlg__sub {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #8b959a;
+}
+
+.setdlg__close {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid #2a3236;
+  background: #12171a;
+  color: #cfd6d8;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--tap), color var(--tap), border-color var(--tap);
+}
+
+.setdlg__close:hover {
+  background: #1a2124;
+  border-color: #3ad6c8;
+  color: #3ad6c8;
+}
+
+.setdlg__close:focus-visible {
+  outline: 2px solid #3ad6c8;
+  outline-offset: 2px;
+}
+
+.setdlg__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 22px;
+}
+
+.setdlg__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  padding: 14px 22px;
+  border-top: 1px solid #22282c;
+  background: linear-gradient(180deg, #101416, #0c0f11);
+}
+
+.setdlg__note {
+  margin: 0;
+  font-size: 12px;
+  color: #8b959a;
+}
+
+/*
+ * Dentro de la ventana, las tarjetas se separan del fondo con un borde algo
+ * más marcado: en papel bastaba la sombra, y sobre negro la sombra no se ve.
+ */
+.setdlg .card {
+  border-color: #262d31;
+  box-shadow: none;
+}
+
+.setdlg .codeblock {
+  border-color: #262d31;
+  color: #a9b3b7;
+}
+
+/*
+ * El interruptor encendido ya toma su color de `--running`, redefinido arriba.
+ * La bolita sí hay que decirla: hereda de `--surface`, que en oscuro es casi
+ * del color del panel, y desaparecería dentro del carril apagado.
+ */
+.setdlg .switch__knob {
+  background: #0b0e10;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+/*
+ * En pantallas estrechas la rejilla de dos columnas de los ajustes no cabe
+ * dentro de la ventana, y una tarjeta de 300 px con un desplegable dentro se
+ * vuelve ilegible antes que útil.
+ */
+@media (max-width: 900px) {
+  .setdlg-overlay {
+    padding: 0;
+  }
+
+  .setdlg {
+    border-radius: 0;
+    border: none;
+    width: 100%;
+  }
+
+  .setdlg .settings {
+    grid-template-columns: 1fr;
+  }
+}
+
+/*
+ * La única excepción a lo de arriba.
+ *
+ * El carril del selector segmentado lleva un color escrito a mano en lugar de
+ * un token —el único de toda la hoja de la oficina de papel—, así que es
+ * también lo único que no se oscurece solo. No se toca allí: cambiarlo
+ * alteraría el aspecto de la aplicación clara, que funciona bien. Se corrige
+ * aquí, donde molesta.
+ */
+.setdlg .segmented {
+  background: #0b0e10;
+  border-color: #2a3236;
+}
+
+.setdlg .segmented button[data-active='true'] {
+  background: rgba(58, 214, 200, 0.16);
+  color: #7fe9dd;
+  box-shadow: none;
+}
+
+/*
+ * Barra de desplazamiento oscura. La del sistema es blanca, y en una ventana
+ * negra se lee como una raya luminosa pegada al borde.
+ */
+.setdlg__body::-webkit-scrollbar {
+  width: 12px;
+}
+
+.setdlg__body::-webkit-scrollbar-track {
+  background: #0b0e10;
+}
+
+.setdlg__body::-webkit-scrollbar-thumb {
+  background: #2a3236;
+  border: 3px solid #0b0e10;
+  border-radius: 999px;
+}
+
+.setdlg__body::-webkit-scrollbar-thumb:hover {
+  background: #3a464b;
+}
+
+/*
+ * El receptor local, en oscuro.
+ *
+ * Los tokens de arriba se encargan de casi todo; aquí solo van las dos cosas
+ * que la hoja clara escribió con color fijo —el borde de la hoja lateral— y la
+ * barra de desplazamiento, que el sistema pinta blanca.
+ */
+.detail--oscuro {
+  /*
+   * La tinta, explícita.
+   *
+   * Buena parte del panel —el título, los valores de estado y dirección— no
+   * declara color: hereda. Sin esta línea heredaba la tinta oscura de la
+   * aplicación clara y quedaba negro sobre negro: el título desaparecía del
+   * todo. Los tokens redefinidos no bastan cuando nadie los pide.
+   */
+  color: var(--ink);
+  border-left-color: #22282c;
+  box-shadow: -24px 0 60px -30px rgba(0, 0, 0, 0.9);
+}
+
+/* Un comando que hay que copiar a mano se lee, no se adivina. */
+.detail--oscuro .command__text {
+  color: var(--ink-2);
+}
+
+.detail--oscuro .segmented {
+  background: #0b0e10;
+  border-color: #2a3236;
+}
+
+.detail--oscuro .segmented button[data-active='true'] {
+  background: rgba(58, 214, 200, 0.16);
+  color: #7fe9dd;
+  box-shadow: none;
+}
+
+.detail--oscuro .detail__body::-webkit-scrollbar {
+  width: 12px;
+}
+
+.detail--oscuro .detail__body::-webkit-scrollbar-track {
+  background: #0b0e10;
+}
+
+.detail--oscuro .detail__body::-webkit-scrollbar-thumb {
+  background: #2a3236;
+  border: 3px solid #0b0e10;
+  border-radius: 999px;
+}

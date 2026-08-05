@@ -5,6 +5,7 @@ import { DevPanel } from './components/DevPanel.js'
 import { PermissionCard } from './components/PermissionCard.js'
 import { QuickAdd } from './components/QuickAdd.js'
 import { Sidebar, type Section } from './components/Sidebar.js'
+import { SettingsDialog } from './components/SettingsDialog.js'
 import { TaskDetail } from './components/TaskDetail.js'
 import { Toast } from './components/Toast.js'
 import { TopBar, type ViewMode } from './components/TopBar.js'
@@ -16,18 +17,26 @@ import { useRecentActivity, useTaskHistory, useTasks } from './hooks/useTasks.js
 import { AttentionView } from './views/AttentionView.js'
 import { HistoryView } from './views/HistoryView.js'
 import { OfficeView } from './views/office/OfficeView.js'
-import { SettingsView } from './views/SettingsView.js'
 import { TasksView } from './views/TasksView.js'
 import { TowerView } from './views/TowerView.js'
 
-type Dialog = { kind: 'create' } | { kind: 'edit'; task: Task } | { kind: 'dev' } | null
+type Dialog =
+  | { kind: 'create' }
+  | { kind: 'edit'; task: Task }
+  | { kind: 'dev' }
+  | { kind: 'settings' }
+  | null
 
-const TITLES: Record<Section, { title: string; subtitle: string }> = {
+/**
+ * Ajustes no está aquí a propósito: ya no es una sección, es una ventana
+ * flotante. Estas cabeceras describen sitios a los que la aplicación te LLEVA;
+ * un panel que se abre encima y se cierra no te lleva a ninguna parte.
+ */
+const TITLES: Record<Exclude<Section, 'settings'>, { title: string; subtitle: string }> = {
   tower: { title: 'Torre de control', subtitle: 'Qué está pasando ahora mismo' },
   attention: { title: 'Centro de atención', subtitle: 'Lo que espera una decisión tuya' },
   tasks: { title: 'Tareas', subtitle: 'Todo lo delegado, agrupado por urgencia' },
   history: { title: 'Historial', subtitle: 'Lo que ya has retirado de la vista activa' },
-  settings: { title: 'Ajustes', subtitle: 'Avisos, datos y privacidad' },
 }
 
 export function App() {
@@ -50,7 +59,9 @@ export function App() {
     clearError: clearPermissionError,
   } = usePermissions()
 
-  const [section, setSection] = useState<Section>('tower')
+  // El tipo dice que Ajustes no cabe aquí, así que ninguna ruta futura puede
+  // volver a convertirlo en pantalla completa sin que el compilador lo pare.
+  const [section, setSection] = useState<Exclude<Section, 'settings'>>('tower')
   const [view, setView] = useState<ViewMode>('operations')
   const [search, setSearch] = useState('')
   const [confidence, setConfidence] = useState<StatusConfidence | 'all'>('all')
@@ -70,9 +81,14 @@ export function App() {
 
   // Los ajustes deciden dónde arranca la aplicación, pero solo la primera vez:
   // después manda lo que el usuario esté mirando.
+  //
+  // «Ajustes» sigue cabiendo en el dato guardado —hubo un tiempo en que era una
+  // sección— y hoy ya no es un sitio donde se pueda estar. Se traduce a la
+  // Torre al aplicarlo, en lugar de estrechar el contrato: un ajuste guardado
+  // que de pronto deja de validar es una aplicación que no abre.
   useEffect(() => {
     if (!settingsLoaded || appliedPreferences) return
-    setSection(settings.startSection)
+    setSection(settings.startSection === 'settings' ? 'tower' : settings.startSection)
     setView(settings.startView)
     setAppliedPreferences(true)
   }, [settingsLoaded, appliedPreferences, settings.startSection, settings.startView])
@@ -165,7 +181,9 @@ export function App() {
       {!officeMode && (
         <Sidebar
           section={section}
-          onNavigate={setSection}
+          onNavigate={(next) =>
+            next === 'settings' ? setDialog({ kind: 'settings' }) : setSection(next)
+          }
           onNew={() => setDialog({ kind: 'create' })}
           attentionCount={summary.attention}
           devInfo={devInfo}
@@ -239,10 +257,9 @@ export function App() {
               tasks={visibleTasks}
               activity={activity}
               onSelect={(task) => setSelectedId(task.id)}
-              onOpenSettings={() => {
-                setView('operations')
-                setSection('settings')
-              }}
+              // La rueda abre los ajustes ENCIMA de la nave. Antes te sacaba de
+              // ella, y volver costaba dos pasos para tocar un interruptor.
+              onOpenSettings={() => setDialog({ kind: 'settings' })}
               onOpenTower={() => {
                 setView('operations')
                 setSection('tower')
@@ -278,33 +295,14 @@ export function App() {
               onOpenExternal={handleOpenExternal}
               onNew={() => setDialog({ kind: 'create' })}
             />
-          ) : section === 'history' ? (
+          ) : (
             <HistoryView
               tasks={tasks}
               onOpen={(task) => setSelectedId(task.id)}
               onOpenExternal={handleOpenExternal}
             />
-          ) : (
-            <SettingsView
-              settings={settings}
-              onUpdate={(patch) => void updateSettings(patch)}
-              devInfo={devInfo}
-              onOpenFolder={() => void handleOpenFolder()}
-              onExportCsv={() => void handleExport()}
-            />
           )}
         </div>
-
-        {section === 'settings' && (
-          <button
-            type="button"
-            className="devlink"
-            data-testid="open-dev-panel"
-            onClick={() => setDialog({ kind: 'dev' })}
-          >
-            Ver el receptor local de eventos
-          </button>
-        )}
       </main>
 
       {selectedTask && (
@@ -340,7 +338,22 @@ export function App() {
           onCancel={() => setDialog(null)}
         />
       )}
-      {dialog?.kind === 'dev' && <DevPanel onClose={() => setDialog(null)} />}
+      {dialog?.kind === 'settings' && (
+        <SettingsDialog
+          settings={settings}
+          onUpdate={(patch) => void updateSettings(patch)}
+          devInfo={devInfo}
+          onOpenFolder={() => void handleOpenFolder()}
+          onExportCsv={() => void handleExport()}
+          onOpenDevPanel={() => setDialog({ kind: 'dev' })}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {/*
+        El receptor solo se abre desde dentro de Ajustes, así que al cerrarlo se
+        vuelve allí. Devolver a la pantalla de fondo haría perder el sitio.
+      */}
+      {dialog?.kind === 'dev' && <DevPanel onClose={() => setDialog({ kind: 'settings' })} />}
 
       {toast && (
         <Toast message={toast.message} tone={toast.tone} onDismiss={() => setToast(null)} />

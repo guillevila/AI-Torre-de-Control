@@ -256,6 +256,11 @@ test('los ajustes se guardan y gobiernan los avisos', async () => {
   await page.getByTestId('switch-toggle-completed').click()
   await expect(page.getByTestId('toggle-completed')).not.toBeChecked()
 
+  // Los ajustes son una ventana encima, no una sección: se cierran y te dejan
+  // donde estabas. Sin cerrarla, el fondo no se puede pulsar.
+  await page.getByTestId('settings-close').click()
+  await expect(page.getByTestId('settings-dialog')).toBeHidden()
+
   await page.getByTestId('nav-tasks').click()
   const taskId = await page.getByTestId('task-row').getAttribute('data-task-id')
   const before = (await readNotifications(app)).length
@@ -414,11 +419,22 @@ test('la fábrica ocupa la pantalla y sus dos salidas llevan a alguna parte', as
   await expect(page.getByTestId('tower-view')).toBeVisible()
   await expect(page.getByTestId('nav-tower')).toBeVisible()
 
-  // Y la rueda, a los ajustes.
+  // Y la rueda abre los ajustes ENCIMA de la nave, sin sacarte de ella: es la
+  // diferencia entre tocar un interruptor y perder la sala de control.
   await page.getByTestId('view-office').click()
   await page.getByTestId('factory-settings').click()
+  await expect(page.getByTestId('settings-dialog')).toBeVisible()
   await expect(page.getByTestId('settings-view')).toBeVisible()
+  await expect(page.getByTestId('office-view')).toBeVisible()
 
-  // Se vuelve por la barra lateral, que reaparece fuera de la fábrica.
-  await page.getByTestId('nav-tower').click()
+  // Y dentro está TODO, incluido el receptor local, que antes colgaba fuera.
+  await page.getByTestId('open-dev-panel').click()
+  await expect(page.getByTestId('dev-panel')).toBeVisible()
+  await page.getByTestId('dev-panel').getByRole('button', { name: 'Cerrar' }).click()
+  // Al cerrarlo se vuelve a los ajustes, no a la pantalla de fondo.
+  await expect(page.getByTestId('settings-dialog')).toBeVisible()
+
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('settings-dialog')).toBeHidden()
+  await expect(page.getByTestId('office-view')).toBeVisible()
 })
