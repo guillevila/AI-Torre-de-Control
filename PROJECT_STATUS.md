@@ -164,6 +164,12 @@ la aplicación de verdad, todos en verde a 3 de agosto de 2026:
   había.
 - **La tarea nace «en cola» y con confianza baja**, no «trabajando». Registrarla
   no significa que ChatGPT esté haciendo nada, y la Torre no debe fingirlo.
+- **Varias conversaciones a la vez, de varias cuentas.** Cada una es su propia
+  tarea y se mueve por su cuenta; comprobado con una prueba que abre cinco de
+  dos cuentas distintas y las mueve por separado. Para distinguirlas, cada
+  perfil de navegador lleva una **etiqueta de cuenta** que escribes tú una vez y
+  se ve bajo el muñeco. La aplicación nunca la deduce: no sabe con qué cuenta
+  estás.
 - **Detección automática (etapa 2), opcional.** Si la activas, la tarea pasa
   sola a «trabajando» cuando ChatGPT empieza a responder y a «terminada» cuando
   acaba. El permiso lo concedes tú desde la ventana de la extensión y lo puedes

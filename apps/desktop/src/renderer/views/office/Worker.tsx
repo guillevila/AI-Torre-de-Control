@@ -1,21 +1,12 @@
 import type { Task } from '@torre/contracts'
-import { officeLabel, PROVIDER_LABELS, STATUS_GLYPHS, STATUS_LABELS } from '@torre/domain'
+import {
+  officeLabel,
+  PROVIDER_COLORS,
+  PROVIDER_LABELS,
+  STATUS_GLYPHS,
+  STATUS_LABELS,
+} from '@torre/domain'
 import { WorkPulse } from '../../components/Indicators.js'
-
-/**
- * Color de los muñecos de la oficina.
- *
- * Antes cada uno llevaba el color de su plataforma —verde Claude Code, azul
- * ChatGPT, morado Codex—. El dueño del proyecto los quiso todos azules
- * (4/8/2026), y así están.
- *
- * La plataforma no se pierde: se sigue viendo en la ficha de la tarea, en la
- * barra lateral y en la lista. Solo deja de estar codificada en la figura.
- *
- * Es el azul petróleo de mando del sistema de diseño, no un azul inventado
- * aparte: si algún día se cambia la paleta, esto cambia con ella.
- */
-const WORKER_COLOR = 'var(--command)'
 
 interface WorkerProps {
   task: Task
@@ -32,12 +23,16 @@ interface WorkerProps {
  * trivial de portar a un motor gráfico más adelante porque cada trabajador es
  * solo `{id, plataforma, estado, x, y}`.
  *
- * Todos van del mismo azul (ver `WORKER_COLOR`). Lo que distingue a uno de otro
- * es su ESTADO, y nunca solo por el tono: cada estado lleva además glifo, globo
- * de texto y su sitio en la planta.
+ * **La ropa es la herramienta**: naranja Claude, verde ChatGPT. Con dos
+ * herramientas funcionando de verdad, el color por fin separa algo que importa
+ * —de un vistazo sabes quién lleva cada trabajo—.
+ *
+ * El ESTADO va por otro camino y nunca depende solo del tono: cada uno lleva
+ * glifo, globo de texto y su sitio en la planta. Así los dos datos conviven sin
+ * pisarse, y quitando el color la pantalla sigue leyéndose entera.
  */
 export function Worker({ task, left, top, onSelect }: WorkerProps) {
-  const color = WORKER_COLOR
+  const color = PROVIDER_COLORS[task.provider]
   const { status } = task
 
   return (
@@ -66,7 +61,9 @@ export function Worker({ task, left, top, onSelect }: WorkerProps) {
           className="worker__figure"
           onClick={() => onSelect(task)}
           title={`${task.title} — ${STATUS_LABELS[status]}`}
-          aria-label={`${task.title}. ${PROVIDER_LABELS[task.provider]}. Estado: ${STATUS_LABELS[status]}. Abrir ficha.`}
+          aria-label={`${task.title}. ${PROVIDER_LABELS[task.provider]}${
+            task.account ? `, cuenta ${task.account}` : ''
+          }. Estado: ${STATUS_LABELS[status]}. Abrir ficha.`}
         >
           <span className="worker__head" style={{ borderColor: color }} />
           <span className="worker__body" style={{ background: color }} />
@@ -89,6 +86,18 @@ export function Worker({ task, left, top, onSelect }: WorkerProps) {
           </span>
           <span className="worker__tag-title">{officeLabel(task)}</span>
         </button>
+
+        {/*
+          La cuenta, cuando la hay. Va en su propia línea y en pequeño: con
+          varios chats de cuentas distintas abiertos a la vez, es lo único que
+          distingue un muñeco de otro. Sin cuenta no se dibuja nada, para no
+          dejar un hueco en quien no la usa.
+        */}
+        {task.account && (
+          <span className="worker__cuenta" title={`Cuenta: ${task.account}`}>
+            {task.account}
+          </span>
+        )}
       </div>
     </div>
   )

@@ -6,12 +6,14 @@ import {
   groupOf,
   groupTasks,
   groupTasksByStatus,
+  PROVIDER_COLORS,
   officeLabel,
   officeWorkers,
   STATUS_GLYPHS,
   summarise,
   zoneOf,
 } from './selectors.js'
+import { PROVIDERS } from '@torre/contracts'
 import { makeTask } from './test-fixtures.js'
 
 const at = (iso: string) => ({ lastActivityAt: iso, createdAt: iso })
@@ -279,5 +281,43 @@ describe('etiqueta del muñeco en la oficina', () => {
   it('ante una ruta que no da nombre, se queda con el título', () => {
     const task = makeTask({ title: 'Informe trimestral', projectPath: '/' })
     expect(officeLabel(task)).toBe('Informe trimestral')
+  })
+})
+
+/**
+ * El color de la ropa en la oficina es LA HERRAMIENTA.
+ *
+ * Lo pidió el dueño del proyecto cuando ya tenía dos funcionando de verdad:
+ * naranja para Claude, verde para ChatGPT. Antes fueron todos azules, y tenía
+ * sentido mientras solo había una herramienta — el color no separaba nada.
+ */
+describe('color de cada herramienta', () => {
+  it('Claude lleva su naranja', () => {
+    expect(PROVIDER_COLORS.claude_code).toBe('#D97757')
+  })
+
+  it('ChatGPT lleva su verde', () => {
+    expect(PROVIDER_COLORS.chatgpt).toBe('#10A37F')
+  })
+
+  it('las tres herramientas de Anthropic comparten color', () => {
+    // Comparten marca: lo que quieres saber de un vistazo es «esto es Claude».
+    expect(PROVIDER_COLORS.claude_web).toBe(PROVIDER_COLORS.claude_code)
+    expect(PROVIDER_COLORS.cowork).toBe(PROVIDER_COLORS.claude_code)
+  })
+
+  it('las dos casas NO se confunden entre sí', () => {
+    expect(PROVIDER_COLORS.chatgpt).not.toBe(PROVIDER_COLORS.claude_code)
+    expect(PROVIDER_COLORS.codex).not.toBe(PROVIDER_COLORS.claude_code)
+  })
+
+  it('Codex se hermana con ChatGPT sin ser el mismo', () => {
+    expect(PROVIDER_COLORS.codex).not.toBe(PROVIDER_COLORS.chatgpt)
+  })
+
+  it('toda plataforma tiene color, para que ninguna salga sin ropa', () => {
+    for (const provider of PROVIDERS) {
+      expect(PROVIDER_COLORS[provider]).toMatch(/^#[0-9A-Fa-f]{6}$/)
+    }
   })
 })

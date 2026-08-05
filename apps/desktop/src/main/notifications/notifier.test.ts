@@ -9,6 +9,8 @@ const task = (status: TaskStatus, id = 'task-1'): Task => ({
   externalUrl: null,
   externalSessionId: null,
   projectPath: null,
+
+  account: null,
   status,
   statusSource: 'manual',
   statusConfidence: 'high',

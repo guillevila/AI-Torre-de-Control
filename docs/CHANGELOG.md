@@ -10,6 +10,58 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Añadido — varias cuentas de ChatGPT a la vez
+
+Nace de un uso real: tres chats de una cuenta y dos de otra, abiertos al mismo
+tiempo. **Los cinco ya cabían en la Torre** —cada conversación es su propia
+tarea y se mueve por su cuenta, y hay una prueba que lo comprueba—, pero se
+veían todos iguales y no había forma de saber cuál era de cuál.
+
+- **Etiqueta de cuenta por perfil de navegador.** La escribes una vez en los
+  Ajustes de la extensión y todas las conversaciones que registres desde ese
+  perfil la llevan. Como cada perfil de Chrome guarda lo suyo, un perfil por
+  cuenta y listo.
+- **La aplicación NUNCA la deduce.** No sabe con qué cuenta de ChatGPT estás:
+  tendría que leer la página para averiguarlo, y no lo hace. La etiqueta la
+  escribe una persona o no existe.
+- **Se ve bajo el muñeco**, en pequeño y en su propia línea. Sin cuenta no se
+  dibuja nada, para no dejar un hueco a quien no la use.
+- **Campo nuevo en las tareas** (`account`), con migración de base de datos. Las
+  tareas que ya existían se quedan sin cuenta, que es la verdad: nadie dijo a
+  cuál pertenecían.
+- **Etiquetar el perfil más tarde** actualiza la conversación al volver a
+  registrarla. Y un perfil sin etiquetar **no borra** la cuenta de una que ya la
+  tenía: «no lo sé» no es lo mismo que «no tiene».
+
+### Corregido — registrar una conversación archivada la recupera
+
+Encontrado en uso real. Al pulsar «Registrar» sobre una conversación archivada,
+la extensión contestaba «ya está añadida» y no aparecía nada: la tarea existía,
+pero archivada, o sea invisible. Una respuesta cierta y a la vez inservible.
+
+Peor todavía, el comentario de ese código decía que las archivadas se revivían.
+No se revivían: estaba escrita la intención, no el comportamiento.
+
+Ahora se desarchiva, y la extensión distingue «ya estaba» de «estaba archivada y
+la he traído de vuelta». La recuperación consta como **manual**: el vigilante
+infiere estados mirando una página, pero esto es un clic tuyo en un botón, y por
+eso puede levantar el candado que protege lo que archivaste a mano.
+
+### Cambiado — la ropa de los muñecos vuelve a ser la herramienta
+
+Con Claude Code y ChatGPT funcionando de verdad, el color por fin separa algo
+que importa: de un vistazo se ve quién lleva cada trabajo.
+
+- **Naranja de Claude** (`#D97757`) y **verde de ChatGPT** (`#10A37F`), sus
+  colores de marca. Las tres herramientas de Anthropic comparten tono porque
+  comparten marca; cuál de las tres lo dicen la etiqueta y la ficha. Codex va en
+  la familia de ChatGPT pero más oscuro: se hermanan sin confundirse.
+- Deshace el «todos azules» de hace un día. Entonces era razonable —había una
+  sola herramienta y el color no distinguía nada—; ahora ya no.
+- **El estado sigue por otro camino**: glifo, globo de texto y sitio en la
+  planta. Los dos datos conviven sin pisarse y, quitando el color, la pantalla
+  se sigue leyendo entera.
+
 ### Añadido — Sprint 004, etapa 2: ChatGPT se mueve solo
 
 Registras la conversación una vez y, a partir de ahí, la tarea pasa sola a

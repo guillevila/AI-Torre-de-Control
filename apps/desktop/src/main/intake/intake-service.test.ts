@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { InMemoryTaskRepository } from '../db/task-repository.js'
 import { TaskService } from '../services/task-service.js'
 import { IntakeService } from './intake-service.js'
+import { WebActivityService } from './web-activity-service.js'
 
 /**
  * El alta que llega del navegador.
@@ -160,5 +161,140 @@ describe('lo que no se acepta', () => {
     const resultado = intake.register({ title: '', externalUrl: CHATGPT })
     expect(resultado.accepted).toBe(false)
     expect(resultado.reason).toBeTruthy()
+  })
+})
+
+/**
+ * Registrar una conversación que archivaste.
+ *
+ * Encontrado en uso real: el dueño del proyecto pulsó «Registrar», la extensión
+ * contestó «ya está añadida» y no aparecía nada en ninguna pantalla. La tarea
+ * existía, pero archivada — o sea invisible. Una respuesta cierta y a la vez
+ * inservible, que es la peor clase de respuesta.
+ */
+describe('una conversación archivada se recupera, no se ignora', () => {
+  const archivar = (id: string | undefined) =>
+    tasks.changeStatus({ id, status: 'archived', source: 'manual' })
+
+  it('la desarchiva en lugar de dejarte buscando algo invisible', () => {
+    const primera = intake.register({ title: 'Análisis', externalUrl: CHATGPT })
+    archivar(primera.taskId)
+
+    const segunda = intake.register({ title: 'Análisis', externalUrl: CHATGPT })
+
+    expect(segunda.revived).toBe(true)
+    expect(tasks.list()[0]?.status).toBe('queued')
+  })
+
+  it('sigue siendo la MISMA tarea, con su historial', () => {
+    const primera = intake.register({ title: 'Análisis', externalUrl: CHATGPT })
+    archivar(primera.taskId)
+
+    const segunda = intake.register({ title: 'Análisis', externalUrl: CHATGPT })
+
+    expect(segunda.taskId).toBe(primera.taskId)
+    expect(tasks.list()).toHaveLength(1)
+  })
+
+  it('la recuperación consta como MANUAL: la pediste tú con un clic', () => {
+    // El vigilante infiere estados mirando una página; esto es un botón que
+    // pulsas. Por eso puede levantar el candado que protege lo que archivaste.
+    const primera = intake.register({ title: 'Análisis', externalUrl: CHATGPT })
+    archivar(primera.taskId)
+    intake.register({ title: 'Análisis', externalUrl: CHATGPT })
+
+    expect(tasks.list()[0]?.statusSource).toBe('manual')
+  })
+
+  it('una tarea que NO estaba archivada no se toca', () => {
+    const primera = intake.register({ title: 'Análisis', externalUrl: CHATGPT })
+    tasks.changeStatus({ id: primera.taskId, status: 'running', source: 'manual' })
+
+    const segunda = intake.register({ title: 'Análisis', externalUrl: CHATGPT })
+
+    expect(segunda.revived).toBeFalsy()
+    expect(segunda.duplicate).toBe(true)
+    expect(tasks.list()[0]?.status).toBe('running')
+  })
+
+  it('y la actividad del vigilante vuelve a alcanzarla', () => {
+    // Antes no: una tarea archivada se ignoraba, así que recuperarla sin más
+    // habría dejado un icono que no se movía nunca.
+    const primera = intake.register({ title: 'Análisis', externalUrl: CHATGPT })
+    archivar(primera.taskId)
+    intake.register({ title: 'Análisis', externalUrl: CHATGPT })
+
+    const actividad = new WebActivityService({ taskService: tasks })
+    const resultado = actividad.apply({
+      externalUrl: CHATGPT,
+      status: 'running',
+      timestamp: new Date(Date.UTC(2026, 7, 5, 10, 0, 0)).toISOString(),
+    })
+
+    expect(resultado.matched).toBe(true)
+    expect(tasks.list()[0]?.status).toBe('running')
+  })
+})
+
+/**
+ * La cuenta a la que pertenece cada conversación.
+ *
+ * Nace del uso real: tres chats de una cuenta y dos de otra, abiertos a la vez.
+ * Todos caben en la Torre, pero sin etiqueta los cinco muñecos se ven iguales.
+ *
+ * La escribe el usuario una vez por perfil de navegador. La aplicación NUNCA la
+ * deduce: no sabe con qué cuenta estás ni tiene forma de averiguarlo.
+ */
+describe('etiqueta de cuenta', () => {
+  it('se guarda al registrar', () => {
+    intake.register({ title: 'Nóminas', externalUrl: CHATGPT, account: 'Alsari' })
+    expect(tasks.list()[0]?.account).toBe('Alsari')
+  })
+
+  it('sin etiqueta, la tarea no tiene cuenta: «no lo sé» se dice como null', () => {
+    intake.register({ title: 'Nóminas', externalUrl: CHATGPT })
+    expect(tasks.list()[0]?.account).toBeNull()
+  })
+
+  it('dos cuentas distintas conviven con sus conversaciones', () => {
+    intake.register({ title: 'a', externalUrl: 'https://chatgpt.com/c/1', account: 'Personal' })
+    intake.register({ title: 'b', externalUrl: 'https://chatgpt.com/c/2', account: 'Personal' })
+    intake.register({ title: 'c', externalUrl: 'https://chatgpt.com/c/3', account: 'Alsari' })
+
+    const porCuenta = tasks.list().map((t) => t.account)
+    expect(porCuenta.filter((c) => c === 'Personal')).toHaveLength(2)
+    expect(porCuenta.filter((c) => c === 'Alsari')).toHaveLength(1)
+  })
+
+  it('etiquetar el perfil DESPUÉS actualiza la conversación al re-registrarla', () => {
+    intake.register({ title: 'Nóminas', externalUrl: CHATGPT })
+    expect(tasks.list()[0]?.account).toBeNull()
+
+    intake.register({ title: 'Nóminas', externalUrl: CHATGPT, account: 'Alsari' })
+    expect(tasks.list()[0]?.account).toBe('Alsari')
+  })
+
+  it('un perfil SIN etiquetar no le quita la cuenta a una que ya la tenía', () => {
+    // «No lo sé» no es lo mismo que «no tiene». Registrar desde un perfil sin
+    // nombre no debe borrar el trabajo de haber etiquetado los demás.
+    intake.register({ title: 'Nóminas', externalUrl: CHATGPT, account: 'Alsari' })
+    intake.register({ title: 'Nóminas', externalUrl: CHATGPT })
+
+    expect(tasks.list()[0]?.account).toBe('Alsari')
+  })
+
+  it('rechaza una etiqueta desmedida', () => {
+    const largo = 'x'.repeat(41)
+    expect(intake.register({ title: 'x', externalUrl: CHATGPT, account: largo }).accepted).toBe(false)
+  })
+
+  it('recuperar una archivada conserva su cuenta', () => {
+    const primera = intake.register({ title: 'x', externalUrl: CHATGPT, account: 'Alsari' })
+    tasks.changeStatus({ id: primera.taskId, status: 'archived', source: 'manual' })
+
+    intake.register({ title: 'x', externalUrl: CHATGPT, account: 'Alsari' })
+
+    expect(tasks.list()[0]?.status).toBe('queued')
+    expect(tasks.list()[0]?.account).toBe('Alsari')
   })
 })

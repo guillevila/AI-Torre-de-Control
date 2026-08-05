@@ -1,4 +1,12 @@
-import { borrarBitacora, buscarTorre, guardarClave, leerBitacora, leerClave } from './torre.js'
+import {
+  borrarBitacora,
+  buscarTorre,
+  guardarClave,
+  guardarCuenta,
+  leerBitacora,
+  leerClave,
+  leerCuenta,
+} from './torre.js'
 
 const $token = document.getElementById('token')
 const $guardar = document.getElementById('guardar')
@@ -185,3 +193,23 @@ setInterval(() => {
 setInterval(() => {
   void pintarEstado()
 }, 5000)
+
+/* ── Cuenta de este perfil ─────────────────────────────────────────────────── */
+
+const $cuenta = document.getElementById('cuenta')
+const $avisoCuenta = document.getElementById('aviso-cuenta')
+
+leerCuenta().then((cuenta) => {
+  if (cuenta) $cuenta.value = cuenta
+})
+
+document.getElementById('guardar-cuenta').addEventListener('click', async () => {
+  const valor = $cuenta.value.trim()
+  await guardarCuenta(valor)
+
+  $avisoCuenta.dataset.tono = 'ok'
+  $avisoCuenta.textContent = valor
+    ? `Guardado. Lo que registres desde este perfil aparecerá como «${valor}».`
+    : 'Sin cuenta. Lo que registres desde este perfil no llevará etiqueta.'
+  $avisoCuenta.hidden = false
+})

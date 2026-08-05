@@ -1,4 +1,4 @@
-import { buscarTorre, leerClave, nombrePlataforma, registrar } from './torre.js'
+import { buscarTorre, leerClave, leerCuenta, nombrePlataforma, registrar } from './torre.js'
 
 const $titulo = document.getElementById('titulo')
 const $sitio = document.getElementById('sitio')
@@ -55,8 +55,14 @@ async function arrancar() {
     return
   }
 
+  const cuenta = await leerCuenta()
+  if (cuenta) {
+    $plataforma.textContent = `${$plataforma.textContent || 'Web'} · ${cuenta}`
+    $plataforma.hidden = false
+  }
+
   $boton.disabled = false
-  $boton.addEventListener('click', () => void enviar({ token, title, externalUrl: url }))
+  $boton.addEventListener('click', () => void enviar({ token, title, externalUrl: url, cuenta }))
 
   await montarDeteccion(url)
 }
@@ -147,7 +153,7 @@ async function pintarDeteccion() {
     : 'Si la activas, la tarea se moverá sola. Chrome te pedirá permiso para este sitio: es lo que permite ver si hay una respuesta en marcha. Sigue sin leerse el texto de la conversación.'
 }
 
-async function enviar({ token, title, externalUrl }) {
+async function enviar({ token, title, externalUrl, cuenta }) {
   $boton.disabled = true
   $boton.textContent = 'Registrando…'
   $aviso.hidden = true
@@ -162,7 +168,7 @@ async function enviar({ token, title, externalUrl }) {
 
   let resultado
   try {
-    resultado = await registrar({ puerto, token, title, externalUrl })
+    resultado = await registrar({ puerto, token, title, externalUrl, cuenta })
   } catch {
     avisar('fallo', 'No se pudo hablar con la Torre. Inténtalo otra vez.')
     $boton.disabled = false
@@ -180,7 +186,10 @@ async function enviar({ token, title, externalUrl }) {
   // Se distingue crear de reconocer: pulsar dos veces sobre la misma
   // conversación no crea una tarea gemela, y conviene decirlo en lugar de
   // fingir un alta que no ha ocurrido.
-  if (resultado.duplicada) {
+  if (resultado.recuperada) {
+    avisar('ok', 'Estaba archivada y la he traído de vuelta. Ya la ves en la Torre, en «en cola».')
+    $boton.textContent = 'Recuperada ✓'
+  } else if (resultado.duplicada) {
     avisar('ok', 'Esta conversación ya estaba en la Torre. No se ha duplicado.')
     $boton.textContent = 'Ya estaba registrada'
   } else {

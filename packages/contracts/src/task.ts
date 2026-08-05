@@ -119,6 +119,21 @@ export const externalUrlSchema = z
 
 export const taskIdSchema = z.string().trim().min(1).max(64)
 
+/**
+ * Etiqueta de la cuenta o el espacio de trabajo al que pertenece una tarea.
+ *
+ * Nace de un uso real: tres chats de ChatGPT de una cuenta y dos de otra,
+ * abiertos a la vez. Todos caben en la Torre —cada conversación es su propia
+ * tarea—, pero sin esto se ven exactamente igual y no hay forma de saber cuál
+ * es de cuál.
+ *
+ * Lo escribes tú, una vez por perfil de navegador. La aplicación **nunca lo
+ * deduce** leyendo la página: no sabe ni puede saber con qué cuenta estás.
+ * Corto a propósito: es una etiqueta para leer de un vistazo, no un campo de
+ * texto libre donde acabe cabiendo cualquier cosa.
+ */
+export const accountSchema = z.string().trim().min(1).max(40)
+
 // ─── La entidad ──────────────────────────────────────────────────────────────
 
 export const taskSchema = z.object({
@@ -128,6 +143,8 @@ export const taskSchema = z.object({
   externalUrl: externalUrlSchema.nullable(),
   externalSessionId: z.string().trim().max(200).nullable(),
   projectPath: z.string().trim().max(1024).nullable(),
+  /** Cuenta o espacio de trabajo, si lo has etiquetado. Ver `accountSchema`. */
+  account: accountSchema.nullable(),
   status: taskStatusSchema,
   statusSource: statusSourceSchema,
   statusConfidence: statusConfidenceSchema,
@@ -149,6 +166,7 @@ export const createTaskInputSchema = z.object({
   externalUrl: externalUrlSchema.nullable().default(null),
   externalSessionId: z.string().trim().max(200).nullable().default(null),
   projectPath: z.string().trim().max(1024).nullable().default(null),
+  account: accountSchema.nullable().default(null),
   notes: z.string().max(2000).nullable().default(null),
   status: taskStatusSchema.default('draft'),
 
@@ -177,6 +195,7 @@ export const updateTaskInputSchema = z.object({
   externalUrl: externalUrlSchema.nullable().optional(),
   externalSessionId: z.string().trim().max(200).nullable().optional(),
   projectPath: z.string().trim().max(1024).nullable().optional(),
+  account: accountSchema.nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
 })
 

@@ -1578,6 +1578,26 @@ body {
   white-space: nowrap;
 }
 
+/*
+ * La cuenta a la que pertenece la conversación.
+ *
+ * Con varios chats de cuentas distintas abiertos a la vez, es lo único que
+ * distingue un muñeco de otro. Va debajo de la etiqueta y más apagada: importa,
+ * pero menos que el nombre del trabajo.
+ */
+.worker__cuenta {
+  display: block;
+  max-width: 96px;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
 .bubble {
   padding: 2px 7px;
   border-radius: var(--r3);

@@ -55,6 +55,21 @@ export const MIGRATIONS: readonly string[] = [
   CREATE INDEX IF NOT EXISTS idx_history_task ON task_status_history (task_id, at DESC);
   CREATE INDEX IF NOT EXISTS idx_history_at ON task_status_history (at DESC);
   `,
+
+  // ── v3 — cuenta o espacio de trabajo ───────────────────────────────────────
+  //
+  // Nace de un uso real: varios chats de ChatGPT de una cuenta y otros de otra,
+  // abiertos a la vez. Todos caben en la Torre, pero sin esto se ven iguales.
+  //
+  // Es una etiqueta que escribe el usuario, una vez por perfil de navegador. La
+  // aplicación NUNCA la deduce leyendo la página: no sabe con qué cuenta estás
+  // ni tiene forma de averiguarlo.
+  //
+  // Las tareas que ya existían se quedan sin cuenta (NULL), que es la verdad:
+  // nadie dijo a cuál pertenecían.
+  `
+  ALTER TABLE tasks ADD COLUMN account TEXT;
+  `,
 ]
 
 /**
