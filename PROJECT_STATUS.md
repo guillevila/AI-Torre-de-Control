@@ -136,13 +136,20 @@ la aplicación de verdad, todos en verde a 3 de agosto de 2026:
 - **Las peticiones de permiso no se guardan en ningún sitio** (D20): viven en
   memoria y desaparecen al decidirse.
 
-**La extensión de Chrome para ChatGPT (Sprint 004, etapa 1):**
+**La extensión de Chrome para ChatGPT (Sprint 004), comprobada en vivo:**
 
-> ⚠️ **Construida y probada, pero TÚ todavía no la has instalado.** Los tests
-> pasan y comprueban cosas de verdad —incluido el cuerpo exacto que sale del
-> navegador contra un servidor real—, pero hasta que la cargues en tu Chrome y
-> registres una conversación, esto no está comprobado *en vivo*. No cuenta como
-> «funciona» hasta entonces.
+> ✅ **Funciona de verdad, confirmado el 4/8/2026 con el ciclo completo.** El
+> dueño del proyecto instaló la extensión, registró una conversación de ChatGPT
+> con un clic y le escribió. La base de datos lo recogió así:
+>
+> ```
+> 20:15:35  nueva    → en cola      extensión  confianza baja
+> 20:15:45  en cola  → trabajando   extensión  confianza media   ← solo
+> 20:15:55  trabajando → terminada  extensión  confianza media   ← solo
+> ```
+>
+> Dos cambios de estado **sin tocar nada**, cada uno con su fuente y su
+> confianza correctas.
 
 - **Registra de un clic** la conversación que tengas abierta: pulsas su icono y
   la tarea aparece en la Torre.
@@ -195,15 +202,16 @@ la aplicación de verdad, todos en verde a 3 de agosto de 2026:
 
 **Lo que falta para llegar a MVP:**
 
-- **La detección automática de ChatGPT está construida pero SIN PROBAR contra
-  ChatGPT de verdad.** Los tests comprueban el contrato, el servicio, la ruta y
-  el paquete exacto que sale del navegador — pero **ninguno abre ChatGPT**. Que
-  el vigilante reconozca su botón de detener en la interfaz real de hoy no está
-  comprobado por nadie. Hasta que se vea funcionar, esta parte es una apuesta
-  razonada, no un hecho.
-- **Claude web, Codex y los demás siguen sin avisar solos.** Claude Code sí,
-  desde el Sprint 003. Para el resto haría falta ampliar la extensión o un
-  monitor de procesos, mecanismos bastante más frágiles.
+- **La detección de ChatGPT se romperá cuando cambien su interfaz.** Funciona hoy
+  (comprobado el 4/8/2026), pero reconoce su botón de detener por la forma que
+  tiene ahora mismo, y eso cambia cada pocas semanas. Cuando pase, el vigilante
+  **callará** y las tareas dejarán de moverse solas: no mentirá, pero habrá que
+  ajustar cuatro líneas en `apps/extension/vigilante.js`. El cuaderno de la
+  extensión dice si el vigilante sigue vivo, que es la mitad del diagnóstico.
+- **Claude web y Codex siguen sin comprobarse.** La extensión ya contempla
+  `claude.ai`, pero solo se ha probado contra ChatGPT: que reconozca la interfaz
+  de Claude web es una suposición, no un hecho. Codex y el resto necesitarían
+  ampliar la extensión o un monitor de procesos.
 - **No se puede instalar.** No hay un `.exe` ni un instalador: hay que arrancarla
   con `pnpm dev` desde una terminal. Depende de decidir para qué sistema
   operativo se empaqueta primero (decisión abierta O1).
