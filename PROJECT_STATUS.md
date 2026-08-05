@@ -177,10 +177,25 @@ la aplicación de verdad, todos en verde a 3 de agosto de 2026:
   El vigilante mira solo si existe el botón de detener la respuesta; nunca lee
   texto. Solo puede decir dos cosas —«trabajando» o «terminada»—, con confianza
   media, y no puede crear tareas ni tocar lo que fijaste tú a mano.
+  > ✅ **Comprobado en vivo el 5/8/2026, con el ciclo repitiéndose:**
+  >
+  > ```
+  > 15:27:01  en cola    → trabajando
+  > 15:27:03  trabajando → terminada
+  > 15:27:11  terminada  → trabajando   ← al preguntar otra vez
+  > 15:31:44  trabajando → terminada
+  > ```
+  >
+  > Antes se quedaba en «trabajando» para siempre: `querySelector` encuentra
+  > también los elementos ocultos, y ChatGPT tiene el botón de parar
+  > permanentemente en la página. Ahora se exige que **se vea**.
+  >
   > ⚠️ **Se va a romper, y está previsto.** ChatGPT cambia su interfaz cada pocas
   > semanas. Cuando cambie el botón, el vigilante dejará de reconocerlo y
   > **callará** en lugar de inventarse un estado: la tarea se queda donde estaba.
-  > Arreglarlo son cuatro líneas agrupadas a propósito en `vigilante.js`.
+  > Y si se queda atascado al revés —creyendo que genera sin parar—, a los cinco
+  > minutos lo apunta en el cuaderno con el selector que está acertando.
+  > Arreglarlo son unas líneas agrupadas a propósito en `vigilante.js`.
 
 **Comprobado contra el propio Windows:**
 
