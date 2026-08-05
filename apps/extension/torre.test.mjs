@@ -1,6 +1,6 @@
 import { createServer } from 'node:http'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { avisarActividad, nombrePlataforma, registrar } from './torre.js'
+import { avisarActividad, conversacionEmpezada, nombrePlataforma, registrar } from './torre.js'
 
 /**
  * Lo único de la extensión que se puede probar sin un navegador delante.
@@ -228,5 +228,47 @@ describe('lo que envía el vigilante', () => {
 
     const resultado = await avisar()
     expect(resultado).toMatchObject({ ok: true, emparejada: false })
+  })
+})
+
+/**
+ * Registrar un chat que todavía no existe.
+ *
+ * Encontrado en uso real: una tarea registrada en `chatgpt.com/` no se movía
+ * nunca. Al escribir el primer mensaje, ChatGPT cambia la dirección por la de
+ * la conversación, así que el vigilante avisaba sobre una dirección que no
+ * coincidía con la guardada. Un muñeco muerto desde que nace.
+ */
+describe('¿está empezada la conversación?', () => {
+  it('un chat en blanco de ChatGPT todavía no lo está', () => {
+    expect(conversacionEmpezada('https://chatgpt.com/')).toBe(false)
+    expect(conversacionEmpezada('https://chatgpt.com')).toBe(false)
+    expect(conversacionEmpezada('https://www.chatgpt.com/?model=auto')).toBe(false)
+  })
+
+  it('una conversación de ChatGPT sí', () => {
+    expect(conversacionEmpezada('https://chatgpt.com/c/abc-123')).toBe(true)
+  })
+
+  it('también los GPT personalizados y los proyectos', () => {
+    expect(conversacionEmpezada('https://chatgpt.com/g/g-xyz/c/abc')).toBe(true)
+    expect(conversacionEmpezada('https://chatgpt.com/project/abc')).toBe(true)
+  })
+
+  it('Claude: /new no, /chat/<id> sí', () => {
+    expect(conversacionEmpezada('https://claude.ai/new')).toBe(false)
+    expect(conversacionEmpezada('https://claude.ai/')).toBe(false)
+    expect(conversacionEmpezada('https://claude.ai/chat/abc-123')).toBe(true)
+    expect(conversacionEmpezada('https://claude.ai/cowork/abc')).toBe(true)
+  })
+
+  it('ante un sitio que no conocemos, no se estorba', () => {
+    // No nos corresponde impedir registrar algo que no sabemos leer.
+    expect(conversacionEmpezada('https://una-herramienta.test/lo-que-sea')).toBe(true)
+    expect(conversacionEmpezada('https://una-herramienta.test/')).toBe(true)
+  })
+
+  it('lo que no es una dirección tampoco estorba', () => {
+    expect(conversacionEmpezada('no soy una url')).toBe(true)
   })
 })

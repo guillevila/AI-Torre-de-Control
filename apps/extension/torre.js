@@ -26,6 +26,40 @@ const PLATAFORMAS = [
   [/(^|\.)perplexity\.ai$/, 'Perplexity'],
 ]
 
+/**
+ * ¿Esta pestaña es ya una conversación, o todavía un chat en blanco?
+ *
+ * Importa más de lo que parece. Un chat sin empezar vive en una dirección
+ * genérica —`chatgpt.com/`—, y en cuanto escribes el primer mensaje la
+ * herramienta la cambia por la de la conversación. Registrar antes de escribir
+ * ata la tarea a una dirección que la conversación abandona al instante: el
+ * vigilante avisará sobre la nueva, no coincidirá con nada, y ese muñeco no se
+ * moverá nunca. Un icono muerto desde que nace.
+ *
+ * Ante un sitio que no conocemos se contesta que sí: no nos corresponde impedir
+ * registrar algo que no sabemos leer.
+ */
+const CONVERSACION_EMPEZADA = [
+  // ChatGPT: /c/<id>, y también los GPT personalizados y los proyectos.
+  [/(^|\.)chatgpt\.com$/, (ruta) => /^\/(c|g|project|codex|gpts)\//i.test(ruta)],
+  [/(^|\.)chat\.openai\.com$/, (ruta) => /^\/(c|g)\//i.test(ruta)],
+  // Claude: /chat/<id> y /cowork/<id>. `/new` es el chat en blanco.
+  [/(^|\.)claude\.ai$/, (ruta) => /^\/(chat|cowork|project)\/[^/]+/i.test(ruta)],
+]
+
+export function conversacionEmpezada(url) {
+  try {
+    const parsed = new URL(url)
+    const host = parsed.hostname.toLowerCase()
+    for (const [patron, empezada] of CONVERSACION_EMPEZADA) {
+      if (patron.test(host)) return empezada(parsed.pathname)
+    }
+    return true
+  } catch {
+    return true
+  }
+}
+
 export function nombrePlataforma(url) {
   try {
     const host = new URL(url).hostname.toLowerCase()
