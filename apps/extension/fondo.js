@@ -135,6 +135,23 @@ chrome.runtime.onMessage.addListener((mensaje, remitente, responder) => {
     return
   }
 
+  /*
+   * El vigilante lleva demasiado viendo «se está generando».
+   *
+   * Casi siempre significa que reconoce mal algo y la tarea se ha quedado en
+   * «trabajando» para siempre. No se corrige el estado por nuestra cuenta —eso
+   * sería inventarse un dato—, pero se deja escrito, con el selector que está
+   * acertando: es exactamente lo que hace falta para arreglarlo.
+   */
+  if (mensaje?.tipo === 'sospecha') {
+    void apuntar({
+      que: `lleva ${mensaje.minutos} min sin dejar de «generar»`,
+      detalle: `en ${mensaje.host} · reconoce: ${(mensaje.reconoce ?? []).join(', ') || '(nada)'} · seguramente esa señal no sea la respuesta en curso`,
+      mal: true,
+    })
+    return
+  }
+
   if (mensaje?.tipo !== 'actividad') return
   if (mensaje.estado !== 'running' && mensaje.estado !== 'completed') return
   // Solo se acepta la dirección que Chrome dice que tiene esa pestaña, no la
