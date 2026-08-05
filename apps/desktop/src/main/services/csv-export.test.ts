@@ -9,6 +9,8 @@ const task = (overrides: Partial<Task> = {}): Task => ({
   externalUrl: 'https://example.test/c/1',
   externalSessionId: null,
   projectPath: null,
+
+  account: null,
   status: 'completed',
   statusSource: 'manual',
   statusConfidence: 'high',

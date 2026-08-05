@@ -55,6 +55,8 @@ describe('modelo de tarea', () => {
       externalUrl: 'https://example.test/c/1',
       externalSessionId: null,
       projectPath: null,
+
+      account: null,
       status: 'running',
       statusSource: 'manual',
       statusConfidence: 'high',

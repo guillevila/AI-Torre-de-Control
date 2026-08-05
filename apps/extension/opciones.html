@@ -247,6 +247,24 @@
     </section>
 
     <section>
+      <h2>Cuenta de este perfil</h2>
+      <label for="cuenta">Cómo llamas a esta cuenta</label>
+      <input id="cuenta" type="text" maxlength="40" autocomplete="off" placeholder="Personal, Alsari, Cliente X…" />
+      <p class="pista">
+        Cada perfil de Chrome guarda el suyo. Todas las conversaciones que registres desde este
+        perfil llevarán esta etiqueta, y así distinguirás en la Torre cuáles son de cada cuenta
+        aunque tengas cinco chats abiertos a la vez.
+      </p>
+      <p class="pista">
+        <strong>Lo escribes tú.</strong> La extensión no sabe con qué cuenta de ChatGPT estás:
+        tendría que leer la página para averiguarlo, y no lo hace. Si lo dejas vacío, las tareas
+        se registran sin cuenta.
+      </p>
+      <button id="guardar-cuenta">Guardar</button>
+      <div class="aviso" id="aviso-cuenta" hidden></div>
+    </section>
+
+    <section>
       <h2>Detección automática</h2>
       <p class="pista">
         Estado de cada pieza. Si la tarea no se mueve sola, aquí se ve en qué punto se corta.
