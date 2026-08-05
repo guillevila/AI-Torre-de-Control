@@ -195,7 +195,11 @@ test('la vertical completa funciona de principio a fin', async () => {
   await expect(detail).toBeVisible()
   await expect(detail).toContainText('https://chatgpt.com/c/abc-123')
   await detail.getByRole('button', { name: 'Cerrar' }).click()
-  await page.getByTestId('view-operations').click()
+  // De la fábrica se sale por su consola de mando: es pantalla completa y no
+  // tiene cabecera con el conmutador. Es lo que la hace parecer una sala de
+  // control y no una pestaña más.
+  await page.getByTestId('factory-tower').click()
+  await page.getByTestId('nav-tasks').click()
 
   // ── 8. Un evento local real cambia el estado ──────────────────────────────
   const taskId = await row.getAttribute('data-task-id')
@@ -366,7 +370,7 @@ test('pinchar un muñeco de la oficina abre su ficha', async () => {
   await page.getByTestId('confirm-delete').click()
   await expect(muneco).toBeHidden()
 
-  await page.getByTestId('view-operations').click()
+  await page.getByTestId('factory-tower').click()
 })
 
 test('los datos siguen ahí después de cerrar y volver a abrir', async () => {
@@ -385,4 +389,36 @@ test('los datos siguen ahí después de cerrar y volver a abrir', async () => {
   // Y el historial también sobrevive.
   await row.getByTestId('open-detail').click()
   await expect(page.getByTestId('history-list').locator('li').first()).toBeVisible()
+})
+
+/**
+ * La fábrica es pantalla completa, y sus dos salidas funcionan.
+ *
+ * Al quitar la barra lateral y la cabecera, esas dos puertas son lo ÚNICO que
+ * queda para salir de la oficina. Si una se rompe, el usuario se queda
+ * encerrado en una pantalla sin menús — y eso no lo cazaría ninguna prueba que
+ * solo mire que la vista se pinta.
+ */
+test('la fábrica ocupa la pantalla y sus dos salidas llevan a alguna parte', async () => {
+  // Las pruebas comparten la misma aplicación abierta: si una anterior dejó
+  // una ficha encima, aquí estorba. Escape es lo que pulsaría una persona.
+  await page.keyboard.press('Escape')
+  await page.getByTestId('view-office').click()
+  await expect(page.getByTestId('office-view')).toBeVisible()
+
+  // Sin barra lateral ni cabecera: la nave llega hasta el borde.
+  await expect(page.getByTestId('nav-tower')).toBeHidden()
+
+  // La consola de mando lleva al detalle de todo.
+  await page.getByTestId('factory-tower').click()
+  await expect(page.getByTestId('tower-view')).toBeVisible()
+  await expect(page.getByTestId('nav-tower')).toBeVisible()
+
+  // Y la rueda, a los ajustes.
+  await page.getByTestId('view-office').click()
+  await page.getByTestId('factory-settings').click()
+  await expect(page.getByTestId('settings-view')).toBeVisible()
+
+  // Se vuelve por la barra lateral, que reaparece fuera de la fábrica.
+  await page.getByTestId('nav-tower').click()
 })

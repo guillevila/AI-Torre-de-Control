@@ -148,30 +148,43 @@ export function App() {
   const officeMode = showSwitch && view === 'office'
 
   return (
-    <div className="app">
-      <Sidebar
-        section={section}
-        onNavigate={setSection}
-        onNew={() => setDialog({ kind: 'create' })}
-        attentionCount={summary.attention}
-        devInfo={devInfo}
-      />
+    /*
+     * La fábrica ocupa la pantalla entera.
+     *
+     * Sin barra lateral y sin cabecera: es una sala de control, y una sala de
+     * control se mira de lejos. Los menús alrededor competían con lo único que
+     * hay que ver —quién trabaja y quién te espera— y además chocaban con el
+     * tema oscuro.
+     *
+     * Desde ahí solo hay dos salidas, y están dentro de la propia fábrica: la
+     * rueda lleva a Ajustes, y la consola de mando al detalle de todo. En el
+     * resto de secciones la barra lateral vuelve, así que nunca se queda uno
+     * encerrado.
+     */
+    <div className={officeMode ? 'app app--fabrica' : 'app'}>
+      {!officeMode && (
+        <Sidebar
+          section={section}
+          onNavigate={setSection}
+          onNew={() => setDialog({ kind: 'create' })}
+          attentionCount={summary.attention}
+          devInfo={devInfo}
+        />
+      )}
 
       <main className="main">
-        <TopBar
-          ref={searchRef}
-          title={TITLES[section].title}
-          subtitle={
-            officeMode
-              ? 'La planta de la oficina: la posición de cada trabajador es su estado'
-              : TITLES[section].subtitle
-          }
-          showSwitch={showSwitch}
-          view={view}
-          onView={setView}
-          search={search}
-          onSearch={setSearch}
-        />
+        {!officeMode && (
+          <TopBar
+            ref={searchRef}
+            title={TITLES[section].title}
+            subtitle={TITLES[section].subtitle}
+            showSwitch={showSwitch}
+            view={view}
+            onView={setView}
+            search={search}
+            onSearch={setSearch}
+          />
+        )}
 
         {error && (
           <div className="banner" role="alert" data-testid="error-banner">
@@ -226,6 +239,14 @@ export function App() {
               tasks={visibleTasks}
               activity={activity}
               onSelect={(task) => setSelectedId(task.id)}
+              onOpenSettings={() => {
+                setView('operations')
+                setSection('settings')
+              }}
+              onOpenTower={() => {
+                setView('operations')
+                setSection('tower')
+              }}
             />
           ) : section === 'tower' ? (
             <TowerView

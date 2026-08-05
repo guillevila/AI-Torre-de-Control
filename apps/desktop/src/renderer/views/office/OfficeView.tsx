@@ -14,6 +14,15 @@ interface OfficeViewProps {
   /** Cambios de estado recientes. Alimentan el pulso de la consola. */
   activity: RecentActivityEntry[]
   onSelect: (task: Task) => void
+  /**
+   * Las dos únicas salidas de la fábrica, porque aquí no hay barra lateral.
+   *
+   * La rueda lleva a Ajustes; la consola de mando, al detalle de todo. Van
+   * dentro de la propia planta a propósito: una sala de control no tiene menús
+   * alrededor.
+   */
+  onOpenSettings: () => void
+  onOpenTower: () => void
 }
 
 /**
@@ -43,7 +52,13 @@ interface OfficeViewProps {
  * se calcula de verdad. Un dato inventado en una pantalla de control es peor
  * que un hueco vacío: se cree.
  */
-export function OfficeView({ tasks, activity, onSelect }: OfficeViewProps) {
+export function OfficeView({
+  tasks,
+  activity,
+  onSelect,
+  onOpenSettings,
+  onOpenTower,
+}: OfficeViewProps) {
   const planta = factoryFloor(tasks)
   const resumen = summarise(tasks)
   const atencion = attentionQueue(tasks)
@@ -105,6 +120,18 @@ export function OfficeView({ tasks, activity, onSelect }: OfficeViewProps) {
           )}
           <span className="factory__delivery-check">✓</span>
         </div>
+
+        {/* La rueda: la única salida a los ajustes desde aquí. */}
+        <button
+          type="button"
+          className="fpanel factory__gear"
+          onClick={onOpenSettings}
+          title="Ajustes"
+          aria-label="Abrir los ajustes"
+          data-testid="factory-settings"
+        >
+          <span aria-hidden="true">⚙</span>
+        </button>
       </header>
 
       {/* ── Naves ────────────────────────────────────────────────────────── */}
@@ -143,6 +170,7 @@ export function OfficeView({ tasks, activity, onSelect }: OfficeViewProps) {
             openai={enNave(planta.work, 'openai')}
             pendiente={pendiente}
             onSelect={onSelect}
+            onOpenTower={onOpenTower}
           />
         </div>
 
@@ -231,6 +259,7 @@ interface ConsolaProps {
   openai: number
   pendiente: Task | undefined
   onSelect: (task: Task) => void
+  onOpenTower: () => void
 }
 
 /** Cuántos tramos tiene el pulso, y cuánto abarca cada uno. */
@@ -258,7 +287,15 @@ function pulso(activity: RecentActivityEntry[]): number[] {
   return tramos
 }
 
-function Consola({ resumen, activity, anthropic, openai, pendiente, onSelect }: ConsolaProps) {
+function Consola({
+  resumen,
+  activity,
+  anthropic,
+  openai,
+  pendiente,
+  onSelect,
+  onOpenTower,
+}: ConsolaProps) {
   const tramos = pulso(activity)
   const techo = Math.max(1, ...tramos)
   const puntos = tramos
@@ -276,10 +313,20 @@ function Consola({ resumen, activity, anthropic, openai, pendiente, onSelect }: 
 
   return (
     <section className="fconsole">
-      <div className="fconsole__head">
+      {/*
+        El rótulo de la consola es la puerta al detalle.
+        Desde la fábrica se ve lo esencial; para verlo TODO se entra aquí.
+      */}
+      <button
+        type="button"
+        className="fconsole__head"
+        onClick={onOpenTower}
+        title="Ver todo en detalle"
+        data-testid="factory-tower"
+      >
         <span className="fconsole__title">TORRE DE CONTROL</span>
-        <span className="fconsole__sub">Tu centro de mando</span>
-      </div>
+        <span className="fconsole__sub">Tu centro de mando · pulsa para verlo todo →</span>
+      </button>
 
       <div className="fconsole__panels">
         <article className="fcard fcard--left">

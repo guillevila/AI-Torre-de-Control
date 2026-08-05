@@ -13,6 +13,29 @@
  * movimiento.
  */
 
+/*
+ * Pantalla completa: sin barra lateral y sin cabecera.
+ *
+ * Se quitan también los márgenes del contenedor de contenido, para que la nave
+ * llegue hasta el borde. Una sala de control con marco alrededor deja de
+ * parecer una sala de control.
+ */
+.app--fabrica .main,
+.app--fabrica .content {
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.app--fabrica .content {
+  height: 100%;
+  min-height: 0;
+}
+
+.app--fabrica .factory {
+  border-radius: 0;
+}
+
 .factory {
   --f-bg: #0b0e10;
   --f-panel-hi: #14181b;
@@ -43,7 +66,18 @@
     radial-gradient(80% 60% at 30% 0%, rgba(58, 214, 200, 0.07), rgba(0, 0, 0, 0) 60%),
     radial-gradient(60% 60% at 92% 30%, rgba(126, 224, 74, 0.06), rgba(0, 0, 0, 0) 62%),
     linear-gradient(180deg, #0d1113, #080a0b);
-  overflow: hidden;
+  /*
+   * Se desplaza si no cabe, en lugar de aplastarse.
+   *
+   * La fábrica tiene muchas alturas fijas —cabecera, consola, cápsulas,
+   * leyenda— y sumadas pasan de la ventana MÍNIMA de la aplicación, que mide
+   * 620 px de alto. Con `hidden` la zona de trabajo se quedaba sin sitio, los
+   * robots colapsaban a cero y no se podían ni pulsar: lo cazó el servidor de
+   * integración, que abre una ventana más baja que la de un escritorio normal.
+   *
+   * Una barra de desplazamiento es fea; una nave sin robots es un fallo.
+   */
+  overflow: auto;
 }
 
 .factory .mono {
@@ -203,6 +237,21 @@
   white-space: nowrap;
 }
 
+/* La rueda de ajustes: discreta hasta que la buscas. */
+.factory__gear {
+  flex: 0 0 62px;
+  justify-content: center;
+  border: 0;
+  color: var(--f-ink-3);
+  font-size: 21px;
+  cursor: pointer;
+  transition: color 140ms ease;
+}
+
+.factory__gear:hover {
+  color: var(--f-teal);
+}
+
 .factory__delivery-check {
   display: grid;
   place-items: center;
@@ -320,11 +369,17 @@
 
 /* ── Reparto de las naves ────────────────────────────────────────────────── */
 
+/*
+ * Las naves nunca bajan de aquí.
+ *
+ * Es lo que garantiza que un robot quepa entero —mide 74 px— con su chapa, su
+ * etiqueta y sitio para pulsarlo. Por debajo, la fábrica prefiere desplazarse.
+ */
 .factory__floor {
   display: flex;
   flex: 1;
   gap: 12px;
-  min-height: 0;
+  min-height: 560px;
 }
 
 .factory__left,
@@ -349,7 +404,9 @@
 
 .fzone--work {
   flex: 1;
-  min-height: 0;
+  /* 78 de rótulo + dos filas de 150 + su hueco + 16: lo que ocupan sus celdas.
+     Menos que esto y el contenido se sale de la caja. */
+  min-height: 406px;
   /* 78 y no 66: las chapas de puesto sobresalen por arriba y rozaban el rótulo. */
   padding: 78px 16px 16px;
   background-image:
@@ -359,7 +416,7 @@
 
 .fzone--delivery {
   flex: 1;
-  min-height: 0;
+  min-height: 302px;
   padding: 16px;
   background-image: linear-gradient(180deg, rgba(126, 224, 74, 0.05), rgba(0, 0, 0, 0) 40%);
 }
@@ -430,19 +487,27 @@
   align-content: start;
 }
 
+/*
+ * Cada fila tiene un suelo: el que necesita el robot para caber entero.
+ *
+ * Con `minmax(0, 1fr)` una ventana baja dejaba filas de 100 px, y la figura
+ * —74 px, más el hueco de la etiqueta— se salía por arriba y tapaba el rótulo
+ * de la zona. Ahora la fila no baja de ahí y, si no cabe, la fábrica se
+ * desplaza: preferible a un robot montado sobre un título.
+ */
 .fgrid--work {
   gap: 12px;
-  grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(150px, 1fr));
 }
 
 .fgrid--delivery {
   gap: 10px;
-  grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(132px, 1fr));
 }
 
 .fgrid--backlog {
   gap: 10px;
-  grid-template-rows: minmax(0, 1fr);
+  grid-template-rows: minmax(96px, 1fr);
 }
 
 .factory__empty {
@@ -867,8 +932,9 @@
 
 .fconsole {
   position: relative;
-  flex: 0 0 306px;
-  height: 306px;
+  /* Cede altura antes que la nave: el dato manda sobre el resumen. */
+  flex: 0 1 306px;
+  min-height: 236px;
   padding: 58px 20px 16px;
   border-radius: 12px;
   background-color: #0f1315;
@@ -878,12 +944,29 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
+/* El rótulo de la consola es un botón: lleva al detalle de todo. */
 .fconsole__head {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: 12px;
+  left: 50%;
+  top: 8px;
+  transform: translateX(-50%);
+  z-index: 2;
+  padding: 4px 18px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: inherit;
   text-align: center;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+
+.fconsole__head:hover {
+  background: rgba(58, 214, 200, 0.08);
+}
+
+.fconsole__head:hover .fconsole__sub {
+  color: var(--f-teal);
 }
 
 .fconsole__title {
@@ -1191,6 +1274,74 @@
   border-radius: 3px;
   color: var(--f-blue);
   box-shadow: inset 0 0 0 1.5px var(--f-blue);
+}
+
+/* ── Ventanas estrechas ──────────────────────────────────────────────────── */
+
+/*
+ * La fábrica se APILA en lugar de aplastarse.
+ *
+ * El diseño está pensado para 1600 px de ancho. La aplicación se puede abrir a
+ * 900, y ahí las dos columnas se comprimían hasta que los rótulos se montaban
+ * unos sobre otros y la consola quedaba en tiras verticales ilegibles.
+ *
+ * A partir de estos anchos, cada bloque pasa a ocupar todo el ancho y la
+ * fábrica se recorre hacia abajo. Se ve menos de golpe, pero se lee todo — que
+ * es de lo que va una sala de control.
+ */
+
+@media (max-width: 1240px) {
+  .factory__floor {
+    flex-direction: column;
+    /* Sin `auto`, el reparto de alturas de cuando iban en fila se aplicaba a la
+       columna: la izquierda se quedaba con una caja pequeña y su contenido
+       desbordaba POR ENCIMA de la derecha, que se comía los clics del robot. */
+    flex: 0 0 auto;
+    min-height: 0;
+  }
+
+  /* Cada bloque mide lo que ocupa su contenido, y la fábrica se desplaza. */
+  .factory__left,
+  .factory__right {
+    flex: 0 0 auto;
+  }
+
+  .fzone--delivery {
+    min-height: 302px;
+  }
+}
+
+@media (max-width: 1060px) {
+  /* La cabecera se parte en dos filas antes que recortar los contadores. */
+  .factory__top {
+    flex: 0 0 auto;
+    height: auto;
+    flex-wrap: wrap;
+  }
+
+  .factory__brand,
+  .factory__counters,
+  .factory__delivery-head {
+    flex: 1 1 320px;
+    min-height: 64px;
+  }
+
+  /* La consola en columna: tres tarjetas anchas se leen; tres tiras, no. */
+  .fconsole {
+    flex: 0 0 auto;
+    min-height: 0;
+    padding-bottom: 22px;
+  }
+
+  .fconsole__panels {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .fcard--left,
+  .fcard--right {
+    transform: none;
+  }
 }
 
 /* ── Movimiento ──────────────────────────────────────────────────────────── */

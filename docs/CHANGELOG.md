@@ -10,6 +10,25 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Cambiado — la fábrica ocupa la pantalla entera
+
+La nave ya no comparte pantalla con la barra lateral ni con la cabecera. Una
+sala de control se mira de lejos, y los menús alrededor competían con lo único
+que hay que ver: quién trabaja y quién te espera. Además chocaban de lleno con
+el tema oscuro.
+
+- **Dos salidas, y están dentro de la propia fábrica**: la **rueda** de arriba a
+  la derecha lleva a Ajustes, y la **consola de mando** de abajo al detalle de
+  todo. Fuera de la fábrica la barra lateral vuelve, así que no hay forma de
+  quedarse encerrado — y hay una prueba de interfaz que recorre ambas puertas
+  precisamente porque, sin menús, romper una dejaría al usuario atrapado.
+- **Los permisos siguen apareciendo por encima**, en la fábrica igual que en el
+  resto de la aplicación. Comprobado con una petición real: la tarjeta manda
+  sobre la nave y la rueda sigue accesible.
+
+Nota honesta: con un permiso esperando, la nave se estrecha y hay que hacer
+scroll para ver la leyenda del pie. No se pierde nada, pero se aprieta.
+
 ### Cambiado — la Oficina pasa a ser una fábrica
 
 Implementa el documento de diseño **«Oficina Fábrica»**. La planta de papel
