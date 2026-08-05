@@ -39,7 +39,10 @@ export const turnRequestSchema = z
 
 export type TurnRequestInput = z.infer<typeof turnRequestSchema>
 
-/** Un turno esperando a que el dueño conteste. Solo en memoria. */
+/**
+ * Un turno esperando a que el dueño conteste. Solo en memoria, y SIN caducidad
+ * (D25-bis): la tarjeta se queda hasta que el dueño responde o la da por vista.
+ */
 export interface PendingTurn {
   requestId: string
   taskId: string
@@ -49,7 +52,11 @@ export interface PendingTurn {
   output: string
   cwd: string
   requestedAt: string
-  expiresAt: string
+  /**
+   * Hasta cuándo la sesión sigue SOSTENIDA esperando (misma sesión). `null`
+   * cuando el turno ya terminó: contestar entonces relanza la conversación.
+   */
+  holdUntil: string | null
 }
 
 /**
@@ -61,8 +68,15 @@ export type TurnResolution = { action: 'reply'; text: string } | { action: 'pass
 
 export const turnDecisionInputSchema = z.object({
   requestId: z.string().trim().min(8).max(64),
-  action: z.enum(['reply', 'pass']),
+  /** `reply` contesta (misma sesión o relanzando); `review` = dar por vista. */
+  action: z.enum(['reply', 'review']),
   text: z.string().trim().min(1).max(TURN_OUTPUT_MAX).optional(),
+})
+
+/** Contestar a la conversación de una tarea desde su ficha (D25-bis). */
+export const taskReplyInputSchema = z.object({
+  taskId: z.string().trim().min(1).max(64),
+  text: z.string().trim().min(1).max(TURN_OUTPUT_MAX),
 })
 
 export type TurnDecisionInput = z.infer<typeof turnDecisionInputSchema>

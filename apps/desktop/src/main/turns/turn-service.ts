@@ -1,28 +1,36 @@
-import { turnRequestSchema, type TurnResolution } from '@torre/contracts'
+import {
+  taskReplyInputSchema,
+  turnRequestSchema,
+  type Task,
+  type TurnResolution,
+} from '@torre/contracts'
 import type { HookActivityLog } from '../hooks/hook-activity-log.js'
 import type { SessionLinker } from '../hooks/session-linker.js'
 import type { TaskService } from '../services/task-service.js'
 import type { TurnRegistry } from './turn-registry.js'
 
 /**
- * Atiende el fin de un turno de Claude Code y decide si el dueño quiere
- * contestar desde la Torre (D25).
+ * «Responder desde la Torre», versión sin caducidad (D25-bis).
  *
- * Con la función apagada (ventana = 0) responde `pass` al instante y el enlace
- * sigue su camino de siempre. Encendida, la tarjeta aparece y se espera el
- * tiempo configurado.
+ * La tarjeta de un turno se queda hasta que el dueño actúe:
  *
- * Si el dueño contesta, la tarea vuelve a «trabajando» —la conversación sigue—
- * y el texto viaja al enlace, que reengancha la sesión. La Torre no redacta
- * nada: transmite lo que el dueño tecleó, o no transmite nada (D18).
+ *  - **Responder** con la sesión aún sostenida → el texto entra por la misma
+ *    sesión (el hook devuelve `decision: block`).
+ *  - **Responder** con el turno ya cerrado → la Torre RELANZA la conversación
+ *    (`claude --resume`) con el texto. Continúa con otro identificador; la
+ *    tarea libera el suyo para que la adopte la continuación.
+ *  - **Dar por vista** → la tarea pasa a «revisada» (el reposo de D22), desde
+ *    donde siempre se puede volver a contestar por la ficha.
  */
 export interface TurnServiceDeps {
   registry: TurnRegistry
   linker: SessionLinker
   taskService: TaskService
   activity?: HookActivityLog
-  /** Ventana de respuesta vigente, en milisegundos. 0 = apagado. */
-  windowMs: () => number
+  /** Cuánto sostiene el hook la sesión. 0 = función apagada (sin tarjetas). */
+  holdMs: () => number
+  /** Relanza una conversación. Inyectable para probarlo sin lanzar nada. */
+  resume: (cwd: string, sessionId: string, text: string) => boolean
   now?: () => string
 }
 
@@ -31,7 +39,8 @@ export class TurnService {
   private readonly linker: SessionLinker
   private readonly tasks: TaskService
   private readonly activity: HookActivityLog | undefined
-  private readonly windowMs: () => number
+  private readonly holdMs: () => number
+  private readonly resume: (cwd: string, sessionId: string, text: string) => boolean
   private readonly now: () => string
 
   constructor(deps: TurnServiceDeps) {
@@ -39,41 +48,32 @@ export class TurnService {
     this.linker = deps.linker
     this.tasks = deps.taskService
     this.activity = deps.activity
-    this.windowMs = deps.windowMs
+    this.holdMs = deps.holdMs
+    this.resume = deps.resume
     this.now = deps.now ?? (() => new Date().toISOString())
   }
 
   async request(raw: unknown): Promise<TurnResolution> {
     const parsed = turnRequestSchema.safeParse(raw)
-    if (!parsed.success) {
-      // Malformado → pass: el enlace cae a su comportamiento normal.
-      this.activity?.record({
-        event: 'turno mal formado',
-        cwd: '—',
-        accepted: false,
-        detail: parsed.error.issues[0]?.message ?? 'datos no válidos',
-        taskTitle: null,
-      })
-      return { action: 'pass' }
-    }
+    if (!parsed.success) return { action: 'pass' }
 
-    const ventana = this.windowMs()
-    if (ventana <= 0) return { action: 'pass' }
+    const hold = this.holdMs()
+    if (hold <= 0) return { action: 'pass' }
 
     const input = parsed.data
     const task = this.linker.resolve(input.cwd, input.sessionId)
 
-    // En la ventana de actividad se anota el HECHO, nunca la respuesta del
-    // asistente: esa solo vive en la tarjeta (D5-ter).
+    // En la actividad se anota el HECHO, jamás la respuesta del asistente
+    // (D5-ter): esa solo vive en la tarjeta.
     this.activity?.record({
       event: 'turno terminado',
       cwd: input.cwd,
       accepted: true,
-      detail: 'esperando por si contestas desde la Torre',
+      detail: 'la tarjeta espera tu respuesta en la Torre',
       taskTitle: task.title,
     })
 
-    const resolution = await this.registry.await(
+    return this.registry.awaitHold(
       {
         requestId: input.requestId,
         taskId: task.id,
@@ -83,36 +83,86 @@ export class TurnService {
         cwd: input.cwd,
         requestedAt: this.now(),
       },
-      ventana,
+      hold,
     )
-
-    if (resolution.action === 'reply') {
-      // La conversación sigue: la tarea vuelve a trabajar sin pasar por la
-      // mesa de entregas. Si la máquina de estados lo rechaza, el texto viaja
-      // igualmente — el estado es contexto; tu respuesta es lo urgente.
-      try {
-        this.tasks.changeStatus({
-          id: task.id,
-          status: 'running',
-          source: 'claude_hook',
-          confidence: 'high',
-        })
-      } catch {
-        /* ver arriba */
-      }
-      this.activity?.record({
-        event: 'turno respondido',
-        cwd: input.cwd,
-        accepted: true,
-        detail: 'tu respuesta viajó a la sesión y la conversación continúa',
-        taskTitle: task.title,
-      })
-    }
-
-    return resolution
   }
 
-  decide(requestId: string, resolution: TurnResolution): boolean {
-    return this.registry.decide(requestId, resolution)
+  /** La decisión del dueño sobre una tarjeta. Devuelve false si ya no existe. */
+  decide(requestId: string, action: 'reply' | 'review', text?: string): boolean {
+    const turn = this.registry.get(requestId)
+    if (!turn) return false
+    const task = this.tasks.list().find((candidate) => candidate.id === turn.taskId) ?? null
+
+    if (action === 'review') {
+      this.markReviewed(task)
+      this.registry.settle(requestId, { action: 'pass' })
+      return true
+    }
+
+    const limpio = (text ?? '').trim()
+    if (!limpio) return false
+
+    if (this.registry.isHeld(requestId)) {
+      // La sesión sigue sostenida: el texto entra por la misma sesión.
+      this.moveTo(task, 'running', 'claude_hook')
+      this.registry.settle(requestId, { action: 'reply', text: limpio })
+      return true
+    }
+
+    // El turno ya terminó: se relanza la conversación con el texto.
+    const ok = this.replyByResume(task, turn.cwd, limpio)
+    if (ok) this.registry.settle(requestId, { action: 'pass' })
+    return ok
+  }
+
+  /** Contestar desde la ficha, sin tarjeta (una tarea revisada, por ejemplo). */
+  replyToTask(raw: unknown): boolean {
+    const parsed = taskReplyInputSchema.safeParse(raw)
+    if (!parsed.success) return false
+    const task = this.tasks.list().find((candidate) => candidate.id === parsed.data.taskId) ?? null
+    if (!task?.projectPath) return false
+    return this.replyByResume(task, task.projectPath, parsed.data.text)
+  }
+
+  private replyByResume(task: Task | null, cwd: string, text: string): boolean {
+    const sessionId = task?.externalSessionId
+    if (!task || !sessionId) return false
+    if (!this.resume(cwd, sessionId, text)) return false
+
+    // La continuación llegará con OTRO identificador: se libera el de la tarea
+    // para que la primera señal de la continuación la adopte, no cree otra.
+    try {
+      this.tasks.update({ id: task.id, externalSessionId: null, sessionEnded: false })
+    } catch {
+      /* si no se puede, la adopción por carpeta sigue teniendo opciones */
+    }
+    this.moveTo(task, 'running', 'manual')
+    this.activity?.record({
+      event: 'conversación relanzada',
+      cwd,
+      accepted: true,
+      detail: 'tu respuesta retoma la conversación',
+      taskTitle: task.title,
+    })
+    return true
+  }
+
+  private markReviewed(task: Task | null): void {
+    if (!task) return
+    // «Revisada» solo existe desde terminada/fallida: si la tarjeta estaba
+    // sostenida la tarea aún trabajaba, así que se pasa por «terminada» antes.
+    if (!['completed', 'failed', 'reviewed'].includes(task.status)) {
+      this.moveTo(task, 'completed', 'manual')
+    }
+    if (task.status !== 'reviewed') this.moveTo(task, 'reviewed', 'manual')
+  }
+
+  private moveTo(task: Task | null, status: 'running' | 'completed' | 'reviewed', source: 'manual' | 'claude_hook'): void {
+    if (!task) return
+    try {
+      this.tasks.changeStatus({ id: task.id, status, source, confidence: 'high' })
+    } catch {
+      // Una transición rechazada no debe tumbar la decisión del dueño.
+    }
   }
 }

@@ -10,6 +10,31 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Cambiado — la tarjeta de turno ya no caduca (D25-bis)
+
+**A petición del dueño**, y con razón: una tarjeta con cronómetro convertía
+«estar a otras cosas» en una carrera. Ahora la tarjeta **se queda hasta que
+actúes**.
+
+- **Dos vidas en la misma tarjeta.** Mientras la sesión está *sostenida* (los
+  segundos de Ajustes), tu respuesta entra por ella. Pasado ese rato el turno
+  termina como siempre —aviso y entrega— pero **la tarjeta sigue ahí**, marcada
+  con ⏸, y responder entonces **relanza la conversación** donde estaba.
+- **«Dar por vista»** manda la tarea a **revisada**, y en su ficha aparece un
+  cuadro para **retomar la conversación cuando quieras**. Ese es el «estado
+  pausado» pedido: ya existía (D22), solo le faltaba la puerta.
+- **La Torre pasa a lanzar procesos** para poder contestar un turno ya cerrado
+  (`claude -p --resume`). Ampliación real de D18-ter, con cuatro cautelas: el
+  texto va por **entrada estándar** (nunca en la línea de comandos), el
+  identificador se valida como UUID, se lanza **sin intérprete de comandos**, y
+  si falla **la tarjeta no desaparece** — una respuesta escrita no se pierde en
+  silencio. Invocación comprobada en vivo.
+- **Límites declarados**: la continuación es otra sesión (la tarea libera su
+  identificador para que la adopte, D23-bis), y en un proyecto cuyo diálogo de
+  confianza no se haya aceptado nunca, la conversación se retoma con los
+  permisos del proyecto ignorados.
+- **356 tests** unitarios y 10 de interfaz, en verde.
+
 ### Añadido — responder a Claude desde la Torre (D25)
 
 **La petición fundacional del producto, construida:** termina un turno, la Torre

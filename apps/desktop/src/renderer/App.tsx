@@ -342,6 +342,15 @@ export function App() {
           onClose={() => setSelectedId(null)}
           onChangeStatus={handleChangeStatus}
           onOpenExternal={handleOpenExternal}
+          onReply={(id, text) => {
+            void window.torre.replyToConversation(id, text).then((result) => {
+              setToast(
+                result.ok
+                  ? { message: 'Tu respuesta retoma la conversación.', tone: 'neutral' }
+                  : { message: result.error, tone: 'error' },
+              )
+            })
+          }}
           onEdit={(task) => {
             setSelectedId(null)
             setDialog({ kind: 'edit', task })

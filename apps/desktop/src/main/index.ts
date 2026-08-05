@@ -6,6 +6,7 @@ import { TurnRegistry } from './turns/turn-registry.js'
 import { TurnService } from './turns/turn-service.js'
 import { folderName } from '@torre/domain'
 import { focusProjectWindow } from './system/focus-window.js'
+import { resumeConversation } from './system/resume-conversation.js'
 import { HookActivityLog } from './hooks/hook-activity-log.js'
 import { HookInstaller } from './hooks/hook-installer.js'
 import { SessionLinker } from './hooks/session-linker.js'
@@ -241,7 +242,8 @@ async function bootstrap(): Promise<void> {
     taskService: service,
     activity: hookActivity,
     // Ajuste vivo: cambiarlo aplica al turno siguiente, sin reiniciar.
-    windowMs: () => settings.get().turnReplyWindowSeconds * 1000,
+    holdMs: () => settings.get().turnReplyWindowSeconds * 1000,
+    resume: resumeConversation,
   })
   // Altas que llegan de fuera (extensión de navegador). No duplica tareas.
   const intakeService = new IntakeService({ taskService: service })

@@ -40,6 +40,7 @@ const bridge: TorreBridge = {
   listTurns: () => ipcRenderer.invoke(IPC.turnsList),
   decideTurn: (requestId, action, text) =>
     ipcRenderer.invoke(IPC.turnsDecide, { requestId, action, text }),
+  replyToConversation: (taskId, text) => ipcRenderer.invoke(IPC.tasksReply, { taskId, text }),
 
   hookStatus: () => ipcRenderer.invoke(IPC.hookStatus),
   hookPreview: () => ipcRenderer.invoke(IPC.hookPreview),

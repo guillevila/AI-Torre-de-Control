@@ -4,7 +4,7 @@ import type { PendingTurn } from '@torre/contracts'
 interface TurnCardProps {
   turn: PendingTurn
   now: number
-  onDecide: (requestId: string, action: 'reply' | 'pass', text?: string) => void
+  onDecide: (requestId: string, action: 'reply' | 'review', text?: string) => void
 }
 
 /**
@@ -18,7 +18,10 @@ interface TurnCardProps {
  */
 export function TurnCard({ turn, now, onDecide }: TurnCardProps) {
   const [texto, setTexto] = useState('')
-  const restante = Math.max(0, Math.round((Date.parse(turn.expiresAt) - now) / 1000))
+  // Con `holdUntil` la sesión sigue sostenida (respuesta por la misma sesión);
+  // sin él, la tarjeta espera SIN caducidad y responder relanza la conversación.
+  const sostenida = turn.holdUntil !== null && Date.parse(turn.holdUntil) - now > 0
+  const restante = turn.holdUntil ? Math.max(0, Math.round((Date.parse(turn.holdUntil) - now) / 1000)) : null
 
   const responder = () => {
     const limpio = texto.trim()
@@ -38,13 +41,19 @@ export function TurnCard({ turn, now, onDecide }: TurnCardProps) {
           </p>
           <p className="permission__task">{turn.taskTitle}</p>
         </div>
-        <span
-          className="permission__countdown mono"
-          data-expiring={restante <= 10}
-          title="Segundos para contestar desde aquí"
-        >
-          {restante}s
-        </span>
+        {sostenida && restante !== null ? (
+          <span
+            className="permission__countdown mono"
+            data-expiring={restante <= 10}
+            title="Segundos en los que la respuesta entra por la misma sesión"
+          >
+            {restante}s
+          </span>
+        ) : (
+          <span className="permission__countdown mono" title="El turno terminó; responder retoma la conversación">
+            ⏸
+          </span>
+        )}
       </header>
 
       <pre className="permission__detail mono turn__output" data-testid="turn-output">
@@ -67,10 +76,11 @@ export function TurnCard({ turn, now, onDecide }: TurnCardProps) {
         <button
           type="button"
           className="btn"
-          data-testid="turn-pass"
-          onClick={() => onDecide(turn.requestId, 'pass')}
+          data-testid="turn-review"
+          title="La tarea pasa a «revisada»; podrás retomarla desde su ficha"
+          onClick={() => onDecide(turn.requestId, 'review')}
         >
-          Cerrar
+          Dar por vista
         </button>
         <button
           type="button"

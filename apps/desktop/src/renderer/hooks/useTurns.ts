@@ -28,7 +28,7 @@ export function useTurns() {
     }
   }, [])
 
-  const decide = useCallback(async (requestId: string, action: 'reply' | 'pass', text?: string) => {
+  const decide = useCallback(async (requestId: string, action: 'reply' | 'review', text?: string) => {
     const result = await window.torre.decideTurn(requestId, action, text)
     if (!result.ok) {
       setError(result.error)

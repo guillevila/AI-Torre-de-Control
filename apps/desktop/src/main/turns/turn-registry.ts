@@ -1,21 +1,24 @@
 import type { PendingTurn, TurnResolution } from '@torre/contracts'
 
 /**
- * Turnos terminados que esperan una respuesta del dueño (D25).
+ * Turnos esperando la respuesta del dueño (D25-bis).
  *
- * Calcado del registro de permisos, y por las mismas razones: **vive solo en
- * memoria** (D20/D5-ter). La respuesta del asistente que se enseña en la
- * tarjeta no toca la base de datos, no entra en el historial y desaparece al
- * decidirse o al cerrar la Torre.
+ * Dos vidas en una misma tarjeta:
  *
- * Si nadie contesta a tiempo se resuelve como `pass` y el turno termina como
- * siempre. La Torre es un atajo, nunca un cuello de botella.
+ *  1. **Sostenida** — el hook de Stop aguanta la sesión unos segundos. Si el
+ *     dueño contesta ahora, la respuesta entra por la MISMA sesión.
+ *  2. **En reposo** — pasado ese tiempo el hook se libera (`pass`, el turno
+ *     termina como siempre) pero **la tarjeta se queda**, sin caducidad, hasta
+ *     que el dueño responda (relanzando la conversación) o la dé por vista.
+ *
+ * Todo vive solo en memoria (D20/D5-ter): cerrar la Torre limpia las tarjetas.
+ * Lo entregado no se pierde por eso: sigue en la mesa de entregas.
  */
 
-interface Waiting {
+interface Entry {
   turn: PendingTurn
-  resolve: (resolution: TurnResolution) => void
-  timer: NodeJS.Timeout
+  /** Presente solo mientras el hook sostiene la sesión. */
+  hold: { resolve: (resolution: TurnResolution) => void; timer: NodeJS.Timeout } | null
 }
 
 export interface TurnRegistryOptions {
@@ -24,7 +27,7 @@ export interface TurnRegistryOptions {
 }
 
 export class TurnRegistry {
-  private readonly waiting = new Map<string, Waiting>()
+  private readonly entries = new Map<string, Entry>()
   private readonly now: () => number
   private readonly onChange: (pending: PendingTurn[]) => void
 
@@ -34,47 +37,64 @@ export class TurnRegistry {
   }
 
   /**
-   * Registra un turno y espera. El tiempo viene de fuera en cada llamada porque
-   * es un ajuste vivo: cambiarlo aplica a la petición siguiente sin reiniciar.
+   * Registra el turno y sostiene la conexión del hook `holdMs`. Al agotarse, el
+   * hook recibe `pass` y la tarjeta pasa a reposo — no desaparece.
    */
-  await(turn: Omit<PendingTurn, 'expiresAt'>, timeoutMs: number): Promise<TurnResolution> {
-    this.settle(turn.requestId, { action: 'pass' })
+  awaitHold(turn: Omit<PendingTurn, 'holdUntil'>, holdMs: number): Promise<TurnResolution> {
+    // Un reintento con el mismo identificador sustituye al anterior.
+    this.remove(turn.requestId)
 
-    const expiresAt = new Date(this.now() + timeoutMs).toISOString()
-    const full: PendingTurn = { ...turn, expiresAt }
+    const holdUntil = new Date(this.now() + holdMs).toISOString()
+    const full: PendingTurn = { ...turn, holdUntil }
 
     return new Promise<TurnResolution>((resolve) => {
       const timer = setTimeout(() => {
-        this.settle(full.requestId, { action: 'pass' })
-      }, timeoutMs)
-      // No debe impedir que la aplicación se cierre.
+        const entry = this.entries.get(full.requestId)
+        if (!entry?.hold) return
+        entry.hold = null
+        entry.turn = { ...entry.turn, holdUntil: null }
+        resolve({ action: 'pass' })
+        this.publish()
+      }, holdMs)
       timer.unref?.()
 
-      this.waiting.set(full.requestId, { turn: full, resolve, timer })
+      this.entries.set(full.requestId, { turn: full, hold: { resolve, timer } })
       this.publish()
     })
   }
 
-  /** Devuelve false si el turno ya no espera: caducó o ya se contestó. */
-  decide(requestId: string, resolution: TurnResolution): boolean {
-    if (!this.waiting.has(requestId)) return false
-    this.settle(requestId, resolution)
-    return true
+  get(requestId: string): PendingTurn | null {
+    return this.entries.get(requestId)?.turn ?? null
+  }
+
+  /** ¿Sigue el hook sosteniendo la sesión de este turno? */
+  isHeld(requestId: string): boolean {
+    return Boolean(this.entries.get(requestId)?.hold)
+  }
+
+  /**
+   * Resuelve la conexión sostenida (si sigue viva) y retira la tarjeta. Es el
+   * final de la tarjeta, decida lo que decida el dueño.
+   */
+  settle(requestId: string, resolution: TurnResolution): void {
+    const entry = this.entries.get(requestId)
+    if (!entry) return
+    if (entry.hold) {
+      clearTimeout(entry.hold.timer)
+      entry.hold.resolve(resolution)
+    }
+    this.entries.delete(requestId)
+    this.publish()
+  }
+
+  private remove(requestId: string): void {
+    this.settle(requestId, { action: 'pass' })
   }
 
   list(): PendingTurn[] {
-    return [...this.waiting.values()]
+    return [...this.entries.values()]
       .map((entry) => entry.turn)
       .sort((a, b) => a.requestedAt.localeCompare(b.requestedAt))
-  }
-
-  private settle(requestId: string, resolution: TurnResolution): void {
-    const entry = this.waiting.get(requestId)
-    if (!entry) return
-    clearTimeout(entry.timer)
-    this.waiting.delete(requestId)
-    entry.resolve(resolution)
-    this.publish()
   }
 
   private publish(): void {

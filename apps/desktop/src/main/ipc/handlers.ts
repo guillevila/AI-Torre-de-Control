@@ -210,13 +210,24 @@ export function registerIpcHandlers({
       const { requestId, action, text } = parsed.data
       if (action === 'reply' && !text) throw new TaskServiceError('Escribe la respuesta antes de enviarla.')
 
-      const transmitted = turns.decide(
-        requestId,
-        action === 'reply' ? { action: 'reply', text: text ?? '' } : { action: 'pass' },
-      )
+      const transmitted = turns.decide(requestId, action, text)
       if (!transmitted) {
         throw new TaskServiceError(
-          'Ese turno ya no espera respuesta: se agotó el tiempo y terminó como siempre. Escríbele desde su sesión.',
+          action === 'reply'
+            ? 'No se pudo entregar la respuesta. Comprueba que `claude` está instalado y vuelve a intentarlo.'
+            : 'Esa tarjeta ya no existe.',
+        )
+      }
+      return null
+    }),
+  )
+
+  ipcMain.handle(IPC.tasksReply, (_event, input: unknown): IpcResult<null> =>
+    guard(() => {
+      const ok2 = turns.replyToTask(input)
+      if (!ok2) {
+        throw new TaskServiceError(
+          'No se pudo retomar esa conversación: la tarea no tiene sesión conocida o `claude` no está disponible.',
         )
       }
       return null

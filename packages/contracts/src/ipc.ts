@@ -45,8 +45,10 @@ export const IPC = {
 
   /** Renderer → main: turnos terminados que esperan tu respuesta (D25). */
   turnsList: 'turns:list',
-  /** Renderer → main: responder al turno o dejarlo terminar. */
+  /** Renderer → main: responder al turno o darlo por visto. */
   turnsDecide: 'turns:decide',
+  /** Renderer → main: retomar la conversación de una tarea desde su ficha. */
+  tasksReply: 'tasks:reply',
 
   /** Renderer → main: ¿está instalado el enlace con Claude Code? */
   hookStatus: 'hook:status',
@@ -202,7 +204,8 @@ export interface TorreBridge {
   ) => Promise<IpcResult<null>>
 
   listTurns: () => Promise<IpcResult<PendingTurn[]>>
-  decideTurn: (requestId: string, action: 'reply' | 'pass', text?: string) => Promise<IpcResult<null>>
+  decideTurn: (requestId: string, action: 'reply' | 'review', text?: string) => Promise<IpcResult<null>>
+  replyToConversation: (taskId: string, text: string) => Promise<IpcResult<null>>
 
   hookStatus: () => Promise<IpcResult<HookStatus>>
   hookPreview: () => Promise<IpcResult<HookPreview>>

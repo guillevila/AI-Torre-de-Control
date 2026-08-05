@@ -39,7 +39,7 @@ comandos. Hasta eso, no es una herramienta que puedas usar cómodamente cada dí
 
 > Lista SOLO lo que has probado tú mismo y funciona de verdad.
 
-**Comprobado automáticamente** — 352 tests unitarios y 10 pruebas que arrancan
+**Comprobado automáticamente** — 356 tests unitarios y 10 pruebas que arrancan
 la aplicación de verdad, todos ejecutados y en verde el 5 de agosto de 2026:
 
 - **Instalar y arrancar.** `pnpm install` termina en segundos sin compilar nada.
@@ -135,14 +135,18 @@ la aplicación de verdad, todos ejecutados y en verde el 5 de agosto de 2026:
   sigue siendo un solo icono aunque salte de subcarpeta; y una tarea revisada se
   recicla para la conversación siguiente, así que la oficina no se llena.
   Comprobado con 7 tests, incluido el caso que antes perdía el «te espera».
-- **Responder a Claude desde la Torre** (D25, Ajustes → «Responder desde la
-  Torre», apagado por omisión). Al terminar un turno aparece una tarjeta con la
-  respuesta del asistente y un sitio para contestar; tu texto reengancha la
-  conversación en su sesión por el mecanismo oficial de los hooks. Lo que se
-  enseña no se guarda en ningún sitio. Comprobado con 15 tests, incluida la
-  estabilidad del proceso (un crash real de libuv, reproducido y corregido).
-  > ⚠️ **Probado con tests, no confirmado en vivo.** Falta encender la ventana y
-  > contestar un turno real desde la Torre.
+- **Responder a Claude desde la Torre** (D25 y D25-bis, Ajustes → «Responder
+  desde la Torre», apagado por omisión). Al terminar un turno aparece una tarjeta
+  con la respuesta del asistente y un sitio para contestar. **No caduca**: se
+  queda hasta que respondas o la des por vista. Mientras la sesión está sostenida
+  tu respuesta entra por ella; después, **relanza** la conversación donde estaba.
+  «Dar por vista» manda la tarea a revisada, y desde su ficha se puede retomar en
+  cualquier momento. Lo que se enseña no se guarda en ningún sitio. Comprobado con
+  19 tests, más la estabilidad del proceso (un crash real de libuv, reproducido y
+  corregido) y la invocación de `claude --resume` verificada en vivo.
+  > ⚠️ **Probado con tests, no confirmado de punta a punta.** Falta encender la
+  > función y contestar un turno real desde la Torre — tanto en caliente como
+  > retomando una conversación ya cerrada.
 - **La ventana de la conversación te salta delante** al entregarse un aviso
   (O10, interruptor en Ajustes → Notificaciones, apagado por omisión). El
   mecanismo de foco está comprobado en vivo en este equipo; hereda la espera

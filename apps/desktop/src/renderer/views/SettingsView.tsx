@@ -101,21 +101,25 @@ export function SettingsView({
           sin buscar ninguna ventana. Si no, termina como siempre.
         </p>
         <label className="field">
-          <span className="field__label">Esperar mi respuesta durante</span>
+          <span className="field__label">Sostener la sesión durante</span>
           <select
             className="input"
             value={String(settings.turnReplyWindowSeconds)}
             data-testid="turn-reply-window"
             onChange={(event) => onUpdate({ turnReplyWindowSeconds: Number(event.target.value) })}
           >
-            <option value="0">Nunca — los turnos terminan solos</option>
+            <option value="0">Apagado — sin tarjetas de turno</option>
             <option value="30">30 segundos</option>
             <option value="60">1 minuto</option>
             <option value="120">2 minutos</option>
           </select>
           <span className="field__hint">
-            Ojo: mientras espera, esa sesión no da su turno por cerrado. Lo que se enseña en la
-            tarjeta no se guarda en ningún sitio: desaparece al contestar o al cerrar la Torre.
+            La tarjeta se queda <strong>sin caducidad</strong> hasta que respondas o la des por
+            vista. El tiempo de arriba es otra cosa: cuánto se sostiene la sesión para que tu
+            respuesta entre por ella; pasado, responder <strong>relanza</strong> la conversación
+            donde estaba. «Dar por vista» manda la tarea a revisadas, y desde su ficha puedes
+            retomarla cuando quieras. Lo que se enseña no se guarda: desaparece al decidir o al
+            cerrar la Torre.
           </span>
         </label>
       </section>

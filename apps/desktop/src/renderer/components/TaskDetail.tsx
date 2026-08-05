@@ -19,6 +19,8 @@ interface TaskDetailProps {
   onOpenExternal: (id: string) => void
   onEdit: (task: Task) => void
   onDelete: (id: string) => void
+  /** Retomar la conversación de esta tarea con un mensaje nuevo (D25-bis). */
+  onReply?: (id: string, text: string) => void
 }
 
 /** Correcciones rápidas que se ofrecen siempre que sean transiciones válidas. */
@@ -47,9 +49,14 @@ export function TaskDetail({
   onOpenExternal,
   onEdit,
   onDelete,
+  onReply,
 }: TaskDetailProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [respuesta, setRespuesta] = useState('')
   const allowed = ALLOWED_TRANSITIONS[task.status]
+  // Solo se puede retomar una conversación que conocemos: de Claude Code y con
+  // identificador de sesión guardado.
+  const puedeResponder = Boolean(onReply && task.provider === 'claude_code' && task.externalSessionId && task.projectPath)
 
   return (
     <div className="overlay overlay--right" role="dialog" aria-modal="true" aria-label="Ficha de la tarea">
@@ -107,6 +114,34 @@ export function TaskDetail({
         </header>
 
         <div className="detail__body">
+          {puedeResponder && (
+            <section className="card" data-testid="detail-reply">
+              <div className="overline">Retomar la conversación</div>
+              <textarea
+                className="input turn__reply"
+                data-testid="detail-reply-text"
+                placeholder="Escríbele y la conversación continúa donde estaba…"
+                rows={3}
+                value={respuesta}
+                onChange={(event) => setRespuesta(event.target.value)}
+              />
+              <div className="card__actions">
+                <button
+                  type="button"
+                  className="btn btn--primary"
+                  data-testid="detail-reply-send"
+                  disabled={respuesta.trim() === ''}
+                  onClick={() => {
+                    onReply?.(task.id, respuesta.trim())
+                    setRespuesta('')
+                  }}
+                >
+                  Responder
+                </button>
+              </div>
+            </section>
+          )}
+
           <section className="statebox" data-status={task.status}>
             <div className="statebox__top">
               <StatusPill status={task.status} />
