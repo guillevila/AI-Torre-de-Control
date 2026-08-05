@@ -74,13 +74,28 @@ export const PROVIDER_LABELS: Readonly<Record<Provider, string>> = {
  * distinguir de un vistazo quién trabaja en qué herramienta.
  */
 export const PROVIDER_COLORS: Readonly<Record<Provider, string>> = {
-  claude_code: '#2C6E5B',
-  claude_web: '#B4653A',
-  cowork: '#8A5A3C',
-  chatgpt: '#2F5FA0',
-  codex: '#5B5486',
-  gemini: '#7C6A4E',
-  copilot: '#4A6FA5',
+  /*
+   * El naranja de Claude.
+   *
+   * Las tres herramientas de Anthropic comparten color porque comparten marca:
+   * de un vistazo lo que quieres saber es «esto lo lleva Claude». Cuál de las
+   * tres exactamente lo dicen la etiqueta del proyecto y la ficha.
+   */
+  claude_code: '#D97757',
+  claude_web: '#D97757',
+  cowork: '#D97757',
+
+  /*
+   * El verde de ChatGPT.
+   *
+   * Codex es de la misma casa, así que va en la misma familia pero más oscuro:
+   * se hermanan sin llegar a confundirse.
+   */
+  chatgpt: '#10A37F',
+  codex: '#0B7360',
+
+  gemini: '#4A72C4',
+  copilot: '#5B5486',
   other: '#8B8377',
 }
 
