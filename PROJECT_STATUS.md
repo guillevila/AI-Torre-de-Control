@@ -48,7 +48,9 @@ la aplicación de verdad, todos en verde a 3 de agosto de 2026:
   el enlace, **la plataforma se deduce sola** del dominio. Los datos incorrectos
   se rechazan con un mensaje en lenguaje normal.
 - **Cinco pantallas**: Torre de control, Centro de atención, Tareas, Historial y
-  Ajustes, más el conmutador Operativa ⇄ Oficina.
+  Ajustes, más el conmutador Operativa ⇄ Oficina. La Oficina se ve **a pantalla
+  completa**, sin menús alrededor: se sale por su rueda de ajustes o por su
+  consola de mando.
 - **Cambiar el estado a mano** desde la ficha. Solo se ofrecen los cambios que
   tienen sentido desde el estado actual.
 - **Guardar en disco de verdad.** Cierras la aplicación, la vuelves a abrir y
@@ -80,8 +82,12 @@ la aplicación de verdad, todos en verde a 3 de agosto de 2026:
 
 **Comprobado mirándolo, con capturas de las ocho pantallas:**
 
-- El aspecto general coincide con el documento de diseño: papel cálido,
-  tipografías correctas, contadores, planta de oficina por zonas y ficha lateral.
+- La operativa (Torre, Atención, Tareas, Historial, Ajustes y la ficha lateral)
+  coincide con el documento de diseño «Oficina de papel»: papel cálido,
+  tipografías correctas y contadores.
+- La **Oficina ya no es de papel**: es una fábrica oscura a pantalla completa,
+  del documento «Oficina Fábrica». Comprobada con capturas a 1600×1000 y a
+  900×620 —el mínimo de ventana— y con una petición de permiso real encima.
 
 **El enlace con Claude Code (Sprint 003), comprobado ejecutando el script real:**
 
@@ -311,10 +317,13 @@ punto que necesito que confirmes.
 aparecido una línea nueva.
 
 **4. Ver la oficina.**
-Pulsa **Oficina** arriba. Quien te espera está **de pie en la puerta de tu
-despacho** con la mano levantada; quien trabaja está en su puesto con las barras
-latiendo; lo terminado, junto a la mesa de entregas; los errores, abajo a la
-izquierda. Pulsa a cualquiera: se abre su ficha.
+Pulsa **Oficina** arriba. La pantalla se convierte entera en una nave de
+fábrica: un robot por tarea. Los que trabajan de verdad se mueven; el que te
+espera levanta la mano; el que ha fallado tiene los ojos en rojo. Lo terminado
+está en la mesa de **entregas**, a la derecha; lo revisado duerme abajo en su
+cápsula. Pulsa a cualquiera: se abre su ficha.
+→ Aquí no hay menús. Para volver, la **rueda** de arriba a la derecha lleva a
+Ajustes y la **consola de mando** de abajo, al detalle de todo.
 
 **5. Recibir un evento automático simulado.**
 Abre la ficha de una tarea y copia el comando que aparece abajo del todo (botón
@@ -414,5 +423,5 @@ un par de días, esto pasa a alto.
 
 ---
 
-*Última actualización: 3 de agosto de 2026 por Claude (Sprint 002).*
+*Última actualización: 5 de agosto de 2026 por Claude (la Oficina pasa a ser una fábrica a pantalla completa).*
 *Mantiene: Claude (con validación del dueño del proyecto).*
