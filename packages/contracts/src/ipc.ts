@@ -49,6 +49,8 @@ export const IPC = {
   turnsDecide: 'turns:decide',
   /** Renderer → main: retomar la conversación de una tarea desde su ficha. */
   tasksReply: 'tasks:reply',
+  /** Renderer → main: esconder la ventanita del turno (D26). No descarta nada. */
+  turnPopupHide: 'turn-popup:hide',
 
   /** Renderer → main: ¿está instalado el enlace con Claude Code? */
   hookStatus: 'hook:status',
@@ -206,6 +208,8 @@ export interface TorreBridge {
   listTurns: () => Promise<IpcResult<PendingTurn[]>>
   decideTurn: (requestId: string, action: 'reply' | 'review', text?: string) => Promise<IpcResult<null>>
   replyToConversation: (taskId: string, text: string) => Promise<IpcResult<null>>
+  /** Esconder la ventanita del turno: un «ahora no», sin descartar la tarjeta. */
+  hideTurnPopup: () => Promise<IpcResult<null>>
 
   hookStatus: () => Promise<IpcResult<HookStatus>>
   hookPreview: () => Promise<IpcResult<HookPreview>>

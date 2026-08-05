@@ -122,6 +122,25 @@ export function SettingsView({
             cerrar la Torre.
           </span>
         </label>
+
+        <div className="toggles">
+          <Toggle
+            label="Sacar la tarjeta junto al ratón"
+            hint="Una ventanita encima de todo, donde estés mirando, sin buscar la Torre"
+            checked={settings.turnPopupAtCursor}
+            testId="toggle-turn-popup"
+            onChange={(value) => onUpdate({ turnPopupAtCursor: value })}
+          />
+        </div>
+        {settings.turnPopupAtCursor && (
+          <p className="card__text card__text--muted" data-testid="turn-popup-note">
+            Aparece <strong>al lado</strong> del puntero, no debajo, y <strong>sin robarte el
+            teclado</strong>: no se traga lo que estés escribiendo en otro sitio. Un clic y ya
+            escribes en ella. Su aspa es un «ahora no» — la tarjeta sigue esperándote en la Torre;
+            lo que descarta de verdad es «Dar por vista». Con varias pendientes enseña la última y
+            te dice cuántas quedan.
+          </p>
+        )}
       </section>
 
       <section className="card">

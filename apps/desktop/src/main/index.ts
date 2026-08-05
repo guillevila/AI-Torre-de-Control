@@ -4,6 +4,7 @@ import { app, BrowserWindow, session, shell } from 'electron'
 import { IPC, type DevInfo, type PendingPermission, type PendingTurn, type Task } from '@torre/contracts'
 import { TurnRegistry } from './turns/turn-registry.js'
 import { TurnService } from './turns/turn-service.js'
+import { TurnPopup } from './windows/turn-popup.js'
 import { folderName } from '@torre/domain'
 import { focusProjectWindow } from './system/focus-window.js'
 import { resumeConversation } from './system/resume-conversation.js'
@@ -68,6 +69,9 @@ const isDev = Boolean(process.env['ELECTRON_RENDERER_URL'])
 const STALE_SWEEP_INTERVAL_MS = 60_000
 
 let mainWindow: BrowserWindow | null = null
+let turnPopup: TurnPopup | null = null
+/** Se rellena al arrancar con el ajuste real. Antes de eso, nada emerge. */
+let popupAlPuntero: () => boolean = () => false
 let repository: SqliteTaskRepository | null = null
 let eventServer: LocalEventServer | null = null
 let devInfo: DevInfo | null = null
@@ -86,10 +90,24 @@ function broadcastPermissions(pending: PendingPermission[]): void {
   }
 }
 
+/**
+ * Un turno pendiente se cuenta en dos sitios: la Torre y la ventanita del
+ * puntero (D26). Las dos leen la MISMA lista; la ventanita no guarda nada.
+ *
+ * Aquí está además la única decisión de la función: **cuándo aparece**. Aparece
+ * si hay algo que responder y el dueño lo ha dejado encendido, y se esconde en
+ * cuanto no queda nada. Nunca se recoloca si ya estaba visible: mover una
+ * ventana bajo el ratón mientras se escribe en ella sería lo contrario de ayudar.
+ */
 function broadcastTurns(pending: PendingTurn[]): void {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send(IPC.turnsChanged, pending)
   }
+
+  turnPopup?.send(IPC.turnsChanged, pending)
+  if (!turnPopup) return
+  if (pending.length === 0) turnPopup.hide()
+  else if (popupAlPuntero()) turnPopup.show()
 }
 
 /**
@@ -235,6 +253,8 @@ async function bootstrap(): Promise<void> {
 
   // ── Responder desde la Torre (D25) ─────────────────────────────────────────
   // Igual que los permisos: todo en memoria, nada en disco (D5-ter).
+  turnPopup = new TurnPopup()
+  popupAlPuntero = () => settings.get().turnPopupAtCursor
   const turnRegistry = new TurnRegistry({ onChange: broadcastTurns })
   const turnService = new TurnService({
     registry: turnRegistry,
@@ -319,6 +339,7 @@ async function bootstrap(): Promise<void> {
     registry: permissionRegistry,
     turns: turnService,
     turnRegistry,
+    hideTurnPopup: () => turnPopup?.hide(),
     hooks: hookInstaller,
     hookActivity,
     dataDirectory: userDataDir,
@@ -329,6 +350,14 @@ async function bootstrap(): Promise<void> {
   hardenNavigation()
 
   mainWindow = createWindow()
+
+  // Al cerrar la Torre se lleva consigo la ventanita. Sin esto, la ventanita
+  // escondida seguiría contando como ventana abierta y la aplicación quedaría
+  // corriendo sin nada en pantalla.
+  mainWindow.on('closed', () => {
+    turnPopup?.destroy()
+    turnPopup = null
+  })
 
   // Barrido periódico: las tareas automáticas que llevan demasiado tiempo sin
   // dar señales pasan a «sin confirmar» en lugar de fingir que siguen vivas (D9).
@@ -363,6 +392,10 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   if (sweepTimer) clearInterval(sweepTimer)
+  // Se DESTRUYE, no se cierra: su manejador de `close` la esconde en vez de
+  // cerrarla, así que dejarla viva aquí impediría que la aplicación terminase.
+  turnPopup?.destroy()
+  turnPopup = null
   // Se libera todo permiso pendiente antes de cerrar: si no, la sesión de
   // Claude Code que esperaba se quedaría colgada hasta agotar su propio tiempo.
   permissionRegistry?.releaseAll()

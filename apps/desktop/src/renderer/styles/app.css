@@ -2521,6 +2521,109 @@ body {
   font-size: 13px;
 }
 
+/* ─── Ventanita junto al puntero (D26) ─────────────────────────────────────── */
+
+/* La ventana no tiene marco del sistema: el alto lo pone ella, y el cuerpo es
+   lo único que desplaza. Sin esto, la barra superior se iría con el scroll y no
+   habría manera de arrastrar ni de cerrar. */
+body[data-ventana='aviso'],
+body[data-ventana='aviso'] #root {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.popup {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--paper);
+}
+
+.popup__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) var(--s3) var(--s3) var(--s4);
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper-2, var(--paper));
+  /* Sin marco del sistema, esta barra ES el sitio por donde se arrastra. */
+  -webkit-app-region: drag;
+}
+
+.popup__repo {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--size-meta);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3, var(--ink-2));
+}
+
+.popup__more {
+  flex: none;
+  font-size: var(--size-meta);
+  color: var(--ink-2);
+  -webkit-app-region: no-drag;
+}
+
+.popup__close {
+  flex: none;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 2px 6px;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--ink-2);
+  border-radius: var(--radius-sm, 4px);
+  /* Los botones tienen que quedar FUERA de la zona de arrastre o no se pulsan. */
+  -webkit-app-region: no-drag;
+}
+
+.popup__close:hover {
+  background: var(--rule);
+  color: var(--ink);
+}
+
+.popup__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--s4);
+}
+
+/* Dentro de la ventanita la tarjeta ya no necesita su propio marco: la ventana
+   es el marco. */
+.popup__body .permission {
+  margin: 0;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  background: transparent;
+}
+
+.popup__body .turn__output {
+  max-height: 180px;
+}
+
+.popup__error {
+  margin: 0;
+  padding: var(--s3) var(--s4);
+  background: var(--danger-soft, #fdecea);
+  color: var(--danger, #8a1c14);
+  font-size: var(--size-meta);
+  cursor: pointer;
+}
+
+.popup__empty {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: var(--size-meta);
+}
+
 .permission__note {
   margin: var(--s4) 0 0;
   font-size: var(--size-meta);

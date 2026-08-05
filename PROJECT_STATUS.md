@@ -147,6 +147,16 @@ la aplicación de verdad, todos ejecutados y en verde el 5 de agosto de 2026:
   > ⚠️ **Probado con tests, no confirmado de punta a punta.** Falta encender la
   > función y contestar un turno real desde la Torre — tanto en caliente como
   > retomando una conversación ya cerrada.
+- **El aviso sale junto al ratón** (D26, Ajustes → «Responder desde la Torre» →
+  «Sacar la tarjeta junto al ratón», encendido por omisión). La tarjeta aparece
+  en **una ventana propia al lado del puntero**, encima de todo y en el monitor
+  donde estés; contestas ahí y se retira sola. No roba el teclado, no se sale de
+  la pantalla, y su aspa es un «ahora no» que no descarta nada. Comprobado con 12
+  tests de colocación y **3 de interfaz que abren la segunda ventana de verdad**:
+  se responde desde ella y el texto llega a quien preguntaba. Solo aparece si
+  «Responder desde la Torre» está encendido.
+  > ⚠️ Verificado en la prueba automática de interfaz, que sí abre la ventana
+  > real. Lo que falta es lo mismo que arriba: un turno de una sesión de verdad.
 - **La ventana de la conversación te salta delante** al entregarse un aviso
   (O10, interruptor en Ajustes → Notificaciones, apagado por omisión). El
   mecanismo de foco está comprobado en vivo en este equipo; hereda la espera
@@ -353,6 +363,14 @@ pnpm test:e2e    # abre la aplicación de verdad y recorre todo el flujo
 
 ## 5. 🔚 Última decisión tomada
 
+- **2026-08-05** — **El aviso sale junto al ratón** (D26). Al explicar cómo
+  trabaja —«tengo mis conversaciones en mis diferentes repos y accedo desde ahí,
+  y conforme voy desarrollando que me vayan saltando los pop-ups y yo
+  actuando»—, el dueño cerró de paso una pregunta de producto que llevaba
+  abierta: **la Torre no es desde donde se lanzan las conversaciones, es el
+  camino de vuelta.** Eso descarta cualquier diseño que empuje hacia «gestiona
+  tus conversaciones desde aquí». Detalle en
+  [ADR-012](docs/decisiones/ADR-012-ventanita-junto-al-puntero.md).
 - **2026-08-04** — **Un icono por conversación, no por proyecto** (D23-bis),
   reabriendo D23. Empezó como una petición de visibilidad y resultó ser una
   **pérdida de datos**: dos conversaciones del mismo repositorio compartían tarea
@@ -389,11 +407,21 @@ pnpm test:e2e    # abre la aplicación de verdad y recorre todo el flujo
 
 ## 6. ⏭️ Próxima decisión necesaria
 
-- **O3 — ¿Cuál será la primera integración real: Claude Code, Codex CLI o una
-  plataforma web?** Decide: tú. Bloquea el Sprint 002.
-  *Recomendación técnica: Claude Code, porque sus hooks son un mecanismo oficial
-  y estable, mientras que las plataformas web dependen de leer su interfaz y se
-  rompen cuando cambia.*
+- **O11 — ¿Hasta dónde llega «ver todas mis IAs en la Torre»?** Decide: tú.
+  Planteada por el dueño el 5/8/2026: «solo usar esta torre de control para ver
+  mis conversaciones en todas mis IAs… Claude Code, Codex, ChatGPT».
+  *Lo que hay que saber antes de decidir: **no todas las herramientas se dejan
+  controlar igual**, y la diferencia no es de esfuerzo sino de si existe la
+  puerta. Claude Code la tiene (hooks oficiales: ver, decidir y responder) y por
+  eso está construida. Las plataformas web (ChatGPT, Claude web, Gemini) solo
+  admiten saber **qué conversación existe y dónde**, vía una extensión de
+  navegador — el receptor ya tiene esa puerta abierta (`POST /tasks`), pero leer
+  su contenido y responder exigiría raspar la pantalla, que se rompe cada vez
+  que cambian su interfaz y además chocaría con D5. Las CLI de Codex, Gemini y
+  Copilot habría que estudiarlas una a una; **comprobado el 5/8/2026 que ninguna
+  de las tres está instalada en el equipo del dueño**, así que hoy no hay nada
+  que conectar. Recomendación: no prometer paridad. Definir «ver todas» como
+  ver, y «gobernar» solo donde la herramienta lo permita de forma oficial.*
 - **O1 — ¿Qué sistema operativo se empaqueta primero?** Decide: tú. Bloquea que
   la aplicación se pueda instalar como un programa normal.
   *Si solo la vas a usar tú, la respuesta es Windows.*

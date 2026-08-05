@@ -45,6 +45,8 @@ export interface IpcHandlerDeps {
   registry: PermissionRegistry
   turns: TurnService
   turnRegistry: TurnRegistry
+  /** Esconder la ventanita del turno (D26). Opcional: sin ella todo sigue igual. */
+  hideTurnPopup?: () => void
   hooks: HookInstaller
   hookActivity: HookActivityLog
   getDevInfo: () => DevInfo
@@ -80,6 +82,7 @@ export function registerIpcHandlers({
   registry,
   turns,
   turnRegistry,
+  hideTurnPopup,
   hooks,
   hookActivity,
   getDevInfo,
@@ -230,6 +233,15 @@ export function registerIpcHandlers({
           'No se pudo retomar esa conversación: la tarea no tiene sesión conocida o `claude` no está disponible.',
         )
       }
+      return null
+    }),
+  )
+
+  // Esconder la ventanita es un «ahora no», nunca un descarte: la tarjeta sigue
+  // viva en la Torre. Por eso no toca ni el registro de turnos ni la tarea.
+  ipcMain.handle(IPC.turnPopupHide, (): IpcResult<null> =>
+    guard(() => {
+      hideTurnPopup?.()
       return null
     }),
   )

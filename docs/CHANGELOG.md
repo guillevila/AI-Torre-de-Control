@@ -10,6 +10,36 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Añadido — el aviso sale junto al ratón (D26)
+
+**A petición del dueño**, que además explicó la forma de trabajar que lo
+justifica: sigue abriendo sus conversaciones en cada repositorio, como siempre,
+y quiere que los avisos le salten al paso mientras desarrolla. Eso deja claro
+qué es la Torre: **no el sitio desde donde se lanzan las conversaciones, sino el
+camino de vuelta.**
+
+- **La tarjeta sale en una ventana propia, junto al puntero**, encima de todo
+  —incluso de una aplicación a pantalla completa— y en el monitor donde esté el
+  ratón. La Torre puede estar minimizada.
+- **Cuatro cautelas, porque una ventana que aparece sola puede hacer daño:** no
+  roba el teclado (no se traga lo que escribes en otro sitio), sale *al lado*
+  del puntero y no debajo (un clic que ya ibas a dar no cae dentro), nunca se
+  sale de la pantalla, y no se recoloca si ya estaba abierta.
+- **Su aspa no descarta nada.** Cerrarla es «ahora no»: la tarjeta sigue viva en
+  la Torre. Lo que descarta de verdad sigue siendo «Dar por vista».
+- **Es la misma interfaz, no una copia**: reutiliza la tarjeta y el enganche de
+  turnos de la Torre, así que responder desde una ventana o desde la otra
+  recorre el mismo camino.
+- **Un fallo real encontrado por la prueba de interfaz:** Electron ralentiza el
+  refresco de las ventanas sin foco, y esta nace sin foco a propósito; la cuenta
+  atrás se congelaba y la ventanita parecía muerta hasta pincharla. Corregido
+  (`backgroundThrottling: false`): el test pasó de agotar 30 s a **540 ms**.
+- Interruptor en Ajustes → «Responder desde la Torre». Nace encendido, pero solo
+  puede aparecer si esa función está activa, y esa sí nace apagada.
+- **368 tests** unitarios (12 nuevos de geometría: cuatro esquinas, barra de
+  tareas, monitor secundario con coordenadas negativas, pantalla más pequeña que
+  la ventana) y **13 de interfaz** (3 nuevos, con la segunda ventana real).
+
 ### Cambiado — la tarjeta de turno ya no caduca (D25-bis)
 
 **A petición del dueño**, y con razón: una tarjeta con cronómetro convertía

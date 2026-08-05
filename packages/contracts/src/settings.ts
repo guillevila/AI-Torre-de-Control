@@ -55,6 +55,30 @@ export const settingsSchema = z.object({
   turnReplyWindowSeconds: z.number().int().min(0).max(300).default(0),
 
   /**
+   * Sacar la tarjeta del turno en una ventanita **junto al puntero** (D26).
+   *
+   * Es la diferencia entre «la Torre tiene tu respuesta esperando» y «tu
+   * respuesta te sale al paso». Trabajas en tus repos como siempre; cuando una
+   * conversación termina su turno, la ventanita aparece donde está el ratón,
+   * contestas y desaparece. No hay que buscar ninguna ventana, ni la de VSCode
+   * ni la propia Torre — que puede estar minimizada.
+   *
+   * Tres cautelas deliberadas, todas por la misma razón (una ventana que
+   * aparece sola encima de todo es intrusiva y puede hacer daño):
+   *
+   *  - **No roba el foco.** Sale visible pero inactiva, así que no se traga lo
+   *    que estés tecleando en otro sitio. Un clic y ya escribes en ella.
+   *  - **Aparece desplazada del puntero**, no debajo, para que un clic que ya
+   *    ibas a dar no caiga dentro sin querer.
+   *  - **Su aspa no descarta nada.** Cerrarla es «ahora no»: la tarjeta sigue
+   *    en la Torre. Descartar de verdad es «Dar por vista», que es explícito.
+   *
+   * Solo hace algo si «Responder desde la Torre» está encendido: sin turnos no
+   * hay tarjetas que enseñar.
+   */
+  turnPopupAtCursor: z.boolean().default(true),
+
+  /**
    * Traer al frente la ventana del proyecto cuando salte un aviso (O10).
    *
    * En el momento exacto en que se entrega un aviso —terminada, te espera o
