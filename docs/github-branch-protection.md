@@ -23,8 +23,7 @@ después.
 | Regla | Estado | Qué significa |
 |---|---|---|
 | **Pull Request obligatoria** | ✅ | A `master` no se escribe directamente. Nunca |
-| **1 aprobación** | ✅ | Alguien tiene que revisar antes de fusionar |
-| **Descartar aprobaciones antiguas** | ✅ | Si subes cambios nuevos, la aprobación anterior deja de valer |
+| **Aprobación de otra persona** | ❌ **no** | **Decisión consciente. Lee el apartado siguiente** |
 | **Checks de CI obligatorios** | ✅ | Los tres tienen que estar en verde |
 | **Rama al día antes de fusionar** | ✅ | Hay que traerse `master` antes de fusionar |
 | **Conversaciones resueltas** | ✅ | No se fusiona con comentarios de revisión abiertos |
@@ -40,50 +39,56 @@ Los tres checks obligatorios son los del workflow `.github/workflows/ci.yml`:
 
 ---
 
-## ⚠️ Lo que esto significa en el día a día
+## ⚠️ Por qué NO hace falta que apruebe otra persona
 
-**GitHub no te deja aprobar tu propia Pull Request.** Y como las reglas se
-aplican a todos sin excepción, incluido el dueño del repositorio:
+Es una decisión consciente, tomada el 5/8/2026 por las dos personas que trabajan
+en el repositorio. Conviene entenderla, porque es la pieza que más responsabilidad
+reparte.
 
-> **Nadie puede fusionar su propio trabajo. Siempre lo aprueba el otro.**
+**Lo que se quiso evitar:** que cualquiera de los dos se quede bloqueado
+esperando al otro. Si Alonso está fuera y Guille necesita integrar, con
+aprobación obligatoria no puede — GitHub no deja aprobar tu propia Pull Request.
 
-Quiénes tienen acceso hoy:
+**En qué se confía en su lugar:** en `merge-guardian`. El agente ejecuta los
+controles reales del proyecto, revisa el diff completo buscando **qué ha
+desaparecido**, y se detiene si algo no está claro. Eso es más de lo que suele
+detectar una revisión humana con prisa.
 
-| Persona | Permiso | Puede aprobar PRs |
-|---|---|---|
-| `guillevila` | administrador | Sí |
-| `alonsollorente` | escritura | Sí |
+**Lo que se pierde, dicho sin adornos:** *nadie más mira el código*. El guardián
+comprueba que todo pasa, no si el cambio es buena idea. Un fallo de diseño, una
+decisión discutible o un atajo feo pasan sin que nadie los vea.
 
-En la práctica: tú abres una PR y la aprueba Alonso; él abre una y la apruebas
-tú. Es exactamente el punto de todo esto — que nada entre en `master` sin que
-una segunda persona lo haya mirado.
+**Lo que NO se pierde:**
 
-### Si el otro no está disponible y hay una urgencia
+- Todo sigue entrando por Pull Request → queda el rastro y corre el CI.
+- Nada entra con el CI en rojo.
+- Nadie puede reescribir ni borrar `master`.
+- Y las reglas se aplican **a todos**, dueño incluido.
 
-No hay atajo silencioso, y es a propósito. Si de verdad hace falta:
+### Cómo volver a exigir aprobación
 
-1. **Settings → Branches → Edit** en la regla de `master`
-2. Desmarca **Do not allow bypassing the above settings**
-3. Fusiona
-4. **Vuelve a marcarlo inmediatamente**
-
-O por terminal:
+Si algún día crece el equipo, o simplemente cambiáis de opinión:
 
 ```bash
-# quitar la restricción a administradores
-gh api -X DELETE repos/guillevila/AI-Torre-de-Control/branches/master/protection/enforce_admins
-# … fusionar …
-# volverla a poner. NO se te olvide.
-gh api -X POST repos/guillevila/AI-Torre-de-Control/branches/master/protection/enforce_admins
+gh api -X PATCH repos/guillevila/AI-Torre-de-Control/branches/master/protection/required_pull_request_reviews \
+  -f required_approving_review_count=1 -F dismiss_stale_reviews=true
 ```
 
-> Queda registrado en el historial del repositorio quién lo desactivó y cuándo.
-> Eso no es vigilancia: es que un atajo que no deja rastro se convierte en
-> costumbre, y uno que sí lo deja se usa solo cuando toca.
+O desde **Settings → Branches → Edit** en la regla de `master`, marcando
+**Require a pull request before merging → Require approvals**.
 
 ### Si entra una tercera persona
 
-Basta con darle acceso de escritura. Las reglas ya se le aplican solas.
+Basta con darle acceso de escritura. Las reglas ya se le aplican solas. Y ese
+sería buen momento para replantearse lo de la aprobación: la confianza mutua
+entre dos escala peor de lo que parece.
+
+### Quiénes tienen acceso hoy
+
+| Persona | Permiso |
+|---|---|
+| `guillevila` | administrador |
+| `alonsollorente` | escritura |
 
 ---
 

@@ -102,22 +102,24 @@ Se rellena sola con la plantilla. **Rellénala entera**, incluidos los apartados
 que no aplican —ahí se escribe «nada»—. La diferencia entre «no hay» y «no lo he
 mirado» es justo lo que importa al revisar.
 
-### Y aquí está la regla que lo cambia todo
+### No hace falta que apruebe nadie más
 
-> **Nadie fusiona su propio trabajo. Siempre lo aprueba el otro.**
+Aquí no hay aprobación humana obligatoria: **las dos personas de este
+repositorio confían en `merge-guardian`** como control de calidad. Así ninguno
+se queda bloqueado esperando al otro.
 
-GitHub no deja aprobar tu propia Pull Request, y las protecciones de `master` se
-aplican **a todos sin excepción**, incluido el dueño del repositorio. Así que:
+Lo que sí es obligatorio, y no se salta:
 
-- Tú abres una PR → la aprueba tu compañero.
-- Tu compañero abre una → la apruebas tú.
+- Todo entra por **Pull Request**, aunque se fusione al momento: queda el rastro
+  y corre el CI.
+- **Nada entra con el CI en rojo.**
+- Nadie puede reescribir ni borrar `master`, ni con permisos de administrador.
 
-No es burocracia: es lo único que garantiza que nada entra en `master` sin que
-una segunda persona lo haya mirado. Que es de lo que iba todo esto.
-
-Si el otro no está y hay una urgencia de verdad, en
-[`github-branch-protection.md`](github-branch-protection.md) está cómo saltarlo
-—dejando rastro, a propósito—.
+Lo que se pierde, dicho claramente: **nadie más mira el código**. El guardián
+comprueba que nada se rompe y que nada desaparece, no si el cambio es buena
+idea. Está razonado en
+[`github-branch-protection.md`](github-branch-protection.md), junto con cómo
+volver a exigir aprobación si algún día cambiáis de opinión.
 
 ---
 
