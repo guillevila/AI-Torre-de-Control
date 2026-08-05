@@ -1,4 +1,4 @@
-import { taskIntakeSchema, type TaskIntakeResult } from '@torre/contracts'
+import { taskIntakeSchema, type Task, type TaskIntakeResult } from '@torre/contracts'
 import { detectProvider, sameConversation } from '@torre/domain'
 import type { TaskService } from '../services/task-service.js'
 
@@ -43,18 +43,18 @@ export class IntakeService {
 
     const { title, externalUrl } = parsed.data
 
-    // Ya registrada: se devuelve la que hay. Se miran también las archivadas,
-    // porque revivir una archivada es más honesto que crear una gemela.
     const existente = this.tasks.list().find((task) => sameConversation(task.externalUrl, externalUrl))
     if (existente) {
-      return {
-        accepted: true,
-        duplicate: true,
-        taskId: existente.id,
-        title: existente.title,
-        provider: existente.provider,
-        status: existente.status,
-      }
+      return existente.status === 'archived'
+        ? this.recuperar(existente)
+        : {
+            accepted: true,
+            duplicate: true,
+            taskId: existente.id,
+            title: existente.title,
+            provider: existente.provider,
+            status: existente.status,
+          }
     }
 
     const created = this.tasks.create({
@@ -74,6 +74,52 @@ export class IntakeService {
       title: created.title,
       provider: created.provider,
       status: created.status,
+    }
+  }
+
+  /**
+   * Trae de vuelta una conversación que estaba archivada.
+   *
+   * Una tarea archivada no aparece en ninguna pantalla. Contestar «ya la tienes»
+   * sin desarchivarla deja al usuario buscando algo que no puede ver: una
+   * respuesta cierta y a la vez inservible, que es la peor clase de respuesta.
+   *
+   * Se desarchiva como **manual**, no como `browser_extension`, y la diferencia
+   * es de fondo: el vigilante *infiere* estados mirando una página, pero esto es
+   * un clic tuyo en un botón que dice «Registrar en la Torre». Eso es una
+   * decisión humana, y por eso puede levantar el candado que protege lo que
+   * archivaste a mano — un candado que existe precisamente para que ninguna
+   * señal automática lo haga sola.
+   */
+  private recuperar(task: Task): TaskIntakeResult {
+    try {
+      const recuperada = this.tasks.changeStatus({
+        id: task.id,
+        status: 'queued',
+        source: 'manual',
+        confidence: 'high',
+      })
+      return {
+        accepted: true,
+        duplicate: true,
+        revived: true,
+        taskId: recuperada.id,
+        title: recuperada.title,
+        provider: recuperada.provider,
+        status: recuperada.status,
+      }
+    } catch {
+      // Si la máquina de estados se negara, es mejor decir la verdad —«existe,
+      // pero archivada»— que fingir que se ha recuperado.
+      return {
+        accepted: true,
+        duplicate: true,
+        revived: false,
+        taskId: task.id,
+        title: task.title,
+        provider: task.provider,
+        status: task.status,
+      }
     }
   }
 }
