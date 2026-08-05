@@ -105,6 +105,80 @@ export const PROVIDER_COLORS: Readonly<Record<Provider, string>> = {
 }
 
 /**
+ * Colores de cada robot en la fábrica (vista Oficina).
+ *
+ * La oficina es oscura, así que necesita su propia paleta: los tonos de
+ * `PROVIDER_COLORS` están calibrados para el papel cálido del resto de la
+ * aplicación y sobre negro se apagan.
+ *
+ * Vienen del documento de diseño «Oficina Fábrica». Cada herramienta aporta
+ * cuatro valores: el punto de la antena, los dos tonos del cuerpo —arriba y
+ * abajo, para el degradado que le da volumen— y el halo del suelo.
+ */
+export interface RobotColors {
+  /** Punto de la antena y de las leyendas. */
+  dot: string
+  /** Tono alto del cuerpo. */
+  body: string
+  /** Tono bajo del cuerpo, para el degradado. */
+  shade: string
+  /** Halo que proyecta en el suelo de su celda. */
+  glow: string
+}
+
+const ROBOT_ANTHROPIC: RobotColors = {
+  dot: '#f2803f',
+  body: '#e79059',
+  shade: '#a2542c',
+  glow: 'rgba(242,128,63,.45)',
+}
+
+const ROBOT_OPENAI: RobotColors = {
+  dot: '#3ec463',
+  body: '#adc084',
+  shade: '#6c8050',
+  glow: 'rgba(62,196,99,.4)',
+}
+
+export const PROVIDER_ROBOT: Readonly<Record<Provider, RobotColors>> = {
+  claude_code: ROBOT_ANTHROPIC,
+  claude_web: ROBOT_ANTHROPIC,
+  cowork: ROBOT_ANTHROPIC,
+  chatgpt: ROBOT_OPENAI,
+  codex: { dot: '#a563f0', body: '#bda2e6', shade: '#7a5faa', glow: 'rgba(165,99,240,.4)' },
+  gemini: { dot: '#6bd7ff', body: '#9ecfe6', shade: '#4a7a91', glow: 'rgba(107,215,255,.4)' },
+  copilot: { dot: '#c0c8cc', body: '#b9c1c4', shade: '#6f787c', glow: 'rgba(192,200,204,.35)' },
+  other: { dot: '#8b959a', body: '#9aa4a8', shade: '#5b6468', glow: 'rgba(139,149,154,.32)' },
+}
+
+/**
+ * Las tres naves de la fábrica.
+ *
+ * Menos que las zonas de la planta anterior, y a propósito: aquí lo que manda
+ * es en qué NAVE está el robot, no su sitio exacto. El estado fino lo dicen sus
+ * ojos, su chapa y si se mueve.
+ */
+export type FactoryBay = 'work' | 'delivery' | 'backlog'
+
+const BAY_OF_STATUS: Readonly<Record<TaskStatus, FactoryBay | null>> = {
+  // En la nave de trabajo cabe todo lo que sigue vivo, incluso lo que aún no ha
+  // arrancado: un robot en su celda sin moverse se lee solo.
+  draft: 'work',
+  queued: 'work',
+  running: 'work',
+  waiting_user: 'work',
+  failed: 'work',
+  unknown: 'work',
+  completed: 'delivery',
+  reviewed: 'backlog',
+  archived: null,
+}
+
+export function bayOf(status: TaskStatus): FactoryBay | null {
+  return BAY_OF_STATUS[status]
+}
+
+/**
  * Lo que se lee bajo el muñeco en la oficina.
  *
  * En la planta, lo que necesitas saber de un vistazo es **qué proyecto** es. La
@@ -129,6 +203,55 @@ export function officeLabel(task: Task): string {
   const noNombraNada = !carpeta || /^[/\\]+$/.test(carpeta) || /^[a-z]:$/i.test(carpeta)
 
   return noNombraNada ? task.title : carpeta
+}
+
+/** Cuántos robots caben a la vista en cada nave, del documento de diseño. */
+export const FACTORY_CAPACITY: Readonly<Record<FactoryBay, number>> = {
+  work: 10,
+  delivery: 10,
+  backlog: 5,
+}
+
+export interface FactoryFloor {
+  work: Task[]
+  delivery: Task[]
+  backlog: Task[]
+  /** Cuántos no caben en cada nave. Se dice, no se esconde. */
+  hidden: Record<FactoryBay, number>
+}
+
+/**
+ * Reparte las tareas por naves, respetando el tope de cada una.
+ *
+ * Lo que no cabe **se cuenta y se enseña** («+3 fuera de vista»). Recortar en
+ * silencio sería fingir que la fábrica está más vacía de lo que está, que es
+ * justo el tipo de mentira que esta aplicación evita.
+ *
+ * Dentro de cada nave manda la urgencia: lo que te reclama, primero.
+ */
+export function factoryFloor(tasks: readonly Task[]): FactoryFloor {
+  const porNave: Record<FactoryBay, Task[]> = { work: [], delivery: [], backlog: [] }
+
+  for (const task of tasks) {
+    const nave = bayOf(task.status)
+    if (nave) porNave[nave].push(task)
+  }
+
+  const urgencia = (task: Task) => STATUS_URGENCY_ORDER.indexOf(task.status)
+  for (const nave of Object.keys(porNave) as FactoryBay[]) {
+    porNave[nave].sort((a, b) => urgencia(a) - urgencia(b) || byActivityDesc(a, b))
+  }
+
+  const corta = (nave: FactoryBay) => porNave[nave].slice(0, FACTORY_CAPACITY[nave])
+  const sobran = (nave: FactoryBay) =>
+    Math.max(0, porNave[nave].length - FACTORY_CAPACITY[nave])
+
+  return {
+    work: corta('work'),
+    delivery: corta('delivery'),
+    backlog: corta('backlog'),
+    hidden: { work: sobran('work'), delivery: sobran('delivery'), backlog: sobran('backlog') },
+  }
 }
 
 /**

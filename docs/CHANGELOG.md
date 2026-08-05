@@ -10,6 +10,39 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Cambiado — la Oficina pasa a ser una fábrica
+
+Implementa el documento de diseño **«Oficina Fábrica»**. La planta de papel
+inclinada se sustituye por una nave oscura de sala de control, con un robot por
+tarea.
+
+- **Tres naves en vez de seis zonas**: zona de trabajo (lo que sigue vivo),
+  entregas (terminadas) y backlog (revisadas, durmiendo en cápsulas). El reparto
+  lo decide `factoryFloor` en el dominio, así que la lista y la oficina no
+  pueden discrepar (D10, D11).
+- **El robot comunica por tres canales independientes**: el color del cuerpo es
+  la herramienta, el de los ojos avisa de que algo va mal, y el movimiento dice
+  si trabaja de verdad. Quitando el color se sigue leyendo.
+- **Solo se mueve quien trabaja.** Nada de animación decorativa; y quien pide
+  menos movimiento en su sistema operativo no ve ninguno.
+- **Lo que no cabe se cuenta**, con un «+N fuera de vista» en cada nave.
+  Recortar en silencio haría creer que la fábrica está más vacía de lo que está.
+- Toda la figura se dibuja con degradados: **ni una imagen**, así que escala sin
+  pixelarse y no mete binarios en un repositorio público.
+
+**Dos cosas del diseño se dicen distinto, a propósito:**
+
+- Bajo cada robot iba una frase del tipo «Analizando requisitos». Eso exigiría
+  saber qué hace la herramienta por dentro, y esta aplicación no lee
+  conversaciones. En su lugar va el **nombre del proyecto**, que sí sabemos y
+  además distingue un robot de otro.
+- La consola traía un medidor de «PRODUCTIVIDAD 80%», que era un número
+  inventado. Se sustituye por dos datos que se calculan de verdad: la
+  **actividad real de las últimas 6 horas** —sacada del historial— y el
+  **porcentaje del trabajo que no te reclama nada**.
+
+Un dato inventado en una pantalla de control es peor que un hueco vacío: se cree.
+
 ### Añadido — varias cuentas de ChatGPT a la vez
 
 Nace de un uso real: tres chats de una cuenta y dos de otra, abiertos al mismo

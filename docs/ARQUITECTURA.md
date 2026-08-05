@@ -113,10 +113,10 @@ ai-torre-de-control/
 │     │  ├─ App.tsx                 Sección, capas y composición
 │     │  ├─ hooks/useTasks.ts       ÚNICA fuente de datos de la interfaz
 │     │  ├─ views/                  Torre · Atención · Tareas · Historial · Ajustes
-│     │  ├─ views/office/           La planta de oficina por zonas
+│     │  ├─ views/office/           La fábrica: naves, celdas y robots
 │     │  ├─ components/             Barra lateral, cabecera, ficha, alta rápida
 │     │  ├─ assets/fonts/           Las tres tipografías, empaquetadas
-│     │  └─ styles/                 tokens.css (el sistema de diseño) + app.css
+│     │  └─ styles/                 tokens.css + app.css (papel) · factory.css (oficina)
 │     ├─ e2e/                       Prueba de interfaz
 │     └─ scripts/launch.mjs         Arrancador (neutraliza ELECTRON_RUN_AS_NODE)
 │  └─ extension/                    Extensión de Chrome (JS de navegador, sin compilar)

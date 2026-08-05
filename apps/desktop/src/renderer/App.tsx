@@ -222,7 +222,11 @@ export function App() {
               ))}
             </div>
           ) : officeMode ? (
-            <OfficeView tasks={visibleTasks} onSelect={(task) => setSelectedId(task.id)} />
+            <OfficeView
+              tasks={visibleTasks}
+              activity={activity}
+              onSelect={(task) => setSelectedId(task.id)}
+            />
           ) : section === 'tower' ? (
             <TowerView
               tasks={visibleTasks}
