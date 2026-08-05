@@ -10,6 +10,37 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Añadido — Sprint 004, etapa 2: ChatGPT se mueve solo
+
+Registras la conversación una vez y, a partir de ahí, la tarea pasa sola a
+**trabajando** cuando ChatGPT empieza a responder y a **terminada** cuando acaba.
+
+- **El permiso lo concedes tú, y puedes retirarlo.** La extensión se instala
+  **sin** permiso sobre ChatGPT: recién puesta no puede ni mirar la página. En
+  su ventana aparece «Activar en este sitio», Chrome te pregunta, y el mismo
+  botón sirve para desactivarlo. Es la diferencia entre *no puede* y *puede y no
+  lo hace*, y se deja en manos del dueño del proyecto.
+- **El vigilante mira una sola cosa**: si existe el botón de detener la
+  respuesta. Nunca lee texto. Lo único que sale del navegador son tres datos
+  —dirección, una de dos palabras y la hora—, y un test contra un servidor real
+  lo comprueba.
+- **Solo caben dos estados**: `running` y `completed`. El contrato no admite
+  `failed` ni `waiting_user`, porque mirar una página no permite saber si algo
+  ha fallado ni si te están esperando.
+- **Ruta nueva `POST /web-activity`**, con las mismas barreras que el resto. **No
+  crea tareas**: una conversación sin registrar se ignora sin ruido. Registrar
+  sigue siendo una decisión tuya.
+- **Confianza media, no alta** (D8). Lo que se ha visto es una página dejando de
+  generar texto: es una inferencia buena, pero es una inferencia.
+- **Lo que decidiste tú manda.** Si marcaste una tarea como revisada, el
+  vigilante no se la lleva de vuelta.
+- **Está escrito para fallar callando.** ChatGPT cambia su interfaz cada pocas
+  semanas; cuando lo haga, el vigilante dejará de reconocer el botón y **no
+  mandará nada**, en lugar de inventarse un estado.
+- La regla de «¿es la misma conversación?» pasa al dominio
+  (`packages/domain/src/urls.ts`), compartida por el alta y la detección: si
+  cada una decidiera por su cuenta, se registraría una tarea y se movería otra.
+
 ### Añadido — Sprint 004: ChatGPT entra en la Torre (etapa 1)
 
 **Extensión de Chrome** que registra de un clic la conversación que tienes

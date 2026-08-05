@@ -136,13 +136,20 @@ la aplicación de verdad, todos en verde a 3 de agosto de 2026:
 - **Las peticiones de permiso no se guardan en ningún sitio** (D20): viven en
   memoria y desaparecen al decidirse.
 
-**La extensión de Chrome para ChatGPT (Sprint 004, etapa 1):**
+**La extensión de Chrome para ChatGPT (Sprint 004), comprobada en vivo:**
 
-> ⚠️ **Construida y probada, pero TÚ todavía no la has instalado.** Los tests
-> pasan y comprueban cosas de verdad —incluido el cuerpo exacto que sale del
-> navegador contra un servidor real—, pero hasta que la cargues en tu Chrome y
-> registres una conversación, esto no está comprobado *en vivo*. No cuenta como
-> «funciona» hasta entonces.
+> ✅ **Funciona de verdad, confirmado el 4/8/2026 con el ciclo completo.** El
+> dueño del proyecto instaló la extensión, registró una conversación de ChatGPT
+> con un clic y le escribió. La base de datos lo recogió así:
+>
+> ```
+> 20:15:35  nueva    → en cola      extensión  confianza baja
+> 20:15:45  en cola  → trabajando   extensión  confianza media   ← solo
+> 20:15:55  trabajando → terminada  extensión  confianza media   ← solo
+> ```
+>
+> Dos cambios de estado **sin tocar nada**, cada uno con su fuente y su
+> confianza correctas.
 
 - **Registra de un clic** la conversación que tengas abierta: pulsas su icono y
   la tarea aparece en la Torre.
@@ -157,6 +164,17 @@ la aplicación de verdad, todos en verde a 3 de agosto de 2026:
   había.
 - **La tarea nace «en cola» y con confianza baja**, no «trabajando». Registrarla
   no significa que ChatGPT esté haciendo nada, y la Torre no debe fingirlo.
+- **Detección automática (etapa 2), opcional.** Si la activas, la tarea pasa
+  sola a «trabajando» cuando ChatGPT empieza a responder y a «terminada» cuando
+  acaba. El permiso lo concedes tú desde la ventana de la extensión y lo puedes
+  retirar desde el mismo botón: **recién instalada no puede ni mirar la página**.
+  El vigilante mira solo si existe el botón de detener la respuesta; nunca lee
+  texto. Solo puede decir dos cosas —«trabajando» o «terminada»—, con confianza
+  media, y no puede crear tareas ni tocar lo que fijaste tú a mano.
+  > ⚠️ **Se va a romper, y está previsto.** ChatGPT cambia su interfaz cada pocas
+  > semanas. Cuando cambie el botón, el vigilante dejará de reconocerlo y
+  > **callará** en lugar de inventarse un estado: la tarea se queda donde estaba.
+  > Arreglarlo son cuatro líneas agrupadas a propósito en `vigilante.js`.
 
 **Comprobado contra el propio Windows:**
 
@@ -184,13 +202,16 @@ la aplicación de verdad, todos en verde a 3 de agosto de 2026:
 
 **Lo que falta para llegar a MVP:**
 
-- **ChatGPT no avisa solo de que ha terminado.** La extensión de Chrome del
-  Sprint 004 sirve para **registrar** una conversación de un clic, y nada más:
-  después el estado lo mueves tú a mano. Detectar el final de una respuesta sin
-  leer la conversación es la **etapa 2**, y no está construida.
-- **Claude web, Codex y los demás siguen sin avisar solos.** Claude Code sí,
-  desde el Sprint 003. Para el resto haría falta ampliar la extensión o un
-  monitor de procesos, mecanismos bastante más frágiles.
+- **La detección de ChatGPT se romperá cuando cambien su interfaz.** Funciona hoy
+  (comprobado el 4/8/2026), pero reconoce su botón de detener por la forma que
+  tiene ahora mismo, y eso cambia cada pocas semanas. Cuando pase, el vigilante
+  **callará** y las tareas dejarán de moverse solas: no mentirá, pero habrá que
+  ajustar cuatro líneas en `apps/extension/vigilante.js`. El cuaderno de la
+  extensión dice si el vigilante sigue vivo, que es la mitad del diagnóstico.
+- **Claude web y Codex siguen sin comprobarse.** La extensión ya contempla
+  `claude.ai`, pero solo se ha probado contra ChatGPT: que reconozca la interfaz
+  de Claude web es una suposición, no un hecho. Codex y el resto necesitarían
+  ampliar la extensión o un monitor de procesos.
 - **No se puede instalar.** No hay un `.exe` ni un instalador: hay que arrancarla
   con `pnpm dev` desde una terminal. Depende de decidir para qué sistema
   operativo se empaqueta primero (decisión abierta O1).

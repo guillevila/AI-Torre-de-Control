@@ -1,6 +1,7 @@
 export * from './task.js'
 export * from './events.js'
 export * from './intake.js'
+export * from './web-activity.js'
 export * from './history.js'
 export * from './settings.js'
 export * from './permissions.js'

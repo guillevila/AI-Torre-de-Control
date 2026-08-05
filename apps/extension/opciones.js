@@ -1,4 +1,4 @@
-import { buscarTorre, guardarClave, leerClave } from './torre.js'
+import { borrarBitacora, buscarTorre, guardarClave, leerBitacora, leerClave } from './torre.js'
 
 const $token = document.getElementById('token')
 const $guardar = document.getElementById('guardar')
@@ -62,3 +62,126 @@ $guardar.addEventListener('click', async () => {
     $guardar.textContent = 'Guardar y comprobar'
   }
 })
+
+/* ── Diagnóstico de la detección automática ────────────────────────────────── */
+
+const SITIOS = [
+  ['ChatGPT', 'https://chatgpt.com/*'],
+  ['ChatGPT (openai.com)', 'https://chat.openai.com/*'],
+  ['Claude', 'https://claude.ai/*'],
+]
+
+const $estado = document.getElementById('estado-deteccion')
+const $bitacora = document.getElementById('bitacora')
+
+const linea = (texto, ok) => {
+  const li = document.createElement('li')
+  if (ok !== undefined) li.dataset.ok = String(ok)
+  li.textContent = texto
+  return li
+}
+
+/**
+ * Enseña en qué punto se corta la cadena.
+ *
+ * Son cuatro cosas que tienen que cumplirse a la vez, y desde fuera todas
+ * fallan igual: la tarea no se mueve. Verlas por separado convierte «no
+ * funciona» en «falta esto».
+ */
+async function pintarEstado() {
+  $estado.replaceChildren()
+
+  // 1. ¿Hay permiso en algún sitio?
+  const conPermiso = []
+  for (const [nombre, patron] of SITIOS) {
+    const concedido = await chrome.permissions.contains({ origins: [patron] }).catch(() => false)
+    if (concedido) conPermiso.push(nombre)
+  }
+
+  $estado.append(
+    linea(
+      conPermiso.length
+        ? `Permiso concedido en: ${conPermiso.join(', ')}`
+        : 'Sin permiso en ningún sitio. Actívalo desde la ventana de la extensión, estando en ChatGPT.',
+      conPermiso.length > 0,
+    ),
+  )
+
+  // 2. ¿Está puesto el vigilante?
+  const registrados = await chrome.scripting.getRegisteredContentScripts().catch(() => [])
+  const vigilante = registrados.find((s) => s.id === 'vigilante-torre')
+  $estado.append(
+    linea(
+      vigilante
+        ? `Vigilante puesto en: ${(vigilante.matches ?? []).join(', ')}`
+        : 'El vigilante no está puesto. Sin permiso no puede ponerse.',
+      Boolean(vigilante),
+    ),
+  )
+
+  // 3. ¿Hay clave local?
+  const token = await leerClave()
+  $estado.append(linea(token ? 'Clave local guardada' : 'Falta la clave local', Boolean(token)))
+
+  // 4. ¿Está la Torre abierta?
+  const puerto = await buscarTorre()
+  $estado.append(
+    linea(
+      puerto ? `Torre abierta en el puerto ${puerto}` : 'No encuentro la Torre. ¿Está abierta?',
+      Boolean(puerto),
+    ),
+  )
+}
+
+async function pintarBitacora() {
+  const apuntes = await leerBitacora()
+  $bitacora.replaceChildren()
+
+  if (apuntes.length === 0) {
+    const vacio = document.createElement('li')
+    vacio.className = 'bitacora__vacio'
+    vacio.textContent =
+      'Todavía no ha pasado nada. Escribe algo en ChatGPT y debería aparecer aquí en segundos.'
+    $bitacora.append(vacio)
+    return
+  }
+
+  for (const apunte of apuntes) {
+    const li = document.createElement('li')
+    if (apunte.mal) li.dataset.mal = 'true'
+
+    const hora = document.createElement('span')
+    hora.className = 'bitacora__hora'
+    hora.textContent = String(apunte.at ?? '').slice(11, 19)
+
+    const que = document.createElement('span')
+    que.className = 'bitacora__que'
+    que.textContent = apunte.que ?? ''
+
+    if (apunte.detalle) {
+      const detalle = document.createElement('span')
+      detalle.className = 'bitacora__detalle'
+      detalle.textContent = apunte.detalle
+      que.append(detalle)
+    }
+
+    li.append(hora, que)
+    $bitacora.append(li)
+  }
+}
+
+document.getElementById('limpiar').addEventListener('click', async () => {
+  await borrarBitacora()
+  await pintarBitacora()
+})
+
+// Se refresca solo: puedes dejar esta pantalla abierta al lado de ChatGPT y ver
+// aparecer las señales según escribes.
+void pintarEstado()
+void pintarBitacora()
+setInterval(() => {
+  void pintarBitacora()
+}, 2000)
+setInterval(() => {
+  void pintarEstado()
+}, 5000)

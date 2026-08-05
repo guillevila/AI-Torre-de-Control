@@ -9,27 +9,28 @@ navegador. Pensada para ChatGPT, aunque funciona con cualquier página.
 
 Esto va antes que las instrucciones porque es lo que importa.
 
-**Esta extensión no puede leer tus conversaciones.** No es una promesa ni una
-buena intención: es que Chrome no le deja.
+**Esta extensión no puede leer tus conversaciones**, ni recién instalada ni con
+la detección automática activada.
+
+Recién instalada, además, **no puede ni mirar la página**. Los permisos que pide
+al instalarse son estos y no hay más:
+
+```json
+"permissions": ["activeTab", "storage", "scripting"],
+"host_permissions": ["http://127.0.0.1/*"]
+```
 
 | | Por qué |
 |---|---|
-| **No puede leer ChatGPT** | No pide permiso sobre `chatgpt.com` ni sobre ningún otro sitio. Sin ese permiso, Chrome le niega el contenido de la página |
-| **No se mete en las páginas** | No tiene *content scripts*: no inyecta nada dentro de las webs que visitas |
-| **No funciona sola** | No hay ningún proceso de fondo. Solo hace algo cuando pulsas su icono |
-| **No sale a internet** | El único sitio al que puede escribir es `127.0.0.1`, o sea tu propio ordenador |
+| **No puede ver ChatGPT** | No pide permiso sobre `chatgpt.com` ni sobre ningún otro sitio. Sin ese permiso, Chrome le niega la página entera |
+| **No se mete en las páginas** | No inyecta nada dentro de las webs que visitas |
+| **No sale a internet** | El único sitio al que puede escribir es `127.0.0.1`, tu propio ordenador |
 
 Lo único que lee es **el título y la dirección de la pestaña**, y solo en el
 momento en que pulsas el icono (permiso `activeTab`, que Chrome concede para esa
 pestaña y se acaba al cerrar la ventanita).
 
-Puedes comprobarlo tú: todo esto está en [`manifest.json`](manifest.json), que
-son 25 líneas. Los permisos que pide son estos y no hay más:
-
-```json
-"permissions": ["activeTab", "storage"],
-"host_permissions": ["http://127.0.0.1/*"]
-```
+Todo esto se comprueba en [`manifest.json`](manifest.json), que son 30 líneas.
 
 Y por si el navegador fallara: **la Torre tampoco aceptaría contenido de
 conversación aunque se lo mandaran**. Su contrato de alta solo admite dos
@@ -82,8 +83,61 @@ haciendo nada: lo único que sabemos es que existe y que tú la has marcado. La
 tarea nace con **confianza baja** y con la fuente «extensión de navegador», para
 que en el historial se vea de dónde salió.
 
-Cuando quieras, cambias su estado a mano desde la Torre. Que ChatGPT avise solo
-de que ha terminado es la **etapa 2**, y todavía no existe.
+Cuando quieras, cambias su estado a mano desde la Torre. O activas la detección
+automática, que es lo siguiente.
+
+---
+
+## Detección automática (opcional)
+
+Que la tarea pase sola a **trabajando** cuando ChatGPT empieza a responder, y a
+**terminada** cuando acaba. Sin tocar nada.
+
+### Cómo se activa
+
+Abre la extensión estando en ChatGPT y pulsa **Activar en este sitio**. Chrome te
+preguntará si le das permiso sobre ese sitio. Puedes **desactivarlo desde el
+mismo botón** cuando quieras.
+
+### Qué mira exactamente
+
+**Una sola cosa: si existe en la página el botón de detener la respuesta.**
+Mientras está, hay algo generándose; cuando desaparece, ha terminado. Es como
+mirar si la luz del despacho está encendida — te dice que hay alguien
+trabajando, no lo que está escribiendo.
+
+Lo único que sale del navegador son **tres datos**: la dirección de la pestaña,
+una de dos palabras (`running` o `completed`) y la hora. Hay un test que arranca
+un servidor de verdad y comprueba que el paquete no lleva nada más.
+
+### Qué cambia, dicho sin adornos
+
+Este es el único punto del proyecto donde una garantía se relaja, y conviene
+entenderlo:
+
+- **Antes de activarlo:** la extensión *no puede* leer la página. Chrome se lo
+  impide.
+- **Después de activarlo:** la extensión *puede* leer la página, y no lo hace.
+  Pasa de una garantía del navegador a una garantía del código.
+
+Lo que **no** cambia: la Torre sigue rechazando cualquier contenido de
+conversación aunque se lo manden. Su contrato admite tres campos y rechaza la
+petición entera si llega uno más.
+
+Por eso el permiso es opcional y reversible: la decisión es tuya y puedes
+deshacerla en dos clics.
+
+### Se va a romper, y lo sabemos
+
+ChatGPT cambia su interfaz cada pocas semanas. Cuando cambie el botón de parar,
+dejaremos de reconocerlo.
+
+Está escrito para **fallar callando**: si no reconoce nada, no manda nada, y la
+tarea se queda donde estaba. Nunca se inventa un estado. Una Torre que no se
+entera es un incordio; una que miente es un problema de verdad.
+
+Si notas que ha dejado de detectar, avísame y se ajusta: son cuatro líneas en
+[`vigilante.js`](vigilante.js), agrupadas y comentadas justo para eso.
 
 ### Si la registras dos veces
 
@@ -109,10 +163,16 @@ tras la almohadilla, porque el navegador los añade y quita él solo.
 | Fichero | Qué hace |
 |---|---|
 | [`manifest.json`](manifest.json) | Los permisos. **Es el fichero que importa** |
-| [`torre.js`](torre.js) | Todo lo que sale del navegador: buscar la Torre y registrar |
-| [`popup.js`](popup.js) / [`popup.html`](popup.html) | La ventanita del icono |
+| [`torre.js`](torre.js) | Todo lo que sale del navegador: buscar la Torre, registrar y avisar |
+| [`popup.js`](popup.js) / [`popup.html`](popup.html) | La ventanita del icono y el interruptor de la detección |
 | [`opciones.js`](opciones.js) / [`opciones.html`](opciones.html) | La clave local |
+| [`vigilante.js`](vigilante.js) | Mira si hay una respuesta generándose. Solo donde diste permiso |
+| [`fondo.js`](fondo.js) | Da de alta y retira el vigilante, y reenvía lo que ve a la Torre |
 | [`scripts/generar-iconos.mjs`](scripts/generar-iconos.mjs) | Genera los iconos, para que no sean binarios sin origen |
+
+El vigilante no puede hablar con la Torre directamente: un script dentro de una
+página web está sujeto a las reglas de esa página, y ChatGPT no permite llamar a
+tu ordenador. Por eso existe `fondo.js`, que sí puede.
 
 La Torre la busca probando `/health` en los puertos 4319 a 4323, los mismos que
 intenta abrir la aplicación. El que responde se recuerda para no barrerlos todos

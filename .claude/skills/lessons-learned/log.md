@@ -293,3 +293,44 @@ persona. Al fallar, falló en la dirección más cara: hacia el silencio.
 **Contexto:** Todo lo que interpreta datos de sistemas que no controlamos —hooks
 de Claude Code, la futura extensión de Chrome— y, en general, cualquier
 comprobación colocada entre una persona y lo que acaba de pedir.
+
+## 2026-08-04 20:20 — Lo que se lee al arrancar es el fallo mudo favorito de este proyecto
+
+**Error o aprendizaje:** En una sola jornada, el MISMO fallo tres veces, con tres
+disfraces distintos y siempre el mismo síntoma —«lo he activado y no hace nada»—:
+
+1. **Los hooks de Claude Code** se leen al abrir la sesión. Se instalaron con una
+   sesión ya abierta y esa sesión nunca se enteró.
+2. **El manifiesto de una extensión** lo lee Chrome al cargarla. Se añadió un
+   permiso nuevo y Chrome seguía con la lista vieja, así que rechazaba la
+   petición sin decir nada.
+3. **Un vigilante de página** solo entra en las pestañas que se cargan después de
+   darlo de alta. La pestaña que el dueño del proyecto tenía delante se quedó
+   fuera.
+
+Las tres veces el estado era correcto, la configuración era correcta, y no había
+ni un error a la vista. Las tres veces se buscó el fallo en el código.
+
+**Causa raíz:** Se pensó en el estado («¿está instalado?») en lugar de en el
+momento («¿estaba instalado cuando eso arrancó?»). Casi todo lo que se integra
+con un programa ajeno lee su configuración **una sola vez, al arrancar**, y desde
+fuera «configurado» y «funcionando» se ven exactamente igual.
+
+**Lección:**
+1. Al integrar con algo ajeno, la primera pregunta es **cuándo lee su
+   configuración**. Si la lee al arrancar, hay dos estados distintos —escrito y
+   cargado— y la interfaz tiene que distinguirlos.
+2. **Resolverlo, no documentarlo.** Un aviso de «reinicia» es mejor que nada,
+   pero mucho peor que hacerlo por el usuario. En el tercer caso se metió el
+   vigilante en las pestañas ya abiertas y el problema desapareció; en los dos
+   primeros solo se avisó, y aun así hubo que explicarlo cada vez.
+3. **Al diagnosticar, comparar relojes antes que código.** Cuándo se instaló
+   frente a cuándo arrancó lo otro. Un fallo que «se arregla solo» al reiniciar
+   casi nunca estuvo en el código.
+4. El cuaderno de bitácora resolvió los tres. Lo que lo hizo no fue lo que
+   apuntaba, sino **lo que faltaba**: se veía «vigilante puesto» y no «vigilante
+   en marcha», y ahí estaba la respuesta. **Al diseñar un diagnóstico, apuntar
+   también los hitos que DEBERÍAN ocurrir**, para que su ausencia signifique algo.
+
+**Contexto:** Toda integración con un programa que no controlamos: hooks,
+extensiones de navegador, y lo que venga después.

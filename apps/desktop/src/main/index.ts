@@ -7,6 +7,7 @@ import { HookInstaller } from './hooks/hook-installer.js'
 import { SessionLinker } from './hooks/session-linker.js'
 import { SessionStatusService } from './hooks/session-status-service.js'
 import { IntakeService } from './intake/intake-service.js'
+import { WebActivityService } from './intake/web-activity-service.js'
 import { PermissionRegistry } from './permissions/permission-registry.js'
 import { PermissionService } from './permissions/permission-service.js'
 import { SqliteTaskRepository } from './db/sqlite-task-repository.js'
@@ -202,6 +203,8 @@ async function bootstrap(): Promise<void> {
   const sessionStatus = new SessionStatusService(linker, service, hookActivity)
   // Altas que llegan de fuera (extensión de navegador). No duplica tareas.
   const intakeService = new IntakeService({ taskService: service })
+  // Etapa 2: mover la tarea al ver que su conversación empieza o termina.
+  const webActivityService = new WebActivityService({ taskService: service })
   const hookInstaller = new HookInstaller(userDataDir)
 
   // ── Receptor local de eventos ──────────────────────────────────────────────
@@ -212,6 +215,7 @@ async function bootstrap(): Promise<void> {
     onPermission: (raw) => permissionService.request(raw),
     onSession: (raw) => sessionStatus.apply(raw),
     onIntake: (raw) => intakeService.register(raw),
+    onWebActivity: (raw) => webActivityService.apply(raw),
   })
 
   let address: { host: string; port: number } | null = null

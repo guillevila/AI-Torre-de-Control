@@ -1,6 +1,6 @@
 import { createServer } from 'node:http'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { nombrePlataforma, registrar } from './torre.js'
+import { avisarActividad, nombrePlataforma, registrar } from './torre.js'
 
 /**
  * Lo único de la extensión que se puede probar sin un navegador delante.
@@ -149,5 +149,84 @@ describe('lo que la extensión envía de verdad', () => {
     const resultado = await enviar()
     expect(resultado.ok).toBe(false)
     expect(resultado.mensaje).toContain('http://')
+  })
+})
+
+/**
+ * Lo que sale del navegador en la etapa 2.
+ *
+ * El vigilante mira una página web, así que aquí es donde más importa
+ * comprobar QUÉ acaba saliendo: tres campos, y ninguno de ellos es texto de la
+ * conversación.
+ */
+describe('lo que envía el vigilante', () => {
+  let servidor
+  let puerto
+  let recibido
+
+  beforeEach(async () => {
+    recibido = null
+    servidor = createServer((req, res) => {
+      const trozos = []
+      req.on('data', (t) => trozos.push(t))
+      req.on('end', () => {
+        recibido = {
+          ruta: req.url,
+          cuerpo: JSON.parse(Buffer.concat(trozos).toString('utf8')),
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ accepted: true, matched: true, status: 'completed' }))
+      })
+    })
+    await new Promise((listo) => servidor.listen(0, '127.0.0.1', listo))
+    puerto = servidor.address().port
+  })
+
+  afterEach(async () => {
+    await new Promise((listo) => servidor.close(listo))
+  })
+
+  const avisar = (status = 'completed') =>
+    avisarActividad({
+      puerto,
+      token: 'clave-de-prueba',
+      externalUrl: 'https://chatgpt.com/c/abc-123',
+      status,
+    })
+
+  it('envía EXACTAMENTE tres campos', async () => {
+    await avisar()
+    expect(Object.keys(recibido.cuerpo).sort()).toEqual(['externalUrl', 'status', 'timestamp'])
+  })
+
+  it('y ninguno de ellos es texto de la conversación', async () => {
+    await avisar()
+    expect(recibido.cuerpo.externalUrl).toBe('https://chatgpt.com/c/abc-123')
+    expect(recibido.cuerpo.status).toBe('completed')
+    expect(typeof recibido.cuerpo.timestamp).toBe('string')
+  })
+
+  it('llama a la ruta de actividad', async () => {
+    await avisar()
+    expect(recibido.ruta).toBe('/web-activity')
+  })
+
+  it('cuenta si la conversación estaba registrada o no', async () => {
+    const resultado = await avisar()
+    expect(resultado).toMatchObject({ ok: true, emparejada: true })
+  })
+
+  it('una conversación desconocida no se trata como fallo', async () => {
+    servidor.removeAllListeners('request')
+    servidor.on('request', (req, res) => {
+      req.resume()
+      req.on('end', () => {
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ accepted: true, matched: false }))
+      })
+    })
+
+    const resultado = await avisar()
+    expect(resultado).toMatchObject({ ok: true, emparejada: false })
   })
 })

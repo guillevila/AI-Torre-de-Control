@@ -118,6 +118,59 @@
         color: var(--fail);
       }
 
+      .deteccion {
+        margin-top: 10px;
+        padding: 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+      }
+
+      .deteccion__linea {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-weight: 600;
+        font-size: 12.5px;
+      }
+
+      .deteccion__punto {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--ink-3);
+        flex: none;
+      }
+
+      .deteccion__punto[data-activa='true'] {
+        background: var(--ok);
+      }
+
+      .deteccion__nota {
+        margin: 6px 0 0;
+        font-size: 11px;
+        line-height: 1.5;
+        color: var(--ink-3);
+      }
+
+      .btn-suave {
+        width: 100%;
+        margin-top: 8px;
+        padding: 7px 12px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: transparent;
+        color: var(--command);
+        font: inherit;
+        font-size: 12.5px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .btn-suave:hover {
+        background: var(--paper);
+      }
+
       .promesa {
         margin: 12px 0 0;
         font-size: 11px;
@@ -146,6 +199,19 @@
     <button id="registrar" disabled>Registrar en la Torre</button>
 
     <div class="aviso" id="aviso" hidden></div>
+
+    <!--
+      Etapa 2. Aparece solo en los sitios donde la detección es posible.
+      El permiso lo concedes tú aquí, y puedes retirarlo desde este mismo botón.
+    -->
+    <div class="deteccion" id="deteccion" hidden>
+      <div class="deteccion__linea">
+        <span class="deteccion__punto" id="deteccion-punto"></span>
+        <span id="deteccion-estado"></span>
+      </div>
+      <button class="btn-suave" id="deteccion-boton"></button>
+      <p class="deteccion__nota" id="deteccion-nota"></p>
+    </div>
 
     <p class="promesa">
       Solo se envían el título y la dirección de esta pestaña. Esta extensión no
