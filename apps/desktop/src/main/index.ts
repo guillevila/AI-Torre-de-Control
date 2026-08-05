@@ -1,7 +1,9 @@
 import { statSync } from 'node:fs'
 import { join } from 'node:path'
 import { app, BrowserWindow, session, shell } from 'electron'
-import { IPC, type DevInfo, type PendingPermission, type Task } from '@torre/contracts'
+import { IPC, type DevInfo, type PendingPermission, type PendingTurn, type Task } from '@torre/contracts'
+import { TurnRegistry } from './turns/turn-registry.js'
+import { TurnService } from './turns/turn-service.js'
 import { folderName } from '@torre/domain'
 import { focusProjectWindow } from './system/focus-window.js'
 import { HookActivityLog } from './hooks/hook-activity-log.js'
@@ -80,6 +82,12 @@ function broadcastTasks(tasks: Task[]): void {
 function broadcastPermissions(pending: PendingPermission[]): void {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send(IPC.permissionsChanged, pending)
+  }
+}
+
+function broadcastTurns(pending: PendingTurn[]): void {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send(IPC.turnsChanged, pending)
   }
 }
 
@@ -223,6 +231,18 @@ async function bootstrap(): Promise<void> {
     autoApprove: () => settings.get().autoApprovePermissions,
   })
   const sessionStatus = new SessionStatusService(linker, service, hookActivity)
+
+  // ── Responder desde la Torre (D25) ─────────────────────────────────────────
+  // Igual que los permisos: todo en memoria, nada en disco (D5-ter).
+  const turnRegistry = new TurnRegistry({ onChange: broadcastTurns })
+  const turnService = new TurnService({
+    registry: turnRegistry,
+    linker,
+    taskService: service,
+    activity: hookActivity,
+    // Ajuste vivo: cambiarlo aplica al turno siguiente, sin reiniciar.
+    windowMs: () => settings.get().turnReplyWindowSeconds * 1000,
+  })
   // Altas que llegan de fuera (extensión de navegador). No duplica tareas.
   const intakeService = new IntakeService({ taskService: service })
   const hookInstaller = new HookInstaller(userDataDir)
@@ -233,6 +253,7 @@ async function bootstrap(): Promise<void> {
     token,
     onEvent: (raw) => service.ingestEvent(raw),
     onPermission: (raw) => permissionService.request(raw),
+    onTurn: (raw) => turnService.request(raw),
     onSession: (raw) => sessionStatus.apply(raw),
     onIntake: (raw) => intakeService.register(raw),
   })
@@ -294,6 +315,8 @@ async function bootstrap(): Promise<void> {
     settings,
     permissions: permissionService,
     registry: permissionRegistry,
+    turns: turnService,
+    turnRegistry,
     hooks: hookInstaller,
     hookActivity,
     dataDirectory: userDataDir,

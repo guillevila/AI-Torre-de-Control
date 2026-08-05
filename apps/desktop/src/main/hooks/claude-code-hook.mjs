@@ -39,7 +39,7 @@
  * de significar nada.
  */
 
-import { appendFileSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
+import { appendFileSync, closeSync, openSync, readdirSync, readFileSync, readSync, rmSync, statSync } from 'node:fs'
 import { homedir, platform } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
@@ -57,6 +57,20 @@ const DIAGNOSTIC_MAX_BYTES = 256 * 1024
 
 /** Sale sin hacer nada. Es la respuesta correcta ante cualquier problema. */
 function bailOut() {
+  process.exit(0)
+}
+
+/**
+ * Salida ordenada tras haber usado la red.
+ *
+ * Un respiro mínimo antes de `process.exit` para que los manejadores de red
+ * terminen de cerrarse. Sin él, en Windows la salida compite con el cierre de
+ * los sockets de fetch y el proceso muere con una aserción de libuv
+ * (`async.c: UV_HANDLE_CLOSING`) — con código de error, lo que Claude Code
+ * interpretaría como un hook roto.
+ */
+async function salir() {
+  await new Promise((resolve) => setTimeout(resolve, 25))
   process.exit(0)
 }
 
@@ -178,7 +192,10 @@ function post(endpoint, path, body, timeoutMs) {
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   return fetch(`http://${endpoint.host}:${endpoint.port}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-torre-token': endpoint.token },
+    // `Connection: close`: el socket se cierra con la respuesta. Sin esto, el
+    // keep-alive de fetch deja un manejador vivo que compite con process.exit
+    // y en Windows tumba el proceso con una aserción de libuv (async.c).
+    headers: { 'Content-Type': 'application/json', 'x-torre-token': endpoint.token, Connection: 'close' },
     body: JSON.stringify(body),
     signal: controller.signal,
   }).finally(() => clearTimeout(timer))
@@ -268,6 +285,86 @@ function buildAnswer(event, resolution, payload) {
       permissionDecisionReason: reason,
     },
   }
+}
+
+/** Tope de lo que se lee y se envía de la respuesta del turno (D5-ter). */
+const TURN_OUTPUT_MAX = 4000
+/** Cuánto se espera como máximo la respuesta del dueño (ventana máx. + margen). */
+const TURN_REPLY_TIMEOUT_MS = 310_000
+
+/**
+ * La respuesta del asistente en este turno, leída del FINAL de la transcripción.
+ *
+ * Es la única lectura de contenido de conversación de todo el enlace, existe
+ * porque el dueño la pidió expresamente (D5-ter), y su destino es una tarjeta
+ * en memoria: la Torre la enseña y no la guarda. Se lee solo la cola del
+ * fichero —las transcripciones crecen mucho— y se recorta al tope.
+ */
+function leerRespuestaDelTurno(transcriptPath) {
+  try {
+    if (!transcriptPath || !statSync(transcriptPath).isFile()) return ''
+    const tam = statSync(transcriptPath).size
+    const COLA = 262_144
+    const desde = Math.max(0, tam - COLA)
+    const fd = openSync(transcriptPath, 'r')
+    const buffer = Buffer.alloc(tam - desde)
+    readSync(fd, buffer, 0, buffer.length, desde)
+    closeSync(fd)
+
+    const lineas = buffer.toString('utf8').split('\n')
+    // De atrás hacia delante: la última entrada del asistente del hilo
+    // principal (las de los subagentes van marcadas como sidechain).
+    for (let i = lineas.length - 1; i >= 0; i -= 1) {
+      const linea = lineas[i]
+      if (!linea.includes('"assistant"')) continue
+      try {
+        const entrada = JSON.parse(linea)
+        if (entrada?.type !== 'assistant' || entrada?.isSidechain) continue
+        const contenido = entrada?.message?.content
+        if (!Array.isArray(contenido)) continue
+        const texto = contenido
+          .filter((parte) => parte?.type === 'text' && typeof parte.text === 'string')
+          .map((parte) => parte.text)
+          .join('\n')
+          .trim()
+        if (texto) return texto.length > TURN_OUTPUT_MAX ? `${texto.slice(0, TURN_OUTPUT_MAX - 1)}…` : texto
+      } catch {
+        /* una línea partida por el corte de la cola no es un error */
+      }
+    }
+  } catch {
+    /* sin transcripción no hay texto, y la tarjeta lo dice */
+  }
+  return ''
+}
+
+/**
+ * Pregunta a la Torre si el dueño contesta este turno. Devuelve su texto, o
+ * null si nadie contestó, la función está apagada o la Torre no está.
+ */
+async function askTurnReply(endpoint, payload) {
+  try {
+    const res = await post(
+      endpoint,
+      '/turns',
+      {
+        requestId: randomUUID(),
+        sessionId: payload?.session_id ?? null,
+        cwd: payload?.cwd ?? process.cwd(),
+        output: leerRespuestaDelTurno(payload?.transcript_path),
+        timestamp: new Date().toISOString(),
+      },
+      TURN_REPLY_TIMEOUT_MS,
+    )
+    if (!res.ok) return null
+    const respuesta = await res.json()
+    if (respuesta?.action === 'reply' && typeof respuesta.text === 'string' && respuesta.text.trim()) {
+      return respuesta.text.trim()
+    }
+  } catch {
+    // Torre cerrada o sin la ruta: el turno termina como siempre.
+  }
+  return null
 }
 
 /**
@@ -420,7 +517,24 @@ async function main() {
   // ── Avisos de estado: se mandan y se sigue ────────────────────────────────
   if (event === 'UserPromptSubmit') await sendStatus(endpoint, payload, 'running')
   else if (event === 'Stop') {
-    // Ha entregado trabajo: a la mesa de entregas, pendiente de que lo revises.
+    /*
+     * Antes de dar el turno por cerrado, se le pregunta a la Torre si el dueño
+     * quiere contestar desde allí (D25). La Torre responde al instante si la
+     * función está apagada; si está encendida, esta llamada espera la ventana
+     * configurada — igual que la de permisos.
+     *
+     * Si el dueño contesta, el turno NO termina: se devuelve `decision: block`
+     * con su texto como `reason`, que es el mecanismo oficial de Claude Code
+     * para continuar una conversación desde un hook de Stop. La sesión sigue en
+     * su ventana de siempre, con la respuesta del dueño como siguiente entrada.
+     */
+    const respuesta = await askTurnReply(endpoint, payload)
+    if (respuesta) {
+      apuntar({ fase: 'turno-respondido', evento: event })
+      process.stdout.write(`${JSON.stringify({ decision: 'block', reason: respuesta })}\n`)
+      await salir()
+    }
+    // Nadie contestó (o la función está apagada): entrega normal, a la mesa.
     await sendStatus(endpoint, payload, 'completed')
   } else if (event === 'SessionEnd') {
     // Entrega igual, pero además la conversación se ha CERRADO: la tarea queda
@@ -450,7 +564,7 @@ async function main() {
     await sendStatus(endpoint, payload, 'waiting_user')
   }
 
-  process.exit(0)
+  await salir()
 }
 
 main().catch(bailOut)

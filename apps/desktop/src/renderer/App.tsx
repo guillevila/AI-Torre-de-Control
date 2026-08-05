@@ -3,6 +3,7 @@ import type { DevInfo, StatusConfidence, Task, TaskStatus } from '@torre/contrac
 import { filterTasks, summarise, type TaskFilters } from '@torre/domain'
 import { DevPanel } from './components/DevPanel.js'
 import { PermissionCard } from './components/PermissionCard.js'
+import { TurnCard } from './components/TurnCard.js'
 import { QuickAdd } from './components/QuickAdd.js'
 import { Sidebar, type Section } from './components/Sidebar.js'
 import { TaskDetail } from './components/TaskDetail.js'
@@ -11,6 +12,7 @@ import { TopBar, type ViewMode } from './components/TopBar.js'
 import { useClock } from './hooks/useClock.js'
 import { useHotkeys } from './hooks/useHotkeys.js'
 import { usePermissions } from './hooks/usePermissions.js'
+import { useTurns } from './hooks/useTurns.js'
 import { useSettings } from './hooks/useSettings.js'
 import { useRecentActivity, useTaskHistory, useTasks } from './hooks/useTasks.js'
 import { AttentionView } from './views/AttentionView.js'
@@ -49,6 +51,12 @@ export function App() {
     error: permissionError,
     clearError: clearPermissionError,
   } = usePermissions()
+  const {
+    pending: turns,
+    decide: decideTurn,
+    error: turnError,
+    clearError: clearTurnError,
+  } = useTurns()
 
   const [section, setSection] = useState<Section>('tower')
   const [view, setView] = useState<ViewMode>('operations')
@@ -66,7 +74,7 @@ export function App() {
   // Hace avanzar los cronómetros y los «hace 3 min» sin esperar a que cambie
   // ninguna tarea. Cuando hay un permiso esperando late cada segundo, porque su
   // cuenta atrás tiene que verse moverse; el resto del tiempo, cada 30.
-  const now = useClock(permissions.length > 0 ? 1_000 : 30_000)
+  const now = useClock(permissions.length > 0 || turns.length > 0 ? 1_000 : 30_000)
 
   // Los ajustes deciden dónde arranca la aplicación, pero solo la primera vez:
   // después manda lo que el usuario esté mirando.
@@ -232,6 +240,28 @@ export function App() {
                 permission={permission}
                 now={now}
                 onDecide={(requestId, decision) => void decidePermission(requestId, decision)}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Turnos esperando respuesta (D25): mismas reglas de visibilidad. */}
+        {turnError && (
+          <div className="banner" role="alert" data-testid="turn-error">
+            <span>{turnError}</span>
+            <button type="button" className="btn btn--icon" onClick={clearTurnError} aria-label="Cerrar aviso">
+              ✕
+            </button>
+          </div>
+        )}
+        {turns.length > 0 && (
+          <div className="permissions" data-testid="turns">
+            {turns.map((turn) => (
+              <TurnCard
+                key={turn.requestId}
+                turn={turn}
+                now={now}
+                onDecide={(requestId, action, text) => void decideTurn(requestId, action, text)}
               />
             ))}
           </div>

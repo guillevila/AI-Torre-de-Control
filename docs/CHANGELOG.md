@@ -10,6 +10,40 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Añadido — responder a Claude desde la Torre (D25)
+
+**La petición fundacional del producto, construida:** termina un turno, la Torre
+te enseña **lo que Claude ha respondido** en una tarjeta, escribes tu respuesta
+ahí mismo, y la conversación **continúa en su sesión de siempre** — sin buscar
+ninguna ventana. Se activa en Ajustes → «Responder desde la Torre» eligiendo
+cuánto espera (30 s / 1 min / 2 min; apagado por omisión).
+
+- **El mecanismo es el oficial de Claude Code**: el hook de Stop devuelve
+  `decision: block` con tu texto como siguiente instrucción. No hay procesos
+  nuevos ni conversaciones duplicadas.
+- **Nada se guarda (D5-ter).** La respuesta que se enseña se lee de la cola de
+  la transcripción —la única lectura de contenido del enlace, autorizada
+  expresamente por el dueño—, vive en memoria como los permisos (D20) y hay un
+  test que vigila que no entre ni en la ventana de actividad.
+- **Nunca cuello de botella**: Torre cerrada, función apagada o tiempo agotado →
+  el turno termina como siempre. «Cerrar» no descarta la entrega.
+- **Coste declarado**: mientras la tarjeta espera, esa sesión no da su turno por
+  cerrado (el tiempo del hook de Stop sube de 10 a 330 s).
+- **Arreglado de paso un fallo real**: dos peticiones de red seguidas +
+  `process.exit` inmediato tumbaban Node en Windows (aserción de libuv). El
+  enlace ahora cierra la conexión por petición y drena antes de salir —
+  reproducido, corregido y comprobado 10/10.
+- **15 tests nuevos** (hook, servicio, registro). **352 tests** unitarios y 10
+  de interfaz, en verde.
+
+### Cambiado — limpieza de la mesa de entregas
+
+- Las **5 entregas de sesiones ya cerradas** que se acumulaban en la oficina se
+  archivaron por la puerta delantera (el receptor local, con historial). La
+  causa raíz de la acumulación —cada cierre de sesión deja su entrega y nadie la
+  revisa— es justo lo que la tarjeta de turno resuelve: atender la entrega en el
+  momento.
+
 ### Añadido — la ventana de la conversación te salta delante (resuelve O10)
 
 **Interruptor en Ajustes → Notificaciones: «Traer la ventana del proyecto al

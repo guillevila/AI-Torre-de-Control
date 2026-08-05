@@ -2505,6 +2505,22 @@ body {
   margin-top: var(--s5);
 }
 
+/* ─── Tarjeta de turno (D25): responder desde la Torre ────────────────────── */
+
+.turn__output {
+  max-height: 260px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+
+.turn__reply {
+  width: 100%;
+  margin-top: var(--s3);
+  resize: vertical;
+  font: inherit;
+  font-size: 13px;
+}
+
 .permission__note {
   margin: var(--s4) 0 0;
   font-size: var(--size-meta);

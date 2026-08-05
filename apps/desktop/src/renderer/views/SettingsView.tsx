@@ -94,6 +94,33 @@ export function SettingsView({
       </section>
 
       <section className="card">
+        <h2 className="card__title">Responder desde la Torre</h2>
+        <p className="card__text">
+          Cuando una conversación termina un turno, la Torre puede enseñarte la respuesta y darte
+          un sitio donde contestar. Si contestas a tiempo, la conversación continúa en su sesión —
+          sin buscar ninguna ventana. Si no, termina como siempre.
+        </p>
+        <label className="field">
+          <span className="field__label">Esperar mi respuesta durante</span>
+          <select
+            className="input"
+            value={String(settings.turnReplyWindowSeconds)}
+            data-testid="turn-reply-window"
+            onChange={(event) => onUpdate({ turnReplyWindowSeconds: Number(event.target.value) })}
+          >
+            <option value="0">Nunca — los turnos terminan solos</option>
+            <option value="30">30 segundos</option>
+            <option value="60">1 minuto</option>
+            <option value="120">2 minutos</option>
+          </select>
+          <span className="field__hint">
+            Ojo: mientras espera, esa sesión no da su turno por cerrado. Lo que se enseña en la
+            tarjeta no se guarda en ningún sitio: desaparece al contestar o al cerrar la Torre.
+          </span>
+        </label>
+      </section>
+
+      <section className="card">
         <h2 className="card__title">Permisos del asistente</h2>
         <p className="card__text">
           Cuando Claude Code pide permiso para editar un fichero o ejecutar un comando, la Torre te

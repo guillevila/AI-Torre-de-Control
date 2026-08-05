@@ -40,9 +40,11 @@ const HOOKED_EVENTS = [
   },
   {
     event: 'Stop',
-    timeoutSeconds: 10,
+    // Más que la ventana máxima de «Responder desde la Torre» (300 s): mientras
+    // esperas tu respuesta, este hook es el que sostiene la conversación.
+    timeoutSeconds: 330,
     summary:
-      'Cuando Claude Code termine un turno, la tarea pasa a «terminada» y va a la mesa de entregas, esperando que la revises.',
+      'Cuando Claude Code termine un turno, te deja contestar desde la Torre; si no contestas, la tarea pasa a «terminada» y va a la mesa de entregas.',
   },
   {
     event: 'Notification',

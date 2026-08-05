@@ -5,6 +5,7 @@ import type {
   PermissionResolution,
   SessionUpdateResult,
   TaskIntakeResult,
+  TurnResolution,
 } from '@torre/contracts'
 
 /**
@@ -46,6 +47,11 @@ export interface LocalEventServerOptions {
    * permisos configurados no debe fingir que los acepta.
    */
   onPermission?: (raw: unknown) => Promise<PermissionResolution>
+  /**
+   * Atiende el fin de un turno por si el dueño quiere contestar desde la Torre
+   * (D25). Misma mecánica que los permisos: la conexión espera la respuesta.
+   */
+  onTurn?: (raw: unknown) => Promise<TurnResolution>
   /**
    * Procesa un aviso de estado que no conoce el identificador de la tarea, solo
    * su carpeta y su sesión. Es lo que envía el enlace con Claude Code.
@@ -153,6 +159,7 @@ export class LocalEventServer {
     const isPermissions = req.method === 'POST' && url === '/permissions'
     const isSessions = req.method === 'POST' && url === '/sessions'
     const isIntake = req.method === 'POST' && url === '/tasks'
+    const isTurns = req.method === 'POST' && url === '/turns'
 
     // Cada ruta solo existe si la aplicación sabe atenderla. Sin atendedor
     // devuelve 404 en lugar de aceptar algo que nadie va a procesar.
@@ -160,7 +167,8 @@ export class LocalEventServer {
       isEvents ||
       (isPermissions && this.options.onPermission) ||
       (isSessions && this.options.onSession) ||
-      (isIntake && this.options.onIntake)
+      (isIntake && this.options.onIntake) ||
+      (isTurns && this.options.onTurn)
     if (!known) {
       return send(res, 404, { accepted: false, reason: 'Ruta no encontrada' })
     }
@@ -204,6 +212,27 @@ export class LocalEventServer {
         if (isIntake && this.options.onIntake) {
           const result = this.options.onIntake(parsed)
           return send(res, result.accepted ? 200 : 422, result)
+        }
+
+        // ── Turnos (D25) ─────────────────────────────────────────────────────
+        // Misma mecánica sostenida que los permisos. Ante cualquier fallo se
+        // devuelve `pass`: el turno termina como siempre, nunca se cuelga.
+        if (isTurns && this.options.onTurn) {
+          const atender = this.options.onTurn
+          let abandonado = false
+          req.once('close', () => {
+            abandonado = true
+          })
+          atender(parsed)
+            .then((resolution) => {
+              if (abandonado || res.writableEnded) return
+              send(res, 200, resolution)
+            })
+            .catch(() => {
+              if (abandonado || res.writableEnded) return
+              send(res, 200, { action: 'pass' })
+            })
+          return
         }
 
         // ── Permisos ─────────────────────────────────────────────────────────

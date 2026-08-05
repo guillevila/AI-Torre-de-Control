@@ -42,6 +42,19 @@ export const settingsSchema = z.object({
   staleAfterMinutes: z.number().int().min(0).max(1440).default(30),
 
   /**
+   * Segundos que un turno terminado espera tu respuesta desde la Torre (D25).
+   *
+   * 0 —lo normal— apaga la función: los turnos terminan como siempre. Con un
+   * valor, al terminar un turno aparece una tarjeta con la respuesta del
+   * asistente; si contestas a tiempo, la conversación continúa en su sesión con
+   * tu texto, sin buscar ninguna ventana. Si no, termina como siempre: la Torre
+   * es un atajo, nunca un cuello de botella.
+   *
+   * Ojo con subirlo: mientras espera, la sesión no da su turno por cerrado.
+   */
+  turnReplyWindowSeconds: z.number().int().min(0).max(300).default(0),
+
+  /**
    * Traer al frente la ventana del proyecto cuando salte un aviso (O10).
    *
    * En el momento exacto en que se entrega un aviso —terminada, te espera o

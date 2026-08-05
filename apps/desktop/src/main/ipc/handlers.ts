@@ -4,6 +4,7 @@ import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import {
   IPC,
   permissionDecisionInputSchema,
+  turnDecisionInputSchema,
   type DevInfo,
   type ExportResult,
   type HookActivityEntry,
@@ -11,6 +12,7 @@ import {
   type HookStatus,
   type IpcResult,
   type PendingPermission,
+  type PendingTurn,
   type RecentActivityEntry,
   type Settings,
   type StatusHistoryEntry,
@@ -20,6 +22,8 @@ import type { HookActivityLog } from '../hooks/hook-activity-log.js'
 import type { HookInstaller } from '../hooks/hook-installer.js'
 import type { PermissionRegistry } from '../permissions/permission-registry.js'
 import type { PermissionService } from '../permissions/permission-service.js'
+import type { TurnRegistry } from '../turns/turn-registry.js'
+import type { TurnService } from '../turns/turn-service.js'
 import { TaskServiceError, type TaskService } from '../services/task-service.js'
 import { tasksToCsv } from '../services/csv-export.js'
 import type { SettingsStore } from '../settings/settings-store.js'
@@ -39,6 +43,8 @@ export interface IpcHandlerDeps {
   settings: SettingsStore
   permissions: PermissionService
   registry: PermissionRegistry
+  turns: TurnService
+  turnRegistry: TurnRegistry
   hooks: HookInstaller
   hookActivity: HookActivityLog
   getDevInfo: () => DevInfo
@@ -72,6 +78,8 @@ export function registerIpcHandlers({
   settings,
   permissions,
   registry,
+  turns,
+  turnRegistry,
   hooks,
   hookActivity,
   getDevInfo,
@@ -185,6 +193,30 @@ export function registerIpcHandlers({
         // fallo: es la salvaguarda de D21 haciendo su trabajo.
         throw new TaskServiceError(
           'Esa petición ya no espera respuesta: se agotó el tiempo y la herramienta te preguntó por su cuenta.',
+        )
+      }
+      return null
+    }),
+  )
+
+  // ─── Turnos: responder desde la Torre (D25) ────────────────────────────────
+
+  ipcMain.handle(IPC.turnsList, (): IpcResult<PendingTurn[]> => guard(() => turnRegistry.list()))
+
+  ipcMain.handle(IPC.turnsDecide, (_event, input: unknown): IpcResult<null> =>
+    guard(() => {
+      const parsed = turnDecisionInputSchema.safeParse(input)
+      if (!parsed.success) throw new TaskServiceError('Respuesta no válida.')
+      const { requestId, action, text } = parsed.data
+      if (action === 'reply' && !text) throw new TaskServiceError('Escribe la respuesta antes de enviarla.')
+
+      const transmitted = turns.decide(
+        requestId,
+        action === 'reply' ? { action: 'reply', text: text ?? '' } : { action: 'pass' },
+      )
+      if (!transmitted) {
+        throw new TaskServiceError(
+          'Ese turno ya no espera respuesta: se agotó el tiempo y terminó como siempre. Escríbele desde su sesión.',
         )
       }
       return null

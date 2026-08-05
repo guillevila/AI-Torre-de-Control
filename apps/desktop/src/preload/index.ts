@@ -5,7 +5,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 // Este módulo son constantes y tipos: al compilar no queda ninguna dependencia.
 import { IPC, type TorreBridge } from '@torre/contracts/ipc'
 // `import type` se borra al compilar: no genera ninguna carga en ejecución.
-import type { PendingPermission, Task } from '@torre/contracts'
+import type { PendingPermission, PendingTurn, Task } from '@torre/contracts'
 
 /**
  * Puente entre la interfaz y el proceso principal.
@@ -37,6 +37,10 @@ const bridge: TorreBridge = {
   decidePermission: (requestId, decision) =>
     ipcRenderer.invoke(IPC.permissionsDecide, { requestId, decision }),
 
+  listTurns: () => ipcRenderer.invoke(IPC.turnsList),
+  decideTurn: (requestId, action, text) =>
+    ipcRenderer.invoke(IPC.turnsDecide, { requestId, action, text }),
+
   hookStatus: () => ipcRenderer.invoke(IPC.hookStatus),
   hookPreview: () => ipcRenderer.invoke(IPC.hookPreview),
   hookInstall: () => ipcRenderer.invoke(IPC.hookInstall),
@@ -58,6 +62,14 @@ const bridge: TorreBridge = {
     ipcRenderer.on(IPC.permissionsChanged, handler)
     return () => {
       ipcRenderer.removeListener(IPC.permissionsChanged, handler)
+    }
+  },
+
+  onTurnsChanged: (listener) => {
+    const handler = (_event: unknown, pending: PendingTurn[]): void => listener(pending)
+    ipcRenderer.on(IPC.turnsChanged, handler)
+    return () => {
+      ipcRenderer.removeListener(IPC.turnsChanged, handler)
     }
   },
 }

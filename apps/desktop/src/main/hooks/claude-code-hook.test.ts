@@ -332,6 +332,91 @@ describe('qué estado manda cada evento', () => {
 })
 
 /**
+ * Responder desde la Torre (D25). El hook consulta /turns al terminar un turno;
+ * si el dueño contesta, devuelve `decision: block` con su texto y la
+ * conversación continúa. Si nadie contesta, entrega normal.
+ */
+describe('responder desde la Torre (D25)', () => {
+  const transcripcion = (...partes: string[]) => {
+    const ruta = join(dataDir, 'transcripcion.jsonl')
+    writeFileSync(ruta, partes.join('\n'))
+    return ruta
+  }
+  const entradaAsistente = (texto: string, extra: Record<string, unknown> = {}) =>
+    JSON.stringify({ type: 'assistant', message: { content: [{ type: 'text', text: texto }] }, ...extra })
+
+  it('si contestas, el turno NO termina: tu texto reengancha la conversación', async () => {
+    respuesta = { action: 'reply', text: 'sí, sigue con la opción B' }
+    const { salida } = await ejecutar({
+      hook_event_name: 'Stop',
+      session_id: 'sesion-1',
+      cwd: 'C:/proyectos/mi-app',
+    })
+
+    const json = JSON.parse(salida.trim())
+    expect(json.decision).toBe('block')
+    expect(json.reason).toBe('sí, sigue con la opción B')
+    // Y NO se dio por terminada: la conversación sigue viva.
+    expect(recibidas.find((r) => r.path === '/sessions')).toBeUndefined()
+  })
+
+  it('si nadie contesta, entrega normal a la mesa', async () => {
+    respuesta = { action: 'pass' }
+    const { salida } = await ejecutar({
+      hook_event_name: 'Stop',
+      session_id: 'sesion-1',
+      cwd: 'C:/proyectos/mi-app',
+    })
+
+    expect(salida.trim()).toBe('')
+    expect(recibidas.find((r) => r.path === '/sessions')?.body.status).toBe('completed')
+  })
+
+  it('manda a la Torre la última respuesta del asistente, recortada de la transcripción', async () => {
+    respuesta = { action: 'pass' }
+    const ruta = transcripcion(
+      entradaAsistente('primera respuesta, ya antigua'),
+      JSON.stringify({ type: 'user', message: { content: 'pregunta' } }),
+      entradaAsistente('esto es de un subagente', { isSidechain: true }),
+      entradaAsistente('ésta es la respuesta final del turno'),
+    )
+    await ejecutar({
+      hook_event_name: 'Stop',
+      session_id: 'sesion-1',
+      cwd: 'C:/proyectos/mi-app',
+      transcript_path: ruta,
+    })
+
+    const enviado = recibidas.find((r) => r.path === '/turns')
+    expect(enviado?.body.output).toBe('ésta es la respuesta final del turno')
+  })
+
+  it('sin transcripción legible, consulta igual con el texto vacío', async () => {
+    respuesta = { action: 'pass' }
+    await ejecutar({
+      hook_event_name: 'Stop',
+      session_id: 'sesion-1',
+      cwd: 'C:/proyectos/mi-app',
+      transcript_path: 'C:/no/existe.jsonl',
+    })
+
+    expect(recibidas.find((r) => r.path === '/turns')?.body.output).toBe('')
+  })
+
+  it('una respuesta rara de la Torre no bloquea nada: entrega normal', async () => {
+    respuesta = { accepted: true }
+    const { codigo } = await ejecutar({
+      hook_event_name: 'Stop',
+      session_id: 'sesion-1',
+      cwd: 'C:/proyectos/mi-app',
+    })
+
+    expect(codigo).toBe(0)
+    expect(recibidas.find((r) => r.path === '/sessions')?.body.status).toBe('completed')
+  })
+})
+
+/**
  * El nombre de la conversación (D5-bis). Sale del registro de METADATOS de
  * sesiones vivas, jamás de la transcripción; el test de arriba sigue vigilando
  * que del contenido no salga nada.
