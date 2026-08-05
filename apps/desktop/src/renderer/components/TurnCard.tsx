@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { PendingTurn } from '@torre/contracts'
+import { RichText } from './RichText.js'
 
 interface TurnCardProps {
   turn: PendingTurn
@@ -56,9 +57,13 @@ export function TurnCard({ turn, now, onDecide }: TurnCardProps) {
         )}
       </header>
 
-      <pre className="permission__detail mono turn__output" data-testid="turn-output">
-        {turn.output || '(no se pudo leer la respuesta de este turno; está en su ventana)'}
-      </pre>
+      <div className="permission__detail turn__output" data-testid="turn-output">
+        {turn.output ? (
+          <RichText source={turn.output} />
+        ) : (
+          '(no se pudo leer la respuesta de este turno; está en su ventana)'
+        )}
+      </div>
 
       <textarea
         className="input turn__reply"

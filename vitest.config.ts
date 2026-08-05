@@ -15,6 +15,10 @@ export default defineConfig({
     include: [
       'packages/*/src/**/*.test.ts',
       'apps/desktop/src/main/**/*.test.ts',
+      // De la interfaz solo entran aquí los módulos PUROS (sin React ni DOM),
+      // como el analizador de Markdown. Lo que pinta en pantalla se comprueba
+      // en las pruebas de Playwright, que abren la aplicación de verdad.
+      'apps/desktop/src/renderer/utils/**/*.test.ts',
       // La extensión es JavaScript de navegador, sin compilar. Lo que se puede
       // probar sin navegador —sus funciones puras— también se prueba.
       'apps/extension/**/*.test.mjs',

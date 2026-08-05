@@ -157,6 +157,12 @@ la aplicación de verdad, todos ejecutados y en verde el 5 de agosto de 2026:
   «Responder desde la Torre» está encendido.
   > ⚠️ Verificado en la prueba automática de interfaz, que sí abre la ventana
   > real. Lo que falta es lo mismo que arriba: un turno de una sesión de verdad.
+- **La respuesta se lee con formato, como en VSCode** (D26-bis). Bloques de
+  código en su recuadro, con lenguaje y botón de copiar, sin partir líneas;
+  títulos, listas, negritas y código en línea. La ventanita crece a 560×640 y se
+  puede estirar. Lo que llega **nunca se interpreta como marcado**: un mensaje
+  con `<script>` se ve como texto. Comprobado con 13 tests del analizador y uno
+  de interfaz que lo verifica en la ventana real.
 - **La ventana de la conversación te salta delante** al entregarse un aviso
   (O10, interruptor en Ajustes → Notificaciones, apagado por omisión). El
   mecanismo de foco está comprobado en vivo en este equipo; hereda la espera
@@ -407,6 +413,23 @@ pnpm test:e2e    # abre la aplicación de verdad y recorre todo el flujo
 
 ## 6. ⏭️ Próxima decisión necesaria
 
+- **O12 — ¿La Torre pasa de vigilar conversaciones a alojarlas?** Decide: tú.
+  Planteada por el dueño el 5/8/2026: entrar, vincular el perfil de Claude,
+  conectar los repos que quiera y **tener las conversaciones desde la propia
+  aplicación**, en lugar de lanzarlas en VSCode.
+  *Sí es posible, y la pieza existe: `@anthropic-ai/claude-agent-sdk` es Claude
+  Code empaquetado como librería, en TypeScript — el mismo lenguaje de la Torre
+  (versión 0.3.222 verificada el 5/8/2026). El perfil **no habría que
+  construirlo**: usa la sesión de Claude Code que ya tienes iniciada. Y **no
+  rompe D5** si la Torre enseña sin guardar copia, porque la transcripción ya
+  vive en los ficheros de Claude Code. Los tres costes reales: pasa de vigilante
+  a **cliente** (un sustituto de la extensión de VSCode, bastante más trabajo);
+  se pierde el editor para revisar cambios a fondo; y la Torre pasa a ejecutar
+  el agente, así que cerrarla corta la tarea en marcha. Recomendación: por
+  etapas, empezando por lanzar y conversar sin persistencia. **Se preguntó el
+  5/8/2026 y no hubo respuesta, así que no se tocó la arquitectura** — solo se
+  construyó el formato de lectura (D26-bis), que hace falta en cualquiera de los
+  escenarios.*
 - **O11 — ¿Hasta dónde llega «ver todas mis IAs en la Torre»?** Decide: tú.
   Planteada por el dueño el 5/8/2026: «solo usar esta torre de control para ver
   mis conversaciones en todas mis IAs… Claude Code, Codex, ChatGPT».

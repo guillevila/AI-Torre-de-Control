@@ -116,7 +116,7 @@ test('al terminar un turno se abre una segunda ventana con la respuesta', async 
   await expect(popup.locator('body[data-ventana="aviso"]')).toBeAttached()
 
   // Y enseña el turno: el repositorio en la barra y la respuesta íntegra.
-  await expect(popup.getByTestId('turn-output')).toHaveText(salida)
+  await expect(popup.getByTestId('turn-output')).toContainText(salida)
   await expect(popup.locator('.popup__repo')).toContainText('rialsa-financiero')
 
   // Se responde desde la ventanita y el texto llega a quien preguntaba.
@@ -132,6 +132,45 @@ test('al terminar un turno se abre una segunda ventana con la respuesta', async 
 
   // Sin nada pendiente, la ventanita se retira sola: no hay que cerrarla a mano.
   await expect.poll(popupVisible).toBe(false)
+})
+
+test('la respuesta se ve con formato: el código en su bloque, y el HTML como texto', async () => {
+  const salida = [
+    '## Hecho',
+    '',
+    'Migré la tabla con **cuidado**:',
+    '',
+    '```sql',
+    'ALTER TABLE clientes ADD COLUMN nif TEXT;',
+    '```',
+    '',
+    'Ojo: el fichero <script>alert(1)</script> seguía ahí.',
+  ].join('\n')
+
+  const pendiente = endTurn(salida, 'C:/proyectos/rialsa-financiero')
+  const popup = await popupWindow()
+
+  // El bloque de código llega ENTERO y sin las comillas de la valla: es lo que
+  // hace que copiarlo sirva de algo.
+  const codigo = popup.getByTestId('rich-code')
+  await expect(codigo).toBeVisible()
+  await expect(codigo.locator('code')).toHaveText('ALTER TABLE clientes ADD COLUMN nif TEXT;')
+  await expect(codigo).toContainText('sql')
+  await expect(popup.getByTestId('turn-output')).not.toContainText('```')
+
+  // El título y la negrita son estructura, no asteriscos a la vista.
+  await expect(popup.locator('.rich__titulo')).toHaveText('Hecho')
+  await expect(popup.locator('.rich strong')).toHaveText('cuidado')
+
+  // Y lo importante: el HTML de la respuesta se LEE, no se ejecuta. Si se
+  // hubiera interpretado, este texto no estaría en pantalla y habría un <script>.
+  await expect(popup.getByTestId('turn-output')).toContainText('<script>alert(1)</script>')
+  expect(await popup.locator('.rich script').count()).toBe(0)
+
+  await popup.getByTestId('popup-close').click()
+  await page.getByTestId('nav-tower').click()
+  await page.getByTestId('turn-review').click()
+  await pendiente
 })
 
 test('el aspa es un «ahora no»: la tarjeta sigue viva en la Torre', async () => {

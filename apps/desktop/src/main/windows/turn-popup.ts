@@ -2,8 +2,15 @@ import { join } from 'node:path'
 import { BrowserWindow, screen } from 'electron'
 import { posicionJuntoAlPuntero } from './popup-position.js'
 
-const ANCHO = 440
-const ALTO = 520
+/**
+ * Un recuadro, no media pantalla.
+ *
+ * Lo bastante ancho para que una línea de código o una ruta se lea sin
+ * desplazar, y lo bastante alto para una respuesta normal entera. Se puede
+ * estirar si hace falta más: el alto del texto lo pone la ventana.
+ */
+const ANCHO = 560
+const ALTO = 640
 
 /**
  * La ventanita que te sale al paso cuando una conversación termina su turno
@@ -81,8 +88,11 @@ export class TurnPopup {
     const ventana = new BrowserWindow({
       width: ANCHO,
       height: ALTO,
-      minWidth: 360,
-      minHeight: 300,
+      minWidth: 380,
+      minHeight: 320,
+      // Se puede estirar: una respuesta larga con código agradece el sitio, y
+      // el tamaño es cosa de cada momento, no una decisión que deba tomar yo.
+      resizable: true,
       show: false,
       frame: false,
       // Fuera de la barra de tareas y del Alt+Tab: es un aviso, no una ventana

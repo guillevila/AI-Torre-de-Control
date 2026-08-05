@@ -10,6 +10,29 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Añadido — la respuesta se lee como en VSCode (D26-bis)
+
+**A petición del dueño**: «un recuadro que no ocupe la pantalla entera pero que
+se vea el texto entero en un formato igual que el que se vería en VS Code».
+
+- **Bloques de código en su recuadro**, con el lenguaje y un botón de copiar.
+  No se parten las líneas: se desplazan, como en el editor — una línea de
+  comandos partida por la mitad es la forma más fácil de copiar algo que no
+  funciona. También títulos, listas, citas, negritas y código en línea.
+- **Un bloque de código sin cerrar sigue siendo código.** Pasa de verdad: la
+  respuesta puede llegar recortada a 4000 caracteres, y desmaquetar todo el
+  final sería lo peor posible.
+- **Nada de lo que llega se interpreta como marcado.** El analizador devuelve
+  datos, no HTML, y el componente los pinta con React uno a uno: un mensaje con
+  `<script>` se ve **como texto**. No es teórico — el texto viene de una
+  conversación, que puede incluir lo que otra persona metió en un fichero del
+  proyecto. Hay un test unitario y uno de interfaz que lo vigilan.
+- **La ventanita crece** (560×640) y se puede estirar; dentro de ella el alto
+  del texto lo pone la ventana, así que agrandarla enseña más respuesta.
+- **381 tests** unitarios (13 nuevos del analizador) y **14 de interfaz** (1
+  nuevo, que comprueba en la ventana real que el código se ve entero y que el
+  HTML no se ejecuta).
+
 ### Añadido — el aviso sale junto al ratón (D26)
 
 **A petición del dueño**, que además explicó la forma de trabajar que lo

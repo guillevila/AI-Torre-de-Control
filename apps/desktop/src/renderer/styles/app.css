@@ -2508,9 +2508,11 @@ body {
 /* ─── Tarjeta de turno (D25): responder desde la Torre ────────────────────── */
 
 .turn__output {
-  max-height: 260px;
+  max-height: 320px;
   overflow-y: auto;
-  white-space: pre-wrap;
+  /* Lo pone ahora `.rich`, bloque a bloque: el código se desplaza y la prosa
+     se ajusta, en vez de aplicar una sola regla a todo. */
+  white-space: normal;
 }
 
 .turn__reply {
@@ -2519,6 +2521,118 @@ body {
   resize: vertical;
   font: inherit;
   font-size: 13px;
+}
+
+/* ─── Respuesta con formato, como en VSCode (D26-bis) ──────────────────────── */
+
+.rich {
+  font-size: var(--size-body);
+  line-height: 1.55;
+  color: var(--ink);
+  /* Una respuesta puede traer una ruta larguísima o una línea de comandos sin
+     espacios: sin esto, empujaría el ancho de la ventana entera. */
+  overflow-wrap: anywhere;
+}
+
+.rich > * + * {
+  margin-top: var(--s3);
+}
+
+.rich__parrafo,
+.rich__titulo {
+  margin: 0;
+  /* Los saltos de línea sueltos del asistente son intencionados; se conservan. */
+  white-space: pre-wrap;
+}
+
+.rich__titulo {
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.rich__titulo--1 { font-size: var(--size-section); }
+.rich__titulo--2 { font-size: var(--size-row-title); }
+.rich__titulo--3 { font-size: var(--size-body); color: var(--ink-2); }
+
+.rich__lista {
+  margin: 0;
+  padding-left: 1.15em;
+}
+
+.rich__lista li + li {
+  margin-top: 2px;
+}
+
+.rich__cita {
+  margin: 0;
+  padding-left: var(--s3);
+  border-left: 2px solid var(--rule);
+  color: var(--ink-2);
+  white-space: pre-wrap;
+}
+
+.rich__enlinea {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  background: var(--paper-deep);
+  border-radius: 3px;
+  padding: 0.5px 4px;
+}
+
+/* El bloque de código va oscuro a propósito: es la señal que hace que se
+   reconozca como código de un vistazo, igual que en el editor. */
+.rich__codigo {
+  border-radius: 6px;
+  overflow: hidden;
+  background: #1c1a17;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+}
+
+.rich__codigo-barra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: 3px var(--s3);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.rich__lenguaje {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(245, 241, 234, 0.55);
+}
+
+.rich__copiar {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: rgba(245, 241, 234, 0.55);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.rich__copiar:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f5f1ea;
+}
+
+.rich__codigo pre {
+  margin: 0;
+  padding: var(--s3);
+  /* El código NO se parte: se desplaza, como en el editor. Partir una línea de
+     comandos por la mitad es la forma más fácil de copiar algo que no funciona. */
+  overflow-x: auto;
+  white-space: pre;
+  color: #e6e1d7;
+  font-size: var(--size-mono);
+  line-height: 1.5;
+  tab-size: 2;
 }
 
 /* ─── Ventanita junto al puntero (D26) ─────────────────────────────────────── */
@@ -2605,8 +2719,11 @@ body[data-ventana='aviso'] #root {
   background: transparent;
 }
 
+/* En la ventanita el alto lo pone la ventana, no la tarjeta: así el texto usa
+   todo el sitio disponible y estirar la ventana enseña más respuesta. */
 .popup__body .turn__output {
-  max-height: 180px;
+  max-height: none;
+  overflow: visible;
 }
 
 .popup__error {
