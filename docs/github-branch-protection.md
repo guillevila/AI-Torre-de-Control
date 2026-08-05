@@ -30,7 +30,7 @@ después.
 | **Conversaciones resueltas** | ✅ | No se fusiona con comentarios de revisión abiertos |
 | **Force push bloqueado** | ✅ | Nadie puede reescribir la historia de `master` |
 | **Borrado bloqueado** | ✅ | `master` no se puede borrar |
-| **Se aplica a administradores** | ❌ **no** | **Lee el apartado siguiente** |
+| **Se aplica a administradores** | ✅ | **Sin excepciones. También al dueño del repositorio** |
 
 Los tres checks obligatorios son los del workflow `.github/workflows/ci.yml`:
 
@@ -40,33 +40,50 @@ Los tres checks obligatorios son los del workflow `.github/workflows/ci.yml`:
 
 ---
 
-## ⚠️ El matiz importante: por qué los administradores están exentos
+## ⚠️ Lo que esto significa en el día a día
 
-**GitHub no te deja aprobar tu propia Pull Request.**
+**GitHub no te deja aprobar tu propia Pull Request.** Y como las reglas se
+aplican a todos sin excepción, incluido el dueño del repositorio:
 
-Si las reglas se aplicaran también a los administradores, y hoy trabajas solo,
-**te quedarías sin poder fusionar nada**: harías la PR, no habría nadie para
-aprobarla, y ahí se quedaría.
+> **Nadie puede fusionar su propio trabajo. Siempre lo aprueba el otro.**
 
-Por eso `enforce_admins` está desactivado. En la práctica:
+Quiénes tienen acceso hoy:
 
-- **Tú** (dueño y administrador) puedes fusionar tus propias PRs cuando trabajes
-  solo. GitHub avisará de que falta la aprobación, pero te dejará seguir.
-- **Tu compañero**, si no es administrador, tiene que cumplir todas las reglas
-  sin excepción.
-- Todo lo demás —force push, borrar la rama— sigue bloqueado **también para ti**.
+| Persona | Permiso | Puede aprobar PRs |
+|---|---|---|
+| `guillevila` | administrador | Sí |
+| `alonsollorente` | escritura | Sí |
 
-### Cuándo activarlo del todo
+En la práctica: tú abres una PR y la aprueba Alonso; él abre una y la apruebas
+tú. Es exactamente el punto de todo esto — que nada entre en `master` sin que
+una segunda persona lo haya mirado.
 
-En cuanto tu compañero esté trabajando de forma habitual y os reviséis las PRs
-el uno al otro. Ese día, esta regla deja de estorbar y empieza a proteger:
+### Si el otro no está disponible y hay una urgencia
 
-1. Repositorio → **Settings** → **Branches**
-2. En la regla de `master`, pulsa **Edit**
-3. Marca **Do not allow bypassing the above settings**
-4. **Save changes**
+No hay atajo silencioso, y es a propósito. Si de verdad hace falta:
 
-A partir de ahí nadie, ni tú, puede fusionar sin revisión.
+1. **Settings → Branches → Edit** en la regla de `master`
+2. Desmarca **Do not allow bypassing the above settings**
+3. Fusiona
+4. **Vuelve a marcarlo inmediatamente**
+
+O por terminal:
+
+```bash
+# quitar la restricción a administradores
+gh api -X DELETE repos/guillevila/AI-Torre-de-Control/branches/master/protection/enforce_admins
+# … fusionar …
+# volverla a poner. NO se te olvide.
+gh api -X POST repos/guillevila/AI-Torre-de-Control/branches/master/protection/enforce_admins
+```
+
+> Queda registrado en el historial del repositorio quién lo desactivó y cuándo.
+> Eso no es vigilancia: es que un atajo que no deja rastro se convierte en
+> costumbre, y uno que sí lo deja se usa solo cuando toca.
+
+### Si entra una tercera persona
+
+Basta con darle acceso de escritura. Las reglas ya se le aplican solas.
 
 ---
 
@@ -111,7 +128,7 @@ Si alguna vez se pierden, el contenido exacto está aquí. Guarda esto como
       "Prueba de interfaz (Electron)"
     ]
   },
-  "enforce_admins": false,
+  "enforce_admins": true,
   "required_pull_request_reviews": {
     "required_approving_review_count": 1,
     "dismiss_stale_reviews": true,

@@ -102,6 +102,23 @@ Se rellena sola con la plantilla. **Rellénala entera**, incluidos los apartados
 que no aplican —ahí se escribe «nada»—. La diferencia entre «no hay» y «no lo he
 mirado» es justo lo que importa al revisar.
 
+### Y aquí está la regla que lo cambia todo
+
+> **Nadie fusiona su propio trabajo. Siempre lo aprueba el otro.**
+
+GitHub no deja aprobar tu propia Pull Request, y las protecciones de `master` se
+aplican **a todos sin excepción**, incluido el dueño del repositorio. Así que:
+
+- Tú abres una PR → la aprueba tu compañero.
+- Tu compañero abre una → la apruebas tú.
+
+No es burocracia: es lo único que garantiza que nada entra en `master` sin que
+una segunda persona lo haya mirado. Que es de lo que iba todo esto.
+
+Si el otro no está y hay una urgencia de verdad, en
+[`github-branch-protection.md`](github-branch-protection.md) está cómo saltarlo
+—dejando rastro, a propósito—.
+
 ---
 
 ## 6. Integrar el trabajo de otra persona
