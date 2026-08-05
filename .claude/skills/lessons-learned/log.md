@@ -334,3 +334,40 @@ fuera «configurado» y «funcionando» se ven exactamente igual.
 
 **Contexto:** Toda integración con un programa que no controlamos: hooks,
 extensiones de navegador, y lo que venga después.
+
+## 2026-08-05 11:30 — Una prueba que no usa el ratón no prueba que se pueda pulsar
+
+**Error o aprendizaje:** El dueño del proyecto no podía seleccionar los muñecos
+de la oficina. Al reproducirlo salió algo peor de lo esperado: **ningún muñeco
+se podía pulsar con el ratón**, y llevaba así desde que la planta se inclinó.
+
+La planta va con `rotateX(19deg)` y cada figura lleva la contrarrotación que la
+endereza. Eso mueve los botones a donde se VEN, pero el navegador seguía
+registrando el clic sobre el contenedor, que no tenía manejador. El clic caía en
+un hueco: ni error, ni pista, ni nada.
+
+**Causa raíz:** Ninguna prueba pulsaba un muñeco. Las que tocaban la oficina
+comprobaban que la figura **aparecía** en la zona correcta —que es lo que se
+había diseñado con cuidado— pero nunca que se pudiera **usar**.
+
+Y hay un agravante: al diagnosticarlo, un `element.click()` de JavaScript
+funcionaba perfectamente. El manejador nunca estuvo mal. Una prueba escrita así
+—que es lo cómodo— habría pasado en verde durante meses con la aplicación rota.
+
+**Lección:**
+1. **Un clic de prueba tiene que ser un clic de ratón.** `element.click()` de
+   JavaScript se salta el hit-testing del navegador, que es justo donde vivía
+   este fallo. Si la prueba no puede fallar por dónde está el elemento, no está
+   probando que se pueda pulsar.
+2. **Todo lo que se pueda pulsar necesita una prueba que lo pulse.** Comprobar
+   que algo *se ve* no dice nada sobre si *sirve*. Aquí lo visual estaba
+   perfecto y lo funcional muerto.
+3. **Cuidado con `transform-style: preserve-3d` y las rotaciones.** Separan lo
+   que se ve de dónde cae el clic. Si una interfaz usa 3D, el manejador va en un
+   elemento que el navegador sí encuentre, y se comprueba con el ratón.
+4. Al diagnosticar «pincho y no pasa nada», la pregunta que lo resolvió en un
+   minuto fue **`document.elementFromPoint(x, y)`**: qué hay de verdad donde se
+   pulsa. Antes de sospechar del manejador, mirar dónde aterriza el clic.
+
+**Contexto:** Toda la vista de oficina, y cualquier interfaz futura con
+transformaciones. También la forma de escribir pruebas de interfaz en general.

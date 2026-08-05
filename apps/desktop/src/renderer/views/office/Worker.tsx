@@ -36,12 +36,25 @@ export function Worker({ task, left, top, onSelect }: WorkerProps) {
   const { status } = task
 
   return (
+    /*
+     * El clic vive AQUÍ, en el contenedor, y no solo en los botones de dentro.
+     *
+     * La planta va inclinada y a cada muñeco se le aplica la contrarrotación
+     * que lo endereza. Eso mueve los botones donde se VEN, pero el navegador
+     * sigue registrando el clic sobre este contenedor: al pulsar la figura, el
+     * ratón caía en el hueco y no pasaba nada. Ni un error, ni una pista.
+     *
+     * Los botones de dentro se quedan —son los que hacen que esto funcione con
+     * el teclado y con un lector de pantalla—, y su clic burbujea hasta aquí.
+     * Seleccionar dos veces la misma tarea no tiene ningún efecto añadido.
+     */
     <div
       className="worker"
       data-status={status}
       data-task-id={task.id}
       data-testid="office-worker"
       style={{ left: `${left}%`, top: `${top}%` }}
+      onClick={() => onSelect(task)}
     >
       {/* Contrarrotación: la planta está inclinada, las personas no. */}
       <div className="worker__upright">

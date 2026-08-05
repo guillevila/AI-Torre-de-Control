@@ -325,6 +325,50 @@ test('una tarea en cola se ve en la Torre y se puede abrir', async () => {
   await expect(page.getByTestId('tower-queued')).toBeHidden()
 })
 
+/**
+ * Pinchar un muñeco de la oficina tiene que abrir su ficha.
+ *
+ * Encontrado en uso real, y era peor de lo que parecía: NINGÚN muñeco se podía
+ * pulsar con el ratón. La planta va inclinada y cada figura lleva la
+ * contrarrotación que la endereza; eso mueve los botones donde se ven, pero el
+ * navegador seguía registrando el clic sobre el contenedor. Caía en el hueco,
+ * sin error y sin pista.
+ *
+ * La prueba usa un clic de RATÓN de verdad a propósito. Un `element.click()`
+ * de JavaScript funcionaba perfectamente —el manejador nunca estuvo mal—, así
+ * que una prueba escrita así habría pasado en verde mientras la aplicación
+ * seguía rota.
+ */
+test('pinchar un muñeco de la oficina abre su ficha', async () => {
+  await page.evaluate(() =>
+    (globalThis as unknown as { torre: { createTask: (i: unknown) => Promise<unknown> } })
+      .torre.createTask({
+        title: 'Muñeco en cola',
+        provider: 'chatgpt',
+        externalUrl: 'https://chatgpt.com/c/muneco-1',
+        status: 'queued',
+      }),
+  )
+
+  await page.getByTestId('view-office').click()
+
+  const muneco = page.getByTestId('office-worker').filter({ hasText: 'Muñeco en cola' })
+  await expect(muneco).toBeVisible()
+
+  // Se pulsa la FIGURA, que es lo que se ve y lo que pulsa una persona, con un
+  // clic de ratón real. Un element.click() de JavaScript siempre funcionó: una
+  // prueba escrita así habría pasado en verde con la aplicación rota.
+  await muneco.getByRole('button').first().click()
+  await expect(page.getByTestId('task-detail')).toBeVisible()
+
+  // Y desde ahí se puede borrar, que es a lo que se venía.
+  await page.getByTestId('delete-task').click()
+  await page.getByTestId('confirm-delete').click()
+  await expect(muneco).toBeHidden()
+
+  await page.getByTestId('view-operations').click()
+})
+
 test('los datos siguen ahí después de cerrar y volver a abrir', async () => {
   await app.close()
 
