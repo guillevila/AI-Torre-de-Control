@@ -45,6 +45,11 @@ export function TowerView({ tasks, activity, onOpen, onGoAttention, onGoOffice }
     .filter((task) => task.status === 'running')
     .sort((a, b) => a.startedAt?.localeCompare(b.startedAt ?? '') ?? 0)
 
+  // La más reciente primero: acabas de registrarla y es la que buscas.
+  const queued = tasks
+    .filter((task) => task.status === 'queued')
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+
   const counts: Record<TaskStatus, number> = {
     running: summary.running,
     waiting_user: summary.waiting,
@@ -154,6 +159,56 @@ export function TowerView({ tasks, activity, onOpen, onGoAttention, onGoOffice }
               </ul>
             )}
           </section>
+
+          {/*
+            En cola: registradas y esperando turno.
+
+            Tiene sección propia porque la Torre solo listaba lo que trabaja y lo
+            que te reclama, y una tarea recién registrada no es ninguna de las
+            dos: desaparecía de la pantalla principal. Daba igual mientras «en
+            cola» era un estado raro, pero con la extensión **toda conversación
+            que registras nace aquí**, y no poder ni abrirla para borrarla era un
+            callejón sin salida.
+
+            Solo se dibuja si hay alguna: quien no las use no ve un hueco vacío.
+          */}
+          {queued.length > 0 && (
+            <section className="card" data-testid="tower-queued">
+              <header className="card__head">
+                <h2 className="card__title">En cola</h2>
+                <span className="card__note">esperando turno</span>
+              </header>
+              <ul className="mini-list">
+                {queued.map((task) => (
+                  <li key={task.id}>
+                    <button
+                      type="button"
+                      className="mini"
+                      onClick={() => onOpen(task)}
+                      data-status={task.status}
+                    >
+                      <StatusBadge status={task.status} />
+                      <span className="mini__main">
+                        <span className="mini__title">{task.title}</span>
+                        <span className="mini__meta">
+                          <span
+                            className="platform__dot"
+                            style={{ background: PROVIDER_COLORS[task.provider] }}
+                            aria-hidden="true"
+                          />
+                          {task.account ? `${task.account} · ` : ''}
+                          {relativeTime(task.lastActivityAt)}
+                        </span>
+                      </span>
+                      <span className="mini__chevron" aria-hidden="true">
+                        ›
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           <section className="card card--grow">
             <h2 className="card__title">Actividad reciente</h2>
