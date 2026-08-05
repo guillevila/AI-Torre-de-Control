@@ -1,9 +1,23 @@
 name: CI — Verificación del proyecto
 
-# Se ejecuta en cada push y en cada Pull Request hacia la rama principal.
+# Se ejecuta en cada Pull Request hacia la rama principal y en cada push a las
+# ramas de trabajo.
+#
+# Las ramas de integración (`integration/*`) se validan ANTES de que exista la
+# Pull Request: son las que prepara el agente merge-guardian al fusionar el
+# trabajo de dos personas, y es justo donde puede aparecer una regresión que
+# ninguna de las dos ramas tenía por separado. Enterarse ahí cuesta minutos;
+# enterarse después de fusionar, mucho más.
 on:
   push:
-    branches: [main, master]
+    branches:
+      - main
+      - master
+      - 'integration/**'
+      - 'feature/**'
+      - 'fix/**'
+      - 'chore/**'
+      - 'docs/**'
   pull_request:
     branches: [main, master]
 
@@ -111,6 +125,17 @@ jobs:
 
       - name: Instalar dependencias
         run: pnpm install --frozen-lockfile
+
+      # Este proyecto NO tiene lint: no hay ESLint, Prettier ni equivalente.
+      # Se deja dicho aquí a propósito, en lugar de simular un paso que no
+      # existe. Un check verde que no comprueba nada es peor que no tenerlo:
+      # hace creer que algo está revisado cuando no lo ha revisado nadie.
+      - name: Lint (no existe en este proyecto)
+        run: |
+          echo "Este repositorio no tiene lint configurado."
+          echo "Comprobado: ningún paquete declara script de lint y no hay"
+          echo "eslint/prettier/biome entre las dependencias."
+          echo "::notice::Sin lint. La comprobación de estilo la cubre TypeScript en modo estricto."
 
       - name: Comprobar tipos (TypeScript estricto)
         run: pnpm -r typecheck
