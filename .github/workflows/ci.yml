@@ -1,23 +1,29 @@
 name: CI — Verificación del proyecto
 
-# Se ejecuta en cada Pull Request hacia la rama principal y en cada push a las
-# ramas de trabajo.
+# Cuándo se ejecuta, y por qué justo así.
 #
-# Las ramas de integración (`integration/*`) se validan ANTES de que exista la
-# Pull Request: son las que prepara el agente merge-guardian al fusionar el
-# trabajo de dos personas, y es justo donde puede aparecer una regresión que
-# ninguna de las dos ramas tenía por separado. Enterarse ahí cuesta minutos;
-# enterarse después de fusionar, mucho más.
+# `pull_request` cubre TODAS las ramas de trabajo: nada llega a master sin pasar
+# por una Pull Request, así que ahí se valida todo.
+#
+# `push` se limita a la rama principal y a las de integración:
+#
+#   - master, porque conviene saber que la rama principal está sana aunque el
+#     merge se haya hecho desde la web.
+#   - integration/**, porque son las que prepara merge-guardian al fusionar el
+#     trabajo de dos personas, y ahí puede aparecer una regresión que ninguna de
+#     las dos ramas tenía por separado. Si alguien las sube para mirarlas antes
+#     de abrir la PR, se validan igual.
+#
+# Las ramas feature/fix/chore/docs NO están en `push` a propósito: siempre
+# terminan en una Pull Request, y tenerlas en los dos sitios hacía que cada
+# comprobación se ejecutara DOS veces. Se vio en la PR #22, con dos ejecuciones
+# distintas por check. Gastaba el doble de minutos sin comprobar nada más.
 on:
   push:
     branches:
       - main
       - master
       - 'integration/**'
-      - 'feature/**'
-      - 'fix/**'
-      - 'chore/**'
-      - 'docs/**'
   pull_request:
     branches: [main, master]
 
