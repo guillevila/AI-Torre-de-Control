@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { InMemoryTaskRepository } from '../db/task-repository.js'
 import { TaskService } from '../services/task-service.js'
 import { IntakeService } from './intake-service.js'
+import { WebActivityService } from './web-activity-service.js'
 
 /**
  * El alta que llega del navegador.
@@ -160,5 +161,77 @@ describe('lo que no se acepta', () => {
     const resultado = intake.register({ title: '', externalUrl: CHATGPT })
     expect(resultado.accepted).toBe(false)
     expect(resultado.reason).toBeTruthy()
+  })
+})
+
+/**
+ * Registrar una conversación que archivaste.
+ *
+ * Encontrado en uso real: el dueño del proyecto pulsó «Registrar», la extensión
+ * contestó «ya está añadida» y no aparecía nada en ninguna pantalla. La tarea
+ * existía, pero archivada — o sea invisible. Una respuesta cierta y a la vez
+ * inservible, que es la peor clase de respuesta.
+ */
+describe('una conversación archivada se recupera, no se ignora', () => {
+  const archivar = (id: string | undefined) =>
+    tasks.changeStatus({ id, status: 'archived', source: 'manual' })
+
+  it('la desarchiva en lugar de dejarte buscando algo invisible', () => {
+    const primera = intake.register({ title: 'Análisis', externalUrl: CHATGPT })
+    archivar(primera.taskId)
+
+    const segunda = intake.register({ title: 'Análisis', externalUrl: CHATGPT })
+
+    expect(segunda.revived).toBe(true)
+    expect(tasks.list()[0]?.status).toBe('queued')
+  })
+
+  it('sigue siendo la MISMA tarea, con su historial', () => {
+    const primera = intake.register({ title: 'Análisis', externalUrl: CHATGPT })
+    archivar(primera.taskId)
+
+    const segunda = intake.register({ title: 'Análisis', externalUrl: CHATGPT })
+
+    expect(segunda.taskId).toBe(primera.taskId)
+    expect(tasks.list()).toHaveLength(1)
+  })
+
+  it('la recuperación consta como MANUAL: la pediste tú con un clic', () => {
+    // El vigilante infiere estados mirando una página; esto es un botón que
+    // pulsas. Por eso puede levantar el candado que protege lo que archivaste.
+    const primera = intake.register({ title: 'Análisis', externalUrl: CHATGPT })
+    archivar(primera.taskId)
+    intake.register({ title: 'Análisis', externalUrl: CHATGPT })
+
+    expect(tasks.list()[0]?.statusSource).toBe('manual')
+  })
+
+  it('una tarea que NO estaba archivada no se toca', () => {
+    const primera = intake.register({ title: 'Análisis', externalUrl: CHATGPT })
+    tasks.changeStatus({ id: primera.taskId, status: 'running', source: 'manual' })
+
+    const segunda = intake.register({ title: 'Análisis', externalUrl: CHATGPT })
+
+    expect(segunda.revived).toBeFalsy()
+    expect(segunda.duplicate).toBe(true)
+    expect(tasks.list()[0]?.status).toBe('running')
+  })
+
+  it('y la actividad del vigilante vuelve a alcanzarla', () => {
+    // Antes no: una tarea archivada se ignoraba, así que recuperarla sin más
+    // habría dejado un icono que no se movía nunca.
+    const primera = intake.register({ title: 'Análisis', externalUrl: CHATGPT })
+    archivar(primera.taskId)
+    intake.register({ title: 'Análisis', externalUrl: CHATGPT })
+
+    const actividad = new WebActivityService({ taskService: tasks })
+    const resultado = actividad.apply({
+      externalUrl: CHATGPT,
+      status: 'running',
+      timestamp: new Date(Date.UTC(2026, 7, 5, 10, 0, 0)).toISOString(),
+    })
+
+    expect(resultado.matched).toBe(true)
+    expect(tasks.list()[0]?.status).toBe('running')
   })
 })

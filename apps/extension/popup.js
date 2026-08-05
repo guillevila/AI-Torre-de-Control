@@ -180,7 +180,10 @@ async function enviar({ token, title, externalUrl }) {
   // Se distingue crear de reconocer: pulsar dos veces sobre la misma
   // conversación no crea una tarea gemela, y conviene decirlo en lugar de
   // fingir un alta que no ha ocurrido.
-  if (resultado.duplicada) {
+  if (resultado.recuperada) {
+    avisar('ok', 'Estaba archivada y la he traído de vuelta. Ya la ves en la Torre, en «en cola».')
+    $boton.textContent = 'Recuperada ✓'
+  } else if (resultado.duplicada) {
     avisar('ok', 'Esta conversación ya estaba en la Torre. No se ha duplicado.')
     $boton.textContent = 'Ya estaba registrada'
   } else {

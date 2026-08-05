@@ -37,9 +37,15 @@ export type TaskIntake = z.infer<typeof taskIntakeSchema>
 /**
  * Respuesta a un alta.
  *
- * `duplicate` distingue «se ha creado» de «ya la tenías»: pulsar dos veces sobre
- * la misma conversación no debe llenarte la Torre de tareas repetidas, y quien
- * envía necesita poder decírtelo con claridad en lugar de fingir un alta nueva.
+ * Distingue tres desenlaces, y los tres importan:
+ *
+ *  - **Creada**: no existía y ahora sí.
+ *  - **Ya estaba** (`duplicate`): pulsar dos veces sobre la misma conversación no
+ *    debe llenarte la Torre de tareas repetidas.
+ *  - **Recuperada** (`revived`): existía pero estaba archivada, o sea invisible en
+ *    todas las pantallas. Contestar «ya la tienes» y no enseñar nada es una
+ *    respuesta técnicamente cierta y prácticamente inútil, así que se
+ *    desarchiva y se dice que se ha hecho.
  */
 export interface TaskIntakeResult {
   accepted: boolean
@@ -50,4 +56,6 @@ export interface TaskIntakeResult {
   status?: z.infer<typeof taskStatusSchema>
   /** La tarea ya existía y se ha devuelto esa, sin crear ninguna nueva. */
   duplicate?: boolean
+  /** Estaba archivada —invisible— y se ha traído de vuelta. */
+  revived?: boolean
 }

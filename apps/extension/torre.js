@@ -161,7 +161,14 @@ export async function registrar({ puerto, token, title, externalUrl }) {
     }
   }
 
-  return { ok: true, duplicada: Boolean(cuerpo.duplicate), titulo: cuerpo.title }
+  return {
+    ok: true,
+    duplicada: Boolean(cuerpo.duplicate),
+    // Estaba archivada y la Torre la ha traído de vuelta. Merece decirse aparte:
+    // «ya estaba» a secas dejaría al usuario buscando algo que no veía.
+    recuperada: Boolean(cuerpo.revived),
+    titulo: cuerpo.title,
+  }
 }
 
 /**
