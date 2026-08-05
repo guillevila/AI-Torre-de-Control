@@ -39,8 +39,8 @@ comandos. Hasta eso, no es una herramienta que puedas usar cómodamente cada dí
 
 > Lista SOLO lo que has probado tú mismo y funciona de verdad.
 
-**Comprobado automáticamente** — 147 tests unitarios y 3 pruebas que arrancan
-la aplicación de verdad, todos en verde a 3 de agosto de 2026:
+**Comprobado automáticamente** — 475 tests unitarios y 13 pruebas que arrancan
+la aplicación de verdad, todos en verde a 5 de agosto de 2026:
 
 - **Instalar y arrancar.** `pnpm install` termina en segundos sin compilar nada.
   `pnpm dev` abre la aplicación.
