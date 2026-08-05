@@ -12,9 +12,41 @@
  * bloqueado nada.
  */
 
+import { execFileSync } from 'node:child_process'
 import { readHookInput } from './_input.mjs'
+import { explicar, revisarComandoGit } from './guard-git.mjs'
 
-/** Operaciones irreversibles. Ninguna razón justifica ejecutarlas sin pedirlo. */
+/**
+ * En qué rama estamos, o `null` si no se puede saber.
+ *
+ * Hace falta porque hay comandos que son normales en una rama de trabajo y
+ * graves en la principal: fusionar en master salta la revisión. Si no se puede
+ * averiguar, las reglas que dependen de la rama simplemente no se aplican —
+ * bloquear por no saber sería peor que dejar pasar.
+ */
+function ramaActual() {
+  try {
+    return execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim()
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Operaciones irreversibles que NO son de Git.
+ *
+ * Las de Git salieron de esta lista a propósito. Aquí se buscaban patrones en
+ * el texto crudo, y eso tiene los dos fallos opuestos: se cuela lo que se
+ * escribe distinto, y se bloquea a quien solo MENCIONA el comando —un mensaje
+ * de commit que dijera «ya no hace git reset --hard» quedaba bloqueado, y este
+ * mismo hook llegó a bloquear la lección que lo contaba—.
+ *
+ * De git se encarga ahora `guard-git.mjs`, que trocea el comando y decide sobre
+ * sus argumentos en lugar de sobre la cadena. Ver la lección del 5/8/2026.
+ */
 const DESTRUCTIVE = [
   /drop\s+database/i,
   /drop\s+table/i,
@@ -22,9 +54,6 @@ const DESTRUCTIVE = [
   /rm\s+-rf\s+\/(?!\w)/i,
   /rm\s+-rf\s+~/i,
   /format\s+c:/i,
-  /git\s+push\s+.*--force/i,
-  /git\s+reset\s+--hard\s+HEAD~/i,
-  /git\s+clean\s+-[a-z]*f/i,
   /Remove-Item\s+.*-Recurse\s+.*-Force\s+[A-Z]:\\?$/im,
 ]
 
@@ -57,6 +86,20 @@ if (command) {
         'Si de verdad hace falta, pídelo explícitamente al dueño del proyecto y explica por qué.',
       )
     }
+  }
+}
+
+// ── 1-bis. Integración segura ────────────────────────────────────────────────
+//
+// Protege la rama principal y la forma de fusionar. Va aparte de la lista de
+// arriba porque estas reglas necesitan saber EN QUÉ RAMA estamos —fusionar es
+// normal en una rama de trabajo y grave en master— y porque cada una explica su
+// alternativa: un guardián que solo dice «no» acaba desactivado.
+if (command) {
+  const guardia = revisarComandoGit(command, ramaActual())
+  if (guardia.bloquear) {
+    process.stderr.write(`${explicar(guardia)}\n`)
+    process.exit(2)
   }
 }
 

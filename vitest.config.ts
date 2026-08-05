@@ -18,6 +18,9 @@ export default defineConfig({
       // La extensión es JavaScript de navegador, sin compilar. Lo que se puede
       // probar sin navegador —sus funciones puras— también se prueba.
       'apps/extension/**/*.test.mjs',
+      // La guardia de Git protege la rama principal y el trabajo de otras
+      // personas. Sin pruebas sería una sensación de protección, no protección.
+      '.claude/hooks/**/*.test.mjs',
     ],
     exclude: ['**/node_modules/**', '**/dist/**', '**/out/**', '**/e2e/**'],
     reporters: 'default',

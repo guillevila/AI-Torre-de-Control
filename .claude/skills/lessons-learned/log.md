@@ -371,3 +371,51 @@ funcionaba perfectamente. El manejador nunca estuvo mal. Una prueba escrita así
 
 **Contexto:** Toda la vista de oficina, y cualquier interfaz futura con
 transformaciones. También la forma de escribir pruebas de interfaz en general.
+
+## 2026-08-05 12:35 — Buscar patrones en un comando no es entenderlo
+
+**Error o aprendizaje:** Se construyó una guardia para bloquear comandos de Git
+peligrosos. Tenía 46 pruebas y todas pasaban. Una auditoría adversarial —cuatro
+revisores independientes, cada hallazgo verificado por otro agente que intentaba
+refutarlo— le encontró **34 agujeros confirmados**.
+
+Todos venían del mismo error: **buscar patrones en el texto crudo del comando**
+en lugar de analizarlo. Ejemplos reales de lo que se colaba:
+
+- Un comando de lectura al principio eximía a TODO lo que venía encadenado
+  detrás. Anulaba las cinco reglas de golpe.
+- La ruta completa de una referencia rompía el reconocimiento de la rama.
+- El prefijo `+` de un refspec significa forzar, y nadie lo miraba.
+- Unas comillas alrededor del nombre desactivaban la protección entera.
+- Los flags cortos agrupados escondían el de forzar.
+- Un push en modo espejo borra el remoto entero sin nombrar ninguna rama.
+- La extensión `.exe` en el binario rompía el ancla de todas las reglas.
+
+Y lo simétrico, igual de grave: escribir un mensaje de commit que **mencionara**
+uno de esos comandos quedaba bloqueado. Este mismo hook llegó a bloquear la
+lección que lo contaba, dos veces.
+
+**Causa raíz:** Se confundió «reconocer un texto» con «entender una orden». Una
+expresión regular sobre la cadena entera no sabe qué es un comando, qué es un
+argumento y qué es una cita. Y la primera versión pasaba sus 46 pruebas porque
+las escribió quien tenía el mismo modelo mental equivocado: probaban las formas
+que se le habían ocurrido, no las que existen.
+
+**Lección:**
+1. **Para decidir sobre un comando, hay que trocearlo.** Separar por los
+   encadenadores del shell, partir en argumentos respetando comillas, normalizar
+   el binario, y decidir sobre los argumentos. Nunca sobre la cadena.
+2. **Una lista blanca se aplica a un comando, nunca a una línea.** «Empieza por
+   algo inofensivo» no es lo mismo que «es inofensivo».
+3. **Quien escribe el código no puede ser el único que escriba sus pruebas de
+   seguridad.** Comparten el punto ciego. Hizo falta un adversario con el
+   encargo explícito de romperlo.
+4. **Un guardián se mide por sus dos mitades:** lo que deja pasar y lo que
+   estorba. La segunda decide si sigue instalado dentro de un mes.
+5. Auditar con varias lentes independientes —evasión, falsos positivos,
+   coherencia, rotura— y **verificar cada hallazgo con otro agente que intente
+   refutarlo** encontró en veinte minutos lo que no habría aparecido en meses.
+
+**Contexto:** Cualquier cosa que decida sobre entrada que no controlamos:
+guardias, validadores, detectores. Y la forma de auditar algo antes de que se
+convierta en la ley del repositorio.

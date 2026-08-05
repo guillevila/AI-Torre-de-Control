@@ -72,6 +72,76 @@ lenguaje no técnico antes de ejecutar**. No es un ejecutor ciego.
 - **Commits semánticos**: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`
 - **Merge solo con aprobación explícita** del dueño del proyecto.
 
+---
+
+## 🔀 Git, ramas e integración segura
+
+> Añadido el 5/8/2026, a petición expresa del dueño del proyecto, al empezar a
+> trabajar con otra persona en el repositorio. Amplía las reglas de Git de
+> arriba; no sustituye ninguna.
+
+### La rama principal es `master`, y no se toca
+
+- **Nunca trabajar directamente en `master`.** Cada tarea, su propia rama.
+- **Nunca hacer push directo a `master`.** Todo entra por Pull Request.
+- Antes de empezar cualquier tarea: `git fetch origin`.
+- Nombres de rama: `feature/…`, `fix/…`, `chore/…`, `docs/…`, `integration/…`.
+
+### Cuando se pida fusionar
+
+Si el dueño del proyecto dice **«haz merge»**, «integra esta rama», «actualiza
+master», «resuelve los conflictos» o «trae los cambios de mi compañero»:
+
+- **Usar obligatoriamente el agente `merge-guardian`.** No improvisar una fusión.
+- Toda integración se prepara en una rama `integration/<origen>-into-<destino>`.
+- Toda integración termina en una **Pull Request**, nunca en un push a `master`.
+
+### Prohibido sin permiso expreso y humano
+
+- `git push --force` / `-f` / `--force-with-lease`.
+- `git reset --hard`.
+- Resolver **todos** los conflictos en bloque con `--ours` o `--theirs`.
+  Fichero a fichero sí; a ciegas no.
+- Borrar la rama principal.
+- Fusionar o reasentar estando **en** `master`.
+
+`.claude/hooks/guard-git.mjs` bloquea todo esto automáticamente y explica la
+alternativa. **Si un comando se bloquea, no busques cómo rodearlo**: es la señal
+de que el camino era el equivocado.
+
+### Ninguna integración se da por buena sin pasar los controles
+
+```bash
+pnpm install --frozen-lockfile && pnpm typecheck && pnpm test && pnpm build
+pnpm test:e2e   # si se ha tocado interfaz o proceso principal
+```
+
+**Nunca** desactivar tests, saltarse comprobaciones de tipos ni relajar
+validaciones para que una integración pase. Si hace falta eso, no está lista.
+
+> **Este proyecto no tiene lint** (ni ESLint ni Prettier). No lo inventes ni
+> finjas ejecutarlo: si hace falta un informe, dilo tal cual.
+
+### Al integrar, lo que más importa es lo que DESAPARECE
+
+Un conflicto de texto se ve. Una función que otra rama borró, no. Antes de
+cerrar una integración, revisar el diff completo buscando **funcionalidad
+perdida**, no solo que compile.
+
+Cuidado especial con:
+- `packages/contracts/` — cambiar un tipo rompe a los dos lados a la vez.
+- `apps/desktop/src/main/db/schema.ts` — **una migración publicada no se edita
+  jamás**. Dos ramas que añadan una a la vez chocan de forma silenciosa.
+- Las rutas del receptor local y sus contratos.
+
+### Commits y cierre
+
+- Commits **pequeños, descriptivos y dentro del alcance** de la tarea.
+- Antes de tocar ficheros, mirar cuáles hacen falta de verdad.
+- Al terminar, resumir **qué ficheros se tocaron y qué riesgos quedan**.
+
+---
+
 ### Reglas de código
 - Cambios pequeños y reversibles sobre grandes y arriesgados.
 - Siempre comprobar que algo funciona antes de decirle al dueño que está listo.
