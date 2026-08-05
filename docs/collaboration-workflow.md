@@ -102,6 +102,25 @@ Se rellena sola con la plantilla. **Rellénala entera**, incluidos los apartados
 que no aplican —ahí se escribe «nada»—. La diferencia entre «no hay» y «no lo he
 mirado» es justo lo que importa al revisar.
 
+### No hace falta que apruebe nadie más
+
+Aquí no hay aprobación humana obligatoria: **las dos personas de este
+repositorio confían en `merge-guardian`** como control de calidad. Así ninguno
+se queda bloqueado esperando al otro.
+
+Lo que sí es obligatorio, y no se salta:
+
+- Todo entra por **Pull Request**, aunque se fusione al momento: queda el rastro
+  y corre el CI.
+- **Nada entra con el CI en rojo.**
+- Nadie puede reescribir ni borrar `master`, ni con permisos de administrador.
+
+Lo que se pierde, dicho claramente: **nadie más mira el código**. El guardián
+comprueba que nada se rompe y que nada desaparece, no si el cambio es buena
+idea. Está razonado en
+[`github-branch-protection.md`](github-branch-protection.md), junto con cómo
+volver a exigir aprobación si algún día cambiáis de opinión.
+
 ---
 
 ## 6. Integrar el trabajo de otra persona

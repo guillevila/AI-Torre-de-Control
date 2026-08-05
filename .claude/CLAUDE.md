@@ -89,12 +89,24 @@ lenguaje no técnico antes de ejecutar**. No es un ejecutor ciego.
 
 ### Cuando se pida fusionar
 
-Si el dueño del proyecto dice **«haz merge»**, «integra esta rama», «actualiza
-master», «resuelve los conflictos» o «trae los cambios de mi compañero»:
+Si cualquiera de las dos personas del repositorio dice **«haz merge»**, «integra
+esta rama», «actualiza master», «resuelve los conflictos» o «trae los cambios de
+mi compañero»:
 
-- **Usar obligatoriamente el agente `merge-guardian`.** No improvisar una fusión.
+- **Usar obligatoriamente el agente `merge-guardian`**, o el comando `/merge`.
+  No improvisar una fusión nunca.
 - Toda integración se prepara en una rama `integration/<origen>-into-<destino>`.
-- Toda integración termina en una **Pull Request**, nunca en un push a `master`.
+- Toda integración entra por **Pull Request**, nunca por un push a `master`
+  —aunque se fusione al momento: así queda el rastro y corre el CI—.
+
+**No hace falta aprobación de otra persona.** Es una decisión consciente: las
+dos personas confían en el guardián como control de calidad, y así ninguna se
+queda bloqueada esperando a la otra.
+
+Eso le da al guardián **toda la responsabilidad**. Su regla de «solo se cierra
+si TODAS las comprobaciones pasan» deja de ser una formalidad: es lo único que
+hay entre una integración y `master`. Y si se detuvo por una duda, **detenerse
+gana** — no se fusiona «porque seguramente esté bien».
 
 ### Prohibido sin permiso expreso y humano
 

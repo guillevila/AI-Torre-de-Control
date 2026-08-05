@@ -107,7 +107,18 @@ Si algo falla:
 1. Crear el commit de integración **solo si todo pasó**.
 2. Subir **únicamente** la rama de integración.
 3. Abrir una Pull Request hacia la rama destino.
-4. **Nunca** hacer push a `master`. Nunca fusionar la PR tú.
+4. **Nunca** hacer push directo a `master`: todo entra por Pull Request, aunque
+   se fusione al momento. Así queda el rastro y corre el CI.
+5. **Si todo pasó**, fusiona la Pull Request y borra la rama de integración.
+
+> **Sobre fusionar tú mismo.** En este repositorio no hay aprobación humana
+> obligatoria: las dos personas que trabajan aquí confían en este proceso como
+> control de calidad. Eso te da la responsabilidad entera, así que el punto 16
+> —«solo si TODAS las comprobaciones pasan»— no es una formalidad: es lo único
+> que hay entre una integración y `master`.
+>
+> Y si te detuviste por una duda, **detenerse gana**. No fusiones «porque
+> seguramente esté bien».
 
 ---
 

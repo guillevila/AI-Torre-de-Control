@@ -23,14 +23,13 @@ después.
 | Regla | Estado | Qué significa |
 |---|---|---|
 | **Pull Request obligatoria** | ✅ | A `master` no se escribe directamente. Nunca |
-| **1 aprobación** | ✅ | Alguien tiene que revisar antes de fusionar |
-| **Descartar aprobaciones antiguas** | ✅ | Si subes cambios nuevos, la aprobación anterior deja de valer |
+| **Aprobación de otra persona** | ❌ **no** | **Decisión consciente. Lee el apartado siguiente** |
 | **Checks de CI obligatorios** | ✅ | Los tres tienen que estar en verde |
 | **Rama al día antes de fusionar** | ✅ | Hay que traerse `master` antes de fusionar |
 | **Conversaciones resueltas** | ✅ | No se fusiona con comentarios de revisión abiertos |
 | **Force push bloqueado** | ✅ | Nadie puede reescribir la historia de `master` |
 | **Borrado bloqueado** | ✅ | `master` no se puede borrar |
-| **Se aplica a administradores** | ❌ **no** | **Lee el apartado siguiente** |
+| **Se aplica a administradores** | ✅ | **Sin excepciones. También al dueño del repositorio** |
 
 Los tres checks obligatorios son los del workflow `.github/workflows/ci.yml`:
 
@@ -40,33 +39,56 @@ Los tres checks obligatorios son los del workflow `.github/workflows/ci.yml`:
 
 ---
 
-## ⚠️ El matiz importante: por qué los administradores están exentos
+## ⚠️ Por qué NO hace falta que apruebe otra persona
 
-**GitHub no te deja aprobar tu propia Pull Request.**
+Es una decisión consciente, tomada el 5/8/2026 por las dos personas que trabajan
+en el repositorio. Conviene entenderla, porque es la pieza que más responsabilidad
+reparte.
 
-Si las reglas se aplicaran también a los administradores, y hoy trabajas solo,
-**te quedarías sin poder fusionar nada**: harías la PR, no habría nadie para
-aprobarla, y ahí se quedaría.
+**Lo que se quiso evitar:** que cualquiera de los dos se quede bloqueado
+esperando al otro. Si Alonso está fuera y Guille necesita integrar, con
+aprobación obligatoria no puede — GitHub no deja aprobar tu propia Pull Request.
 
-Por eso `enforce_admins` está desactivado. En la práctica:
+**En qué se confía en su lugar:** en `merge-guardian`. El agente ejecuta los
+controles reales del proyecto, revisa el diff completo buscando **qué ha
+desaparecido**, y se detiene si algo no está claro. Eso es más de lo que suele
+detectar una revisión humana con prisa.
 
-- **Tú** (dueño y administrador) puedes fusionar tus propias PRs cuando trabajes
-  solo. GitHub avisará de que falta la aprobación, pero te dejará seguir.
-- **Tu compañero**, si no es administrador, tiene que cumplir todas las reglas
-  sin excepción.
-- Todo lo demás —force push, borrar la rama— sigue bloqueado **también para ti**.
+**Lo que se pierde, dicho sin adornos:** *nadie más mira el código*. El guardián
+comprueba que todo pasa, no si el cambio es buena idea. Un fallo de diseño, una
+decisión discutible o un atajo feo pasan sin que nadie los vea.
 
-### Cuándo activarlo del todo
+**Lo que NO se pierde:**
 
-En cuanto tu compañero esté trabajando de forma habitual y os reviséis las PRs
-el uno al otro. Ese día, esta regla deja de estorbar y empieza a proteger:
+- Todo sigue entrando por Pull Request → queda el rastro y corre el CI.
+- Nada entra con el CI en rojo.
+- Nadie puede reescribir ni borrar `master`.
+- Y las reglas se aplican **a todos**, dueño incluido.
 
-1. Repositorio → **Settings** → **Branches**
-2. En la regla de `master`, pulsa **Edit**
-3. Marca **Do not allow bypassing the above settings**
-4. **Save changes**
+### Cómo volver a exigir aprobación
 
-A partir de ahí nadie, ni tú, puede fusionar sin revisión.
+Si algún día crece el equipo, o simplemente cambiáis de opinión:
+
+```bash
+gh api -X PATCH repos/guillevila/AI-Torre-de-Control/branches/master/protection/required_pull_request_reviews \
+  -f required_approving_review_count=1 -F dismiss_stale_reviews=true
+```
+
+O desde **Settings → Branches → Edit** en la regla de `master`, marcando
+**Require a pull request before merging → Require approvals**.
+
+### Si entra una tercera persona
+
+Basta con darle acceso de escritura. Las reglas ya se le aplican solas. Y ese
+sería buen momento para replantearse lo de la aprobación: la confianza mutua
+entre dos escala peor de lo que parece.
+
+### Quiénes tienen acceso hoy
+
+| Persona | Permiso |
+|---|---|
+| `guillevila` | administrador |
+| `alonsollorente` | escritura |
 
 ---
 
@@ -111,7 +133,7 @@ Si alguna vez se pierden, el contenido exacto está aquí. Guarda esto como
       "Prueba de interfaz (Electron)"
     ]
   },
-  "enforce_admins": false,
+  "enforce_admins": true,
   "required_pull_request_reviews": {
     "required_approving_review_count": 1,
     "dismiss_stale_reviews": true,
