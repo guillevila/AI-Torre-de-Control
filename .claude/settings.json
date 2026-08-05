@@ -2,16 +2,20 @@
   "permissions": {
     "defaultMode": "acceptEdits",
     "deny": [
-      ".env*",
-      "**/*.env",
-      "**/secrets/**",
-      "**/*secret*",
-      "**/*password*",
-      "**/*credential*",
-      "git push --force",
-      "git reset --hard",
-      "git clean -f",
-      "rm -rf /"
+      "Read(.env*)",
+      "Read(**/*.env)",
+      "Read(**/secrets/**)",
+      "Read(**/*secret*)",
+      "Read(**/*password*)",
+      "Read(**/*credential*)",
+      "Edit(.env*)",
+      "Edit(**/*.env)",
+      "Edit(**/secrets/**)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean -f*)",
+      "Bash(rm -rf /*)"
     ],
     "allow": [
       "Bash(git status)",

@@ -35,7 +35,18 @@ function ramaActual() {
   }
 }
 
-/** Operaciones irreversibles. Ninguna razón justifica ejecutarlas sin pedirlo. */
+/**
+ * Operaciones irreversibles que NO son de Git.
+ *
+ * Las de Git salieron de esta lista a propósito. Aquí se buscaban patrones en
+ * el texto crudo, y eso tiene los dos fallos opuestos: se cuela lo que se
+ * escribe distinto, y se bloquea a quien solo MENCIONA el comando —un mensaje
+ * de commit que dijera «ya no hace git reset --hard» quedaba bloqueado, y este
+ * mismo hook llegó a bloquear la lección que lo contaba—.
+ *
+ * De git se encarga ahora `guard-git.mjs`, que trocea el comando y decide sobre
+ * sus argumentos en lugar de sobre la cadena. Ver la lección del 5/8/2026.
+ */
 const DESTRUCTIVE = [
   /drop\s+database/i,
   /drop\s+table/i,
@@ -43,9 +54,6 @@ const DESTRUCTIVE = [
   /rm\s+-rf\s+\/(?!\w)/i,
   /rm\s+-rf\s+~/i,
   /format\s+c:/i,
-  /git\s+push\s+.*--force/i,
-  /git\s+reset\s+--hard\s+HEAD~/i,
-  /git\s+clean\s+-[a-z]*f/i,
   /Remove-Item\s+.*-Recurse\s+.*-Force\s+[A-Z]:\\?$/im,
 ]
 
