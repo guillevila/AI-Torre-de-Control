@@ -1486,6 +1486,9 @@ body {
 
 .worker {
   position: absolute;
+  /* Todo el muñeco se puede pulsar, no solo la figura. Ver el comentario de
+     Worker.tsx: la contrarrotación separa lo que se ve de dónde cae el clic. */
+  cursor: pointer;
   /*
    * Solo se anima la posición y la opacidad, nunca el tamaño: un cambio de
    * estado = un desplazamiento de 900 ms. Si alguien camina, algo ha pasado.
