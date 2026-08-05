@@ -12,7 +12,28 @@
  * bloqueado nada.
  */
 
+import { execFileSync } from 'node:child_process'
 import { readHookInput } from './_input.mjs'
+import { explicar, revisarComandoGit } from './guard-git.mjs'
+
+/**
+ * En qué rama estamos, o `null` si no se puede saber.
+ *
+ * Hace falta porque hay comandos que son normales en una rama de trabajo y
+ * graves en la principal: fusionar en master salta la revisión. Si no se puede
+ * averiguar, las reglas que dependen de la rama simplemente no se aplican —
+ * bloquear por no saber sería peor que dejar pasar.
+ */
+function ramaActual() {
+  try {
+    return execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim()
+  } catch {
+    return null
+  }
+}
 
 /** Operaciones irreversibles. Ninguna razón justifica ejecutarlas sin pedirlo. */
 const DESTRUCTIVE = [
@@ -57,6 +78,20 @@ if (command) {
         'Si de verdad hace falta, pídelo explícitamente al dueño del proyecto y explica por qué.',
       )
     }
+  }
+}
+
+// ── 1-bis. Integración segura ────────────────────────────────────────────────
+//
+// Protege la rama principal y la forma de fusionar. Va aparte de la lista de
+// arriba porque estas reglas necesitan saber EN QUÉ RAMA estamos —fusionar es
+// normal en una rama de trabajo y grave en master— y porque cada una explica su
+// alternativa: un guardián que solo dice «no» acaba desactivado.
+if (command) {
+  const guardia = revisarComandoGit(command, ramaActual())
+  if (guardia.bloquear) {
+    process.stderr.write(`${explicar(guardia)}\n`)
+    process.exit(2)
   }
 }
 
