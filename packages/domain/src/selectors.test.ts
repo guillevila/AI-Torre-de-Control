@@ -296,8 +296,10 @@ describe('color de cada herramienta', () => {
     expect(PROVIDER_COLORS.claude_code).toBe('#D97757')
   })
 
-  it('ChatGPT lleva su verde', () => {
-    expect(PROVIDER_COLORS.chatgpt).toBe('#10A37F')
+  it('ChatGPT lleva su verde, oscurecido para el papel', () => {
+    // El verde de marca desentonaba: era el único color vivo de una paleta
+    // deliberadamente apagada. Mismo tono, menos luz.
+    expect(PROVIDER_COLORS.chatgpt).toBe('#0B7A62')
   })
 
   it('las tres herramientas de Anthropic comparten color', () => {

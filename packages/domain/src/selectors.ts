@@ -86,13 +86,18 @@ export const PROVIDER_COLORS: Readonly<Record<Provider, string>> = {
   cowork: '#D97757',
 
   /*
-   * El verde de ChatGPT.
+   * El verde de ChatGPT, oscurecido a petición del dueño del proyecto.
    *
-   * Codex es de la misma casa, así que va en la misma familia pero más oscuro:
-   * se hermanan sin llegar a confundirse.
+   * El verde de marca (#10A37F) desentonaba sobre el papel cálido: era el único
+   * color vivo de una paleta deliberadamente apagada. Este mantiene el tono
+   * pero baja la luz, y de paso se lee bastante mejor —el contraste sobre el
+   * papel sube de 2,84 a 4,69—.
+   *
+   * Codex es de la misma casa, así que va en la misma familia y más oscuro
+   * todavía: se hermanan sin llegar a confundirse.
    */
-  chatgpt: '#10A37F',
-  codex: '#0B7360',
+  chatgpt: '#0B7A62',
+  codex: '#0A5C4B',
 
   gemini: '#4A72C4',
   copilot: '#5B5486',
