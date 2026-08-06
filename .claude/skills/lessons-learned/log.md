@@ -458,3 +458,44 @@ por presencia es detectar el andamiaje, no el estado.
 
 **Contexto:** El vigilante de la extensión y cualquier detección futura sobre
 una interfaz que no controlamos.
+
+## 2026-08-06 — Un canal nuevo hereda los relojes del viejo, y no encajan
+
+**Qué pasó.** Al construir el fin de turno con respuesta (D24), el evento `Stop`
+ya estaba enganchado desde hacía semanas con un tope de **10 segundos**, que era
+de sobra para lo único que hacía entonces: mandar un aviso y salir. La función
+nueva necesita retener ese evento hasta tres minutos. Claude Code habría matado
+el enlace a los 10 segundos, mucho antes de que diera tiempo a leer nada — y la
+respuesta se habría perdido justo después de escribirla.
+
+**Causa raíz.** Se miró el canal nuevo y no la configuración que ya existía. El
+número estaba puesto para el uso viejo, y nadie lo revisó al cambiar el uso.
+
+**Lección.** Cuando una función nueva usa una tubería que ya existe, hay que
+**listar todos los límites que la gobiernan** —tiempos, tamaños, reintentos— y
+comprobarlos uno a uno contra el uso nuevo. Aquí eran tres relojes en tres
+sitios distintos (Torre, enlace, Claude Code) y solo funcionan si están
+ordenados de dentro afuera. Quedan escritos juntos en el contrato, con el aviso
+de que tocar uno obliga a repasar los otros dos.
+
+---
+
+## 2026-08-06 — Lo que revienta no siempre lo dice el código de salida
+
+**Qué pasó.** El enlace empezó a fallar con código `3221226505`. Solo con ese
+número no había forma de saber nada: parecía un fallo de la lógica nueva. El
+ayudante de pruebas capturaba la salida estándar pero **no la de error**, así
+que la causa real estaba escrita en un sitio que nadie leía. Al capturarla,
+apareció en una línea: `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)`
+— Node se estrellaba al salir porque `fetch` dejaba una conexión viva en el pozo
+al hacer dos peticiones seguidas.
+
+**Causa raíz.** El ayudante se escribió cuando el enlace solo hacía una llamada y
+nunca fallaba de forma rara. La ceguera no molestó hasta que hubo algo que ver.
+
+**Lección.** Un proceso que se lanza desde una prueba tiene que traerse **las dos
+salidas**, siempre. Es el mismo error de fondo que ya costó dos fallos mudos en
+este canal: no mirar lo que el sistema estaba diciendo. Y para un script que
+vive segundos y termina con `process.exit()`, `node:http` con `agent: false` es
+más seguro que `fetch`: no reutiliza conexiones, así que no queda nada a medio
+cerrar.

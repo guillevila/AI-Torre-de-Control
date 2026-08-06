@@ -3,6 +3,7 @@ import { basename, join } from 'node:path'
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import {
   IPC,
+  handoffReplyInputSchema,
   permissionDecisionInputSchema,
   type DevInfo,
   type ExportResult,
@@ -10,6 +11,7 @@ import {
   type HookPreview,
   type HookStatus,
   type IpcResult,
+  type PendingHandoff,
   type PendingPermission,
   type RecentActivityEntry,
   type Settings,
@@ -18,6 +20,8 @@ import {
 } from '@torre/contracts'
 import type { HookActivityLog } from '../hooks/hook-activity-log.js'
 import type { HookInstaller } from '../hooks/hook-installer.js'
+import type { HandoffRegistry } from '../handoff/handoff-registry.js'
+import type { HandoffService } from '../handoff/handoff-service.js'
 import type { PermissionRegistry } from '../permissions/permission-registry.js'
 import type { PermissionService } from '../permissions/permission-service.js'
 import { TaskServiceError, type TaskService } from '../services/task-service.js'
@@ -39,6 +43,8 @@ export interface IpcHandlerDeps {
   settings: SettingsStore
   permissions: PermissionService
   registry: PermissionRegistry
+  handoffs: HandoffService
+  handoffRegistry: HandoffRegistry
   hooks: HookInstaller
   hookActivity: HookActivityLog
   getDevInfo: () => DevInfo
@@ -72,6 +78,8 @@ export function registerIpcHandlers({
   settings,
   permissions,
   registry,
+  handoffs,
+  handoffRegistry,
   hooks,
   hookActivity,
   getDevInfo,
@@ -187,6 +195,41 @@ export function registerIpcHandlers({
           'Esa petición ya no espera respuesta: se agotó el tiempo y la herramienta te preguntó por su cuenta.',
         )
       }
+      return null
+    }),
+  )
+
+  // ─── Fin de turno: contestarle sin abrir la terminal (D24) ─────────────────
+
+  ipcMain.handle(IPC.handoffsList, (): IpcResult<PendingHandoff[]> =>
+    guard(() => handoffRegistry.list()),
+  )
+
+  ipcMain.handle(IPC.handoffsReply, (_event, input: unknown): IpcResult<null> =>
+    guard(() => {
+      const parsed = handoffReplyInputSchema.safeParse(input)
+      if (!parsed.success) throw new TaskServiceError('La respuesta no es válida.')
+
+      const transmitted = handoffs.reply(parsed.data.requestId, parsed.data.text)
+      if (!transmitted) {
+        /*
+         * Aquí se pierde algo que una persona ha ESCRITO, así que se dice con
+         * todas las letras en lugar de fallar en silencio. Pasa si tardaste más
+         * de lo que Claude esperaba: ya habrá terminado su turno.
+         */
+        throw new TaskServiceError(
+          'Ese turno ya terminó: se agotó el tiempo mientras escribías y tu respuesta no ha llegado. Cópiala antes de cerrar.',
+        )
+      }
+      return null
+    }),
+  )
+
+  ipcMain.handle(IPC.handoffsRelease, (_event, requestId: unknown): IpcResult<null> =>
+    guard(() => {
+      if (typeof requestId !== 'string') throw new TaskServiceError('Identificador no válido.')
+      // Que ya no exista no es un error: querías que terminara, y ha terminado.
+      handoffs.release(requestId)
       return null
     }),
   )

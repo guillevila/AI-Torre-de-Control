@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { DevInfo, StatusConfidence, Task, TaskStatus } from '@torre/contracts'
 import { filterTasks, summarise, type TaskFilters } from '@torre/domain'
 import { DevPanel } from './components/DevPanel.js'
+import { HandoffDialog } from './components/HandoffDialog.js'
 import { PermissionCard } from './components/PermissionCard.js'
 import { QuickAdd } from './components/QuickAdd.js'
 import { Sidebar, type Section } from './components/Sidebar.js'
@@ -10,6 +11,7 @@ import { TaskDetail } from './components/TaskDetail.js'
 import { Toast } from './components/Toast.js'
 import { TopBar, type ViewMode } from './components/TopBar.js'
 import { useClock } from './hooks/useClock.js'
+import { useHandoffs } from './hooks/useHandoffs.js'
 import { useHotkeys } from './hooks/useHotkeys.js'
 import { usePermissions } from './hooks/usePermissions.js'
 import { useSettings } from './hooks/useSettings.js'
@@ -58,6 +60,13 @@ export function App() {
     error: permissionError,
     clearError: clearPermissionError,
   } = usePermissions()
+  const {
+    pending: handoffs,
+    reply: replyHandoff,
+    release: releaseHandoff,
+    error: handoffError,
+    clearError: clearHandoffError,
+  } = useHandoffs()
 
   // El tipo dice que Ajustes no cabe aquí, así que ninguna ruta futura puede
   // volver a convertirlo en pantalla completa sin que el compilador lo pare.
@@ -77,7 +86,7 @@ export function App() {
   // Hace avanzar los cronómetros y los «hace 3 min» sin esperar a que cambie
   // ninguna tarea. Cuando hay un permiso esperando late cada segundo, porque su
   // cuenta atrás tiene que verse moverse; el resto del tiempo, cada 30.
-  const now = useClock(permissions.length > 0 ? 1_000 : 30_000)
+  const now = useClock(permissions.length > 0 || handoffs.length > 0 ? 1_000 : 30_000)
 
   // Los ajustes deciden dónde arranca la aplicación, pero solo la primera vez:
   // después manda lo que el usuario esté mirando.
@@ -213,6 +222,20 @@ export function App() {
           </div>
         )}
 
+        {handoffError && (
+          <div className="banner" role="alert" data-testid="handoff-error">
+            <span>{handoffError}</span>
+            <button
+              type="button"
+              className="btn btn--icon"
+              onClick={clearHandoffError}
+              aria-label="Cerrar aviso"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {permissionError && (
           <div className="banner" role="alert" data-testid="permission-error">
             <span>{permissionError}</span>
@@ -338,6 +361,23 @@ export function App() {
           onCancel={() => setDialog(null)}
         />
       )}
+      {/*
+        El fin de turno va por encima de todo lo demás, incluidos los diálogos.
+        Motivo: mientras se ve, Claude Code está PARADO esperando. Cualquier otra
+        cosa de la pantalla puede esperar; esto tiene a alguien contando.
+
+        Solo se enseña el primero: dos turnos retenidos a la vez es raro, y
+        apilar ventanas modales encima de una cuenta atrás no ayuda a nadie.
+      */}
+      {handoffs[0] && (
+        <HandoffDialog
+          handoff={handoffs[0]}
+          now={now}
+          onReply={(requestId, text) => void replyHandoff(requestId, text)}
+          onRelease={(requestId) => void releaseHandoff(requestId)}
+        />
+      )}
+
       {dialog?.kind === 'settings' && (
         <SettingsDialog
           settings={settings}

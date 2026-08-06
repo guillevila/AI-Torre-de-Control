@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { timingSafeEqual } from 'node:crypto'
 import type {
   EventIngestResult,
+  HandoffResolution,
   PermissionResolution,
   SessionUpdateResult,
   TaskIntakeResult,
@@ -47,6 +48,14 @@ export interface LocalEventServerOptions {
    * permisos configurados no debe fingir que los acepta.
    */
   onPermission?: (raw: unknown) => Promise<PermissionResolution>
+  /**
+   * Atiende el final de un turno de Claude Code (D24).
+   *
+   * Igual que los permisos, **no responde hasta que el usuario contesta** o se
+   * agota el tiempo: la conexión se queda abierta, y con ella el turno. Sin
+   * atendedor la ruta devuelve 404 en vez de fingir que la acepta.
+   */
+  onHandoff?: (raw: unknown) => Promise<HandoffResolution>
   /**
    * Procesa un aviso de estado que no conoce el identificador de la tarea, solo
    * su carpeta y su sesión. Es lo que envía el enlace con Claude Code.
@@ -159,6 +168,7 @@ export class LocalEventServer {
 
     const isEvents = req.method === 'POST' && url === '/events'
     const isPermissions = req.method === 'POST' && url === '/permissions'
+    const isHandoffs = req.method === 'POST' && url === '/handoffs'
     const isSessions = req.method === 'POST' && url === '/sessions'
     const isIntake = req.method === 'POST' && url === '/tasks'
     const isWebActivity = req.method === 'POST' && url === '/web-activity'
@@ -168,6 +178,7 @@ export class LocalEventServer {
     const known =
       isEvents ||
       (isPermissions && this.options.onPermission) ||
+      (isHandoffs && this.options.onHandoff) ||
       (isSessions && this.options.onSession) ||
       (isIntake && this.options.onIntake) ||
       (isWebActivity && this.options.onWebActivity)
@@ -221,12 +232,23 @@ export class LocalEventServer {
           return send(res, result.accepted ? 200 : 422, result)
         }
 
-        // ── Permisos ─────────────────────────────────────────────────────────
-        // La respuesta se queda pendiente hasta que el usuario decide. Si quien
-        // preguntó se marcha antes (cierra la terminal, corta la sesión), se
-        // deja de esperar: nadie va a leer ya esa respuesta.
-        const handler = this.options.onPermission
+        // ── Las dos rutas que esperan a una persona ──────────────────────────
+        //
+        // Permisos y fin de turno funcionan igual: la respuesta se queda
+        // pendiente hasta que el usuario decide o escribe. Si quien preguntó se
+        // marcha antes —cierra la terminal, corta la sesión—, se deja de
+        // esperar: nadie va a leer ya esa respuesta.
+        //
+        // Cada una tiene su propia salida segura, y las dos significan lo mismo
+        // para quien esperaba: sigue por tu cuenta como si la Torre no existiera
+        // (D21).
+        const handler = isHandoffs ? this.options.onHandoff : this.options.onPermission
         if (!handler) return send(res, 404, { accepted: false, reason: 'Ruta no encontrada' })
+
+        const salidaSegura = (motivo: string) =>
+          isHandoffs
+            ? { outcome: 'release', reply: null, reason: motivo }
+            : { outcome: 'timeout', reason: motivo }
 
         let abandoned = false
         req.once('close', () => {
@@ -240,14 +262,15 @@ export class LocalEventServer {
           })
           .catch((error: unknown) => {
             if (abandoned || res.writableEnded) return
-            // Ante cualquier fallo se devuelve `timeout`: es la salida segura,
-            // la que hace que la herramienta pregunte por su cuenta (D21).
-            send(res, 200, {
-              outcome: 'timeout',
-              reason: `La Torre no pudo atender la petición: ${
-                error instanceof Error ? error.message : 'error desconocido'
-              }`,
-            })
+            send(
+              res,
+              200,
+              salidaSegura(
+                `La Torre no pudo atender la petición: ${
+                  error instanceof Error ? error.message : 'error desconocido'
+                }`,
+              ),
+            )
           })
       })
       .catch((error: unknown) => {

@@ -10,6 +10,52 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Añadido — contestarle a Claude Code sin abrir la terminal (D24)
+
+Cuando Claude Code termina un turno, la Torre te enseña **lo que te ha dicho**,
+entero, y una caja para seguir hablándole. Si escribes, el turno no termina:
+sigue con lo que le hayas dicho. Sin tocar la terminal.
+
+Las dos mitades existían y no las estábamos usando:
+
+- El evento de fin de turno trae un campo con **el texto final del turno ya
+  montado**. No hay que rebuscar en la transcripción — que además se escribe con
+  retraso y a menudo aún no tiene el último mensaje.
+- Ese mismo evento admite que el enlace **impida que el turno termine** y le pase
+  a Claude un motivo. Es el mismo patrón de retener-y-esperar que ya usaba el
+  canal de permisos.
+
+**Se enseña, no se guarda.** Es D20 aplicada a un segundo canal, y no reabre D5:
+esa decisión dice «no se **almacenarán**», y lo que vive en memoria y desaparece
+al cerrar el aviso no se almacena. Igual que ya pasa con el comando completo de
+un permiso. Ni la respuesta de Claude ni lo que tú escribes entran en la base de
+datos, ni en el historial, ni en el CSV, ni en el cuaderno de diagnóstico — hay
+una prueba que comprueba que el cuaderno recibe **cuántos** caracteres, nunca
+cuáles.
+
+**Apagado de fábrica, y no por prudencia genérica.** Mientras el aviso está en
+pantalla, Claude Code está *parado*. Es la única opción de toda la aplicación
+que le cuesta tiempo a una herramienta, así que Ajustes lo dice dos veces y el
+aviso enseña la cuenta atrás mientras corre.
+
+**Dos fallos reales encontrados construyéndolo:**
+
+- El evento de fin de turno estaba enganchado con **10 segundos** de tope. Claude
+  Code habría matado el enlace mucho antes de que diera tiempo a leer nada.
+  Ahora son tres relojes ordenados a propósito —Torre ≤180 s, enlace 190 s,
+  Claude Code 210 s— para que el que se rinda primero sea siempre el más interno.
+  Si se invirtieran, la respuesta se perdería justo después de escribirla.
+- Al hacer dos peticiones seguidas, el enlace **se estrellaba al salir** con un
+  fallo de libuv (`Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)`),
+  porque `fetch` dejaba una conexión viva en el pozo. Un enlace que revienta
+  viola su única regla innegociable. Ahora usa `node:http` sin reutilizar
+  conexiones. De paso, las pruebas capturan la salida de error del enlace: con
+  el código de salida a secas se veía un número enorme y ninguna pista.
+
+Lo que **no** cubre: «te espera». Ese evento no admite respuesta de vuelta según
+la documentación de Claude Code, y además ya está resuelto con la tarjeta de
+permisos. Esto es para cuando te ha entregado algo.
+
 ### Cambiado — Ajustes es una ventana, no una pantalla
 
 Pulsar Ajustes te sacaba de donde estabas. Desde la fábrica eso era

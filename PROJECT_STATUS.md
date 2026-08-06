@@ -39,8 +39,8 @@ comandos. Hasta eso, no es una herramienta que puedas usar cómodamente cada dí
 
 > Lista SOLO lo que has probado tú mismo y funciona de verdad.
 
-**Comprobado automáticamente** — 475 tests unitarios y 13 pruebas que arrancan
-la aplicación de verdad, todos en verde a 5 de agosto de 2026:
+**Comprobado automáticamente** — 490 tests unitarios y 16 pruebas que arrancan
+la aplicación de verdad, todos en verde a 6 de agosto de 2026:
 
 - **Instalar y arrancar.** `pnpm install` termina en segundos sin compilar nada.
   `pnpm dev` abre la aplicación.
@@ -54,6 +54,13 @@ la aplicación de verdad, todos en verde a 5 de agosto de 2026:
 - **Ajustes es una ventana flotante**, no una pantalla: se abre encima de lo que
   estés mirando y te devuelve ahí al cerrarla. Dentro está todo, incluido el
   receptor local de eventos.
+- **Contestarle a Claude Code sin abrir la terminal** (D24). Al terminar un turno
+  te enseña lo que te ha dicho y una caja para responderle; si escribes, el turno
+  no termina y sigue con eso. Comprobado de punta a punta con el script real: lo
+  que se teclea en la Torre sale por la salida exacta que Claude Code lee.
+  ⚠️ **Apagado de fábrica**: mientras el aviso está en pantalla, Claude Code está
+  parado esperando. Todavía **no se ha probado en una sesión real de trabajo**,
+  solo en la prueba automática.
 - **Cambiar el estado a mano** desde la ficha. Solo se ofrecen los cambios que
   tienen sentido desde el estado actual.
 - **Guardar en disco de verdad.** Cierras la aplicación, la vuelves a abrir y
@@ -427,5 +434,5 @@ un par de días, esto pasa a alto.
 
 ---
 
-*Última actualización: 5 de agosto de 2026 por Claude (fábrica a pantalla completa; Ajustes en ventana flotante).*
+*Última actualización: 6 de agosto de 2026 por Claude (contestarle a Claude Code desde la Torre, D24).*
 *Mantiene: Claude (con validación del dueño del proyecto).*

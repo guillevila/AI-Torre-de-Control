@@ -1757,3 +1757,217 @@
   border: 3px solid #0b0e10;
   border-radius: 999px;
 }
+
+/* ══ Fin de turno: contestarle sin abrir la terminal (D24) ════════════════ */
+
+/*
+ * Manda sobre todo lo demás de la pantalla, y por eso está por encima incluso
+ * de la ventana de Ajustes: mientras se ve, Claude Code está PARADO esperando.
+ * Es la única ventana de la aplicación que le cuesta tiempo a alguien.
+ *
+ * Va en el estilo de la sala de control aunque aparezca sobre la parte clara.
+ * Es deliberado: esto no es una pantalla más, es el canal en vivo con la
+ * herramienta, y se distingue de un vistazo de cualquier otra cosa.
+ */
+.handoff-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: rgba(4, 6, 7, 0.72);
+  backdrop-filter: blur(3px);
+}
+
+.handoff {
+  width: 860px;
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  color: #e6e9ea;
+  border: 1px solid #2a3236;
+  border-radius: 16px;
+  background-color: #0b0e10;
+  background-image:
+    radial-gradient(90% 70% at 20% 0%, rgba(58, 214, 200, 0.1), rgba(0, 0, 0, 0) 60%),
+    linear-gradient(180deg, #0e1214, #090b0c);
+  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.9);
+  overflow: hidden;
+}
+
+.handoff__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 0 0 auto;
+  padding: 16px 20px;
+  border-bottom: 1px solid #22282c;
+  background: linear-gradient(180deg, #14181b, #101416);
+}
+
+.handoff__titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.handoff__title {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 700;
+  color: #e6e9ea;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.handoff__sub {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: #8b959a;
+}
+
+/*
+ * La cuenta atrás se ve siempre, y en rojo cuando aprieta.
+ *
+ * No es decoración: es el tiempo que le queda a Claude parado. Quien está
+ * escribiendo una respuesta larga necesita saber que se le acaba antes de
+ * perderla, no después.
+ */
+.handoff__clock {
+  flex: 0 0 auto;
+  min-width: 54px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-align: center;
+  color: var(--f-teal, #3ad6c8);
+  background: rgba(58, 214, 200, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(58, 214, 200, 0.3);
+}
+
+.handoff__clock[data-urgent='true'] {
+  color: #ff8a75;
+  background: rgba(255, 106, 82, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 106, 82, 0.4);
+}
+
+/* Lo que te ha contestado, entero y con su forma original. */
+.handoff__message {
+  flex: 1 1 auto;
+  min-height: 96px;
+  margin: 0;
+  padding: 18px 20px;
+  overflow: auto;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: #cfd6d8;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.handoff__message::-webkit-scrollbar {
+  width: 12px;
+}
+
+.handoff__message::-webkit-scrollbar-track {
+  background: #0b0e10;
+}
+
+.handoff__message::-webkit-scrollbar-thumb {
+  background: #2a3236;
+  border: 3px solid #0b0e10;
+  border-radius: 999px;
+}
+
+.handoff__reply {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid #22282c;
+  background: linear-gradient(180deg, #101416, #0c0f11);
+}
+
+.handoff__box {
+  width: 100%;
+  resize: vertical;
+  font: inherit;
+  font-size: 13.5px;
+  line-height: 1.5;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #2a3236;
+  background: #0b0e10;
+  color: #e6e9ea;
+}
+
+.handoff__box::placeholder {
+  color: #6f7c81;
+}
+
+.handoff__box:focus-visible {
+  outline: none;
+  border-color: #3ad6c8;
+  box-shadow: 0 0 0 3px rgba(58, 214, 200, 0.16);
+}
+
+.handoff__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/*
+ * Los botones vienen de la hoja clara y allí toman el color de los tokens. Aquí
+ * no hay ventana que los redefina, así que se dicen a mano — son solo dos.
+ */
+.handoff__actions .btn--primary {
+  background: #3ad6c8;
+  border-color: #2bb3a7;
+  color: #06222a;
+  font-weight: 700;
+}
+
+.handoff__actions .btn--primary:hover:not(:disabled) {
+  background: #4ae3d5;
+}
+
+.handoff__actions .btn--ghost {
+  background: #12171a;
+  border-color: #2a3236;
+  color: #cfd6d8;
+}
+
+.handoff__actions .btn--ghost:hover:not(:disabled) {
+  background: #1a2124;
+}
+
+.handoff__note {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 10px 20px 14px;
+  font-size: 11.5px;
+  color: #6f7c81;
+  border-top: 1px solid #161b1e;
+  background: #090b0c;
+}
+
+@media (max-width: 900px) {
+  .handoff-overlay {
+    padding: 0;
+  }
+
+  .handoff {
+    width: 100%;
+    border: none;
+    border-radius: 0;
+  }
+}
