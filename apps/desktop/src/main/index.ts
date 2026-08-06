@@ -248,6 +248,7 @@ async function bootstrap(): Promise<void> {
     onEvent: (raw) => service.ingestEvent(raw),
     onPermission: (raw) => permissionService.request(raw),
     onHandoff: (raw) => handoffService.request(raw),
+    onHandoffAbandoned: (raw) => handoffService.abandon(raw),
     onSession: (raw) => sessionStatus.apply(raw),
     onIntake: (raw) => intakeService.register(raw),
     onWebActivity: (raw) => webActivityService.apply(raw),

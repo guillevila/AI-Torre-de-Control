@@ -137,3 +137,46 @@ describe('lo que se escribe en el cuaderno no es la conversación', () => {
     expect(apuntado).toContain('fin de turno')
   })
 })
+
+/**
+ * El caso que de verdad muerde: Claude Code se marcha a media espera.
+ *
+ * No es hipotético. Pasa siempre que una sesión de Claude Code se abrió ANTES
+ * de actualizar el enlace: conserva el tope de tiempo viejo —10 segundos— y
+ * mata el proceso mientras el aviso de la Torre sigue contando hasta 60.
+ *
+ * Sin retirar el aviso, escribirías una respuesta a alguien que ya no escucha
+ * y la Torre te diría que la ha mandado.
+ */
+describe('si Claude Code deja de esperar, el aviso se retira', () => {
+  it('quita la entrega de la pantalla en vez de dejarla invitando a escribir', async () => {
+    const { service, registry } = montar()
+
+    const pendiente = service.request(peticion())
+    await vi.waitFor(() => expect(registry.list()).toHaveLength(1))
+
+    // Esto es lo que hace el receptor cuando se corta la conexión.
+    service.abandon(peticion())
+
+    await expect(pendiente).resolves.toMatchObject({ outcome: 'release', reply: null })
+    expect(registry.list()).toHaveLength(0)
+  })
+
+  it('no se lleva por delante una entrega que no es la suya', async () => {
+    const { service, registry } = montar()
+
+    const pendiente = service.request(peticion())
+    await vi.waitFor(() => expect(registry.list()).toHaveLength(1))
+
+    service.abandon(peticion({ requestId: 'req-99999999' }))
+
+    expect(registry.list()).toHaveLength(1)
+    registry.reply('req-12345678', 'sigue')
+    await expect(pendiente).resolves.toMatchObject({ outcome: 'reply' })
+  })
+
+  it('una petición ilegible no rompe nada', () => {
+    const { service } = montar()
+    expect(() => service.abandon({ basura: true })).not.toThrow()
+  })
+})

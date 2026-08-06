@@ -132,6 +132,23 @@ export class HandoffService {
     return resolution
   }
 
+  /**
+   * Claude Code se marchó sin esperar respuesta: se retira el aviso.
+   *
+   * Ocurre de verdad, y no como caso raro: si el enlace está instalado con un
+   * tope de tiempo menor que el que espera la Torre —por ejemplo, una sesión
+   * de Claude Code abierta ANTES de actualizar el enlace—, Claude Code mata el
+   * proceso a media espera mientras el aviso sigue en pantalla contando.
+   *
+   * Sin esto, escribirías una respuesta a alguien que ya no está escuchando y
+   * la Torre te diría que la ha mandado.
+   */
+  abandon(raw: unknown): void {
+    const parsed = handoffRequestSchema.safeParse(raw)
+    if (!parsed.success) return
+    this.registry.abandon(parsed.data.requestId)
+  }
+
   reply(requestId: string, text: string): boolean {
     return this.registry.reply(requestId, text)
   }

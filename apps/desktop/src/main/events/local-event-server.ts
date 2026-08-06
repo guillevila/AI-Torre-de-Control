@@ -57,6 +57,15 @@ export interface LocalEventServerOptions {
    */
   onHandoff?: (raw: unknown) => Promise<HandoffResolution>
   /**
+   * Claude Code dejó de esperar antes de que el usuario contestara.
+   *
+   * Pasa si se cierra la terminal, se corta la sesión, o Claude Code mata el
+   * enlace por su propio tope de tiempo. Sirve para retirar el aviso de la
+   * pantalla: dejarlo puesto invitaría a escribir una respuesta que ya no puede
+   * llegar a ninguna parte.
+   */
+  onHandoffAbandoned?: (raw: unknown) => void
+  /**
    * Procesa un aviso de estado que no conoce el identificador de la tarea, solo
    * su carpeta y su sesión. Es lo que envía el enlace con Claude Code.
    */
@@ -251,12 +260,49 @@ export class LocalEventServer {
             : { outcome: 'timeout', reason: motivo }
 
         let abandoned = false
-        req.once('close', () => {
+        let resolved = false
+
+        /*
+         * Se escucha el cierre de la RESPUESTA, no el de la petición.
+         *
+         * Esto estaba mal desde el principio y no se notaba. `req` emite
+         * «close» en cuanto termina de llegar el cuerpo —no cuando el cliente
+         * se marcha—, y encima aquí se registraba después de haberlo leído, así
+         * que el aviso ya había pasado y el escuchador no se disparaba nunca.
+         * Resultado: la detección de abandono no ha funcionado ni un solo día,
+         * y nadie lo vio porque su único efecto era intentar escribir en una
+         * conexión muerta, cosa que no da error visible.
+         *
+         * `res` emite «close» en los dos casos, y se distinguen por
+         * `writableEnded`: verdadero si la respuesta llegó a salir, falso si la
+         * conexión se cortó antes. Comprobado a mano contra un servidor real.
+         */
+        res.once('close', () => {
+          // La respuesta salió: cierre normal, no hay nada que hacer.
+          if (res.writableEnded) return
+
           abandoned = true
+
+          /*
+           * Quien esperaba se ha ido, y el aviso sigue en pantalla.
+           *
+           * Para un fin de turno eso es grave: la ventana te invita a escribir
+           * una respuesta que ya no puede llegar a ningún sitio, porque el
+           * proceso que escuchaba está muerto. Escribirla y perderla en
+           * silencio es peor que no haber podido escribirla.
+           *
+           * Así que se avisa para que la entrega se retire de la pantalla. La
+           * ruta de permisos tiene el mismo hueco, pero allí sus tiempos están
+           * ordenados —la Torre se rinde antes que nadie— y lo que se pierde es
+           * un clic, no un texto. Se deja como está a propósito: es un canal en
+           * producción y tocarlo pide su propia tanda de pruebas.
+           */
+          if (!resolved && isHandoffs) this.options.onHandoffAbandoned?.(parsed)
         })
 
         handler(parsed)
           .then((resolution) => {
+            resolved = true
             if (abandoned || res.writableEnded) return
             send(res, 200, resolution)
           })

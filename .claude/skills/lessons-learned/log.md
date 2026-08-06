@@ -499,3 +499,28 @@ este canal: no mirar lo que el sistema estaba diciendo. Y para un script que
 vive segundos y termina con `process.exit()`, `node:http` con `agent: false` es
 más seguro que `fetch`: no reutiliza conexiones, así que no queda nada a medio
 cerrar.
+
+## 2026-08-06 — Una salvaguarda que nunca se disparó, y nadie lo notó
+
+**Qué pasó.** El receptor local tenía desde hacía semanas una protección para
+cuando quien pregunta se marcha a media espera: escuchaba el cierre de la
+petición y dejaba de contestar. **No funcionó ni un solo día.** `req` emite
+«close» en cuanto termina de llegar el cuerpo —no cuando el cliente se va—, y
+encima el escuchador se registraba *después* de leer el cuerpo, así que el aviso
+ya había pasado y no se disparaba nunca.
+
+No se notó porque su único efecto era intentar escribir en una conexión muerta,
+cosa que no da ningún error visible. Salió a la luz al necesitarla de verdad: en
+el fin de turno, un aviso que se queda en pantalla te invita a **escribir** una
+respuesta que ya no puede llegar a ningún sitio.
+
+**Causa raíz.** Se escribió una protección para un caso que no se sabía
+reproducir, y se dio por buena porque el código «se leía bien». Ninguna prueba
+la ejercitaba: todas comprobaban el camino feliz.
+
+**Lección.** Una salvaguarda sin una prueba que la dispare **no es una
+salvaguarda, es un comentario**. Si se escribe un `if` para un caso raro, hay que
+provocar ese caso: aquí bastó un `AbortController` y un servidor de verdad. Y
+cuando el comportamiento de una librería es el eje de la protección, se
+comprueba a mano en 20 líneas antes de confiar en cómo suena el nombre del
+evento — `req.close` y `res.close` suenan igual y significan cosas distintas.

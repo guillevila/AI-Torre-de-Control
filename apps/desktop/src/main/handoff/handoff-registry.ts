@@ -109,6 +109,25 @@ export class HandoffRegistry {
     return true
   }
 
+  /**
+   * Retira una entrega porque quien esperaba ya no está.
+   *
+   * Se distingue de `release` a propósito aunque hagan lo mismo por dentro: una
+   * es una decisión tuya y la otra es que Claude Code se marchó. Lo importante
+   * es que el aviso desaparezca de la pantalla — dejarlo puesto invitaría a
+   * escribir una respuesta que ya no puede llegar a ningún sitio, y perder algo
+   * escrito en silencio es lo peor que puede hacer este canal.
+   */
+  abandon(requestId: string): boolean {
+    if (!this.waiting.has(requestId)) return false
+    this.settle(requestId, {
+      outcome: 'release',
+      reply: null,
+      reason: 'Claude Code dejó de esperar antes de que contestaras',
+    })
+    return true
+  }
+
   /** Deja que Claude termine el turno sin decirle nada. */
   release(requestId: string): boolean {
     if (!this.waiting.has(requestId)) return false
