@@ -80,6 +80,8 @@ export function App() {
   const [toast, setToast] = useState<{ message: string; tone: 'neutral' | 'error' } | null>(null)
   const [devInfo, setDevInfo] = useState<DevInfo | null>(null)
   const [appliedPreferences, setAppliedPreferences] = useState(false)
+  /** Se ha pedido buscar, pero el campo puede no estar en pantalla todavía. */
+  const [focusSearchPending, setFocusSearchPending] = useState(false)
 
   const searchRef = useRef<HTMLInputElement>(null)
 
@@ -135,11 +137,30 @@ export function App() {
   useHotkeys({
     onNew: useCallback(() => setDialog({ kind: 'create' }), []),
     onEscape: closeLayers,
+    /*
+     * Buscar saca de la fábrica, y hace falta decirlo en dos pasos.
+     *
+     * La fábrica ocupa la pantalla entera y no dibuja la cabecera, así que allí
+     * el campo de búsqueda **no existe**: enfocarlo en el mismo instante no
+     * hacía nada. Y como cambiar de sección no basta para salir —la fábrica
+     * también se ve desde «Tareas»—, el atajo se quedaba mudo mientras movía la
+     * sección por detrás. Nada en pantalla, ningún aviso.
+     *
+     * Se sale a Operativa y se apunta la intención de enfocar; el efecto de
+     * abajo la cumple cuando el campo ya está montado.
+     */
     onSearch: useCallback(() => {
       setSection('tasks')
-      searchRef.current?.focus()
+      setView('operations')
+      setFocusSearchPending(true)
     }, []),
   })
+
+  useEffect(() => {
+    if (!focusSearchPending) return
+    searchRef.current?.focus()
+    setFocusSearchPending(false)
+  }, [focusSearchPending])
 
   const handleChangeStatus = useCallback(
     (id: string, status: TaskStatus) => {

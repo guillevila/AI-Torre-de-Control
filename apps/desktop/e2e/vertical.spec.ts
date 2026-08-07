@@ -438,3 +438,40 @@ test('la fábrica ocupa la pantalla y sus dos salidas llevan a alguna parte', as
   await expect(page.getByTestId('settings-dialog')).toBeHidden()
   await expect(page.getByTestId('office-view')).toBeVisible()
 })
+
+/**
+ * Buscar tiene que funcionar también desde la fábrica.
+ *
+ * Nació de una regresión que el CI no vio: al pasar la Oficina a pantalla
+ * completa dejó de dibujarse la cabecera, y con ella el campo de búsqueda. El
+ * atajo seguía cambiando la sección por detrás, pero no pasaba nada visible ni
+ * salía ningún aviso — el peor tipo de fallo, el que no se queja.
+ *
+ * Ninguna prueba pulsaba el atajo desde la fábrica. Por eso existe esta.
+ */
+test('buscar con el atajo saca de la fábrica y deja escribir', async () => {
+  await page.keyboard.press('Escape')
+
+  // La prueba anterior puede dejarnos dentro de la fábrica, y allí no hay barra
+  // lateral que pulsar. Se sale por su consola de mando antes de montar el
+  // escenario, para que esta prueba no dependa del orden en que se ejecute.
+  if (await page.getByTestId('office-view').isVisible()) {
+    await page.getByTestId('factory-tower').click()
+  }
+
+  await page.getByTestId('nav-tower').click()
+  await page.getByTestId('view-office').click()
+  await expect(page.getByTestId('office-view')).toBeVisible()
+
+  await page.keyboard.press('Control+k')
+
+  // Sale de la fábrica de verdad, no solo por dentro.
+  await expect(page.getByTestId('office-view')).toBeHidden()
+  await expect(page.getByTestId('nav-tasks')).toBeVisible()
+
+  // Y el campo no solo aparece: está enfocado, listo para teclear.
+  const buscador = page.getByTestId('search')
+  await expect(buscador).toBeFocused()
+  await page.keyboard.type('facturacion')
+  await expect(buscador).toHaveValue('facturacion')
+})

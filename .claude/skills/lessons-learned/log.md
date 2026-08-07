@@ -524,3 +524,24 @@ provocar ese caso: aquí bastó un `AbortController` y un servidor de verdad. Y
 cuando el comportamiento de una librería es el eje de la protección, se
 comprueba a mano en 20 líneas antes de confiar en cómo suena el nombre del
 evento — `req.close` y `res.close` suenan igual y significan cosas distintas.
+
+## 2026-08-06 — Quitar una pieza de la pantalla rompe lo que la usaba
+
+**Qué pasó.** Al pasar la Oficina a pantalla completa se dejó de dibujar la
+cabecera. Con ella desapareció el campo de búsqueda, y el atajo `⌘K` se quedó
+mudo: seguía cambiando la sección por detrás, pero no pasaba nada visible ni
+salía ningún aviso. Los tres controles del CI en verde, porque **ninguna prueba
+pulsaba ese atajo desde ahí**. Lo cazó el guardián al integrar, no las pruebas.
+
+**Causa raíz.** Se pensó en lo que la fábrica tenía que enseñar, no en lo que
+dejaba de existir para el resto de la aplicación. Un elemento que se quita de la
+pantalla sigue teniendo consumidores —atajos, referencias, focos— y esos no dan
+error de compilación: `searchRef.current?.focus()` con `null` no falla, no hace
+nada.
+
+**Lección.** Al quitar un elemento de la interfaz, **buscar quién lo referencia
+antes de darlo por hecho**: `ref`s, atajos de teclado y `data-testid`. Y al
+arreglarlo, comprobar que la prueba nueva **falla de verdad sin el arreglo** —
+aquí se comprobó quitando la línea y viéndola caer. Una prueba que pasa con y
+sin el arreglo no prueba nada, que es la misma lección que la salvaguarda del
+receptor, ahora desde el otro lado.
