@@ -29,7 +29,11 @@ export function DevPanel({ onClose }: DevPanelProps) {
 
   return (
     <div className="overlay overlay--right" role="dialog" aria-modal="true" aria-label="Receptor local de eventos">
-      <aside className="detail" data-testid="dev-panel">
+      {/*
+        Va en oscuro: se abre desde dentro de Ajustes, que es una ventana
+        oscura, y una hoja color papel saliendo de ella se lee como un fallo.
+      */}
+      <aside className="detail detail--oscuro" data-testid="dev-panel">
         <header className="detail__head">
           <div className="detail__heading">
             <div className="detail__titles">

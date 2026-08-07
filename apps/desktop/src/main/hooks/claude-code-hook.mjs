@@ -24,7 +24,10 @@
  *   UserPromptSubmit  → le acabas de pedir algo: la tarea pasa a «trabajando».
  *   Stop              → ha terminado su turno y te ha ENTREGADO algo: la tarea
  *                       pasa a «terminada», a la mesa de entregas, esperando
- *                       que la revises.
+ *                       que la revises. Y si has encendido «contestar desde la
+ *                       Torre», además te enseña lo que te ha dicho y espera tu
+ *                       respuesta (máx. lo que marques en Ajustes). Si escribes,
+ *                       el turno NO termina y Claude sigue con lo que le digas.
  *   Notification      → te está PIDIENDO algo: la tarea pasa a «te espera».
  *   SessionEnd        → la sesión ha acabado: «terminada» también.
  *
@@ -36,12 +39,22 @@
  */
 
 import { appendFileSync, readFileSync, rmSync, statSync } from 'node:fs'
+import { request as httpRequest } from 'node:http'
 import { homedir, platform } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 
 /** Nunca se espera más que esto. Un poco por encima del tope de la Torre. */
 const REQUEST_TIMEOUT_MS = 100_000
+/**
+ * Lo que se espera a que contestes al final de un turno.
+ *
+ * Por encima del tope de la Torre (180 s) y por debajo del que Claude Code le
+ * da a este evento (210 s), para que el que se rinda primero sea siempre el más
+ * interno. Si Claude Code matara el script a media espera, tu respuesta se
+ * perdería justo después de haberla escrito.
+ */
+const HANDOFF_TIMEOUT_MS = 190_000
 /** Los avisos que no bloquean se rinden enseguida: no valen una espera. */
 const FIRE_AND_FORGET_TIMEOUT_MS = 3_000
 /** Tope del texto que se manda. La Torre lo rechazaría por encima de 4000. */
@@ -130,15 +143,63 @@ async function readStdin() {
   }
 }
 
+/**
+ * Manda una petición al receptor local.
+ *
+ * Usa `node:http` a pelo, y NO `fetch`, por un motivo que costó un fallo:
+ *
+ * `fetch` reutiliza conexiones (keep-alive). En un evento que hace dos
+ * llamadas seguidas —el fin de turno manda el estado y después pregunta si
+ * quieres contestar— quedaba una conexión viva en el pozo al llamar a
+ * `process.exit()`, y Node se ESTRELLABA al cerrar:
+ *
+ *     Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), src\win\async.c
+ *
+ * Un enlace que revienta es lo peor que puede pasarle a este script, porque
+ * viola su única regla innegociable: nunca estropear una sesión de Claude Code.
+ * Con `agent: false` cada petición abre y cierra su propia conexión, así que al
+ * salir no queda nada a medio cerrar.
+ *
+ * Devuelve algo con la forma mínima de una respuesta de `fetch` —`ok`, `status`
+ * y `json()`— para que quien llama no tenga que saber nada de esto.
+ */
 function post(endpoint, path, body, timeoutMs) {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
-  return fetch(`http://${endpoint.host}:${endpoint.port}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-torre-token': endpoint.token },
-    body: JSON.stringify(body),
-    signal: controller.signal,
-  }).finally(() => clearTimeout(timer))
+  return new Promise((resolve, reject) => {
+    const payload = Buffer.from(JSON.stringify(body), 'utf8')
+
+    const req = httpRequest(
+      {
+        host: endpoint.host,
+        port: endpoint.port,
+        path,
+        method: 'POST',
+        // Nada de reutilizar conexiones: este script vive unos segundos.
+        agent: false,
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': payload.length,
+          'x-torre-token': endpoint.token,
+          Connection: 'close',
+        },
+      },
+      (res) => {
+        const chunks = []
+        res.on('data', (chunk) => chunks.push(chunk))
+        res.on('end', () => {
+          const texto = Buffer.concat(chunks).toString('utf8')
+          resolve({
+            ok: res.statusCode >= 200 && res.statusCode < 300,
+            status: res.statusCode,
+            json: () => JSON.parse(texto),
+          })
+        })
+      },
+    )
+
+    req.setTimeout(timeoutMs, () => req.destroy(new Error('Se agotó la espera')))
+    req.on('error', reject)
+    req.end(payload)
+  })
 }
 
 /**
@@ -223,6 +284,87 @@ function buildAnswer(event, resolution, payload) {
       hookEventName: event,
       permissionDecision: resolution.outcome,
       permissionDecisionReason: reason,
+    },
+  }
+}
+
+/**
+ * Al terminar un turno, ofrece a la Torre contestar antes de cerrarlo (D24).
+ *
+ * Devuelve el objeto que hay que escribir en la salida para que Claude Code
+ * NO termine y siga con lo que le hayas dicho, o `null` para terminar como
+ * siempre — que es lo que pasa casi todo el rato: función apagada, Torre
+ * cerrada, o simplemente no contestaste.
+ *
+ * El texto que se manda es `last_assistant_message`, que Claude Code entrega ya
+ * montado en este evento. **No se lee la transcripción a propósito**: su propia
+ * documentación avisa de que se escribe con retraso y puede no tener todavía el
+ * último mensaje del turno, que es justo el que hace falta.
+ */
+async function pedirRespuesta(endpoint, payload) {
+  const mensaje = String(payload.last_assistant_message ?? '').trim()
+  // Sin nada que enseñar no se retiene un turno. Un aviso vacío es peor que
+  // ninguno: cuesta lo mismo y no dice nada.
+  if (!mensaje) return null
+
+  let response
+  try {
+    response = await post(
+      endpoint,
+      '/handoffs',
+      {
+        requestId: randomUUID(),
+        sessionId: payload.session_id ?? null,
+        cwd: payload.cwd ?? process.cwd(),
+        message: mensaje.length > DETAIL_MAX ? `${mensaje.slice(0, DETAIL_MAX)}\n…(recortado)` : mensaje,
+        timestamp: new Date().toISOString(),
+      },
+      HANDOFF_TIMEOUT_MS,
+    )
+  } catch {
+    // La Torre no contestó. El turno termina como si esto no existiera.
+    apuntar({ fase: 'se aparta', motivo: 'fin de turno: la Torre no contestó' })
+    return null
+  }
+
+  if (!response.ok) {
+    apuntar({ fase: 'se aparta', motivo: 'fin de turno: la Torre dio error', estado: response.status })
+    return null
+  }
+
+  let resolution
+  try {
+    resolution = await response.json()
+  } catch {
+    return null
+  }
+
+  if (resolution?.outcome !== 'reply') return null
+
+  const texto = String(resolution.reply ?? '').trim()
+  if (!texto) return null
+
+  // Se apunta el TAMAÑO, jamás el texto: por aquí pasa literalmente la
+  // conversación, y este cuaderno vive en disco.
+  apuntar({ fase: 'contesta', evento: 'Stop', decidido: 'reply', caracteres: texto.length })
+
+  /*
+   * Se contesta por los DOS caminos que la documentación reconoce para `Stop`.
+   *
+   * `decision: "block"` es lo que impide que el turno termine, y `reason` es lo
+   * que Claude recibe como motivo. `additionalContext` es el campo que la misma
+   * tabla admite para «feedback que continúa la conversación».
+   *
+   * Mandar ambos es deliberado. Este canal ya ha fallado dos veces en mudo por
+   * contestar con el nombre de campo equivocado, y un campo de más se ignora
+   * sin consecuencias mientras que uno de menos deja tu respuesta en la nada.
+   */
+  return {
+    decision: 'block',
+    reason: texto,
+    hookSpecificOutput: {
+      hookEventName: 'Stop',
+      additionalContext: texto,
     },
   }
 }
@@ -368,6 +510,16 @@ async function main() {
   else if (event === 'Stop' || event === 'SessionEnd') {
     // Ha entregado trabajo: a la mesa de entregas, pendiente de que lo revises.
     await sendStatus(endpoint, payload, 'completed')
+
+    // Y si es fin de turno —no fin de sesión—, se ofrece contestar desde la
+    // Torre antes de dar el turno por cerrado.
+    if (event === 'Stop') {
+      const respuesta = await pedirRespuesta(endpoint, payload)
+      if (respuesta) {
+        process.stdout.write(`${JSON.stringify(respuesta)}\n`)
+        process.exit(0)
+      }
+    }
   } else if (event === 'Notification') {
     // Te está pidiendo algo: a tu puerta. Este estado se reserva para eso.
     await sendStatus(endpoint, payload, 'waiting_user')

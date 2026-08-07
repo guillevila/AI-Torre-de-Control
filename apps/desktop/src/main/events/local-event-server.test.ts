@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { EventIngestResult } from '@torre/contracts'
+import type { EventIngestResult, HandoffResolution } from '@torre/contracts'
 import { LocalEventServer } from './local-event-server.js'
 
 /**
@@ -345,5 +345,91 @@ describe('ruta de actividad del navegador', () => {
       body: JSON.stringify(SEÑAL),
     })
     expect(res.status).toBe(404)
+  })
+})
+
+/**
+ * Qué pasa cuando quien esperaba se marcha a media espera (D24).
+ *
+ * Es el caso real de una sesión de Claude Code abierta antes de actualizar el
+ * enlace: conserva un tope de tiempo más corto que el de la Torre y mata el
+ * proceso mientras el aviso sigue en pantalla contando. Si el receptor no
+ * avisara, la Torre te dejaría escribir una respuesta que no puede llegar a
+ * ningún sitio.
+ */
+describe('el fin de turno avisa cuando lo dejan colgado', () => {
+  let propio: LocalEventServer
+  let url: string
+  let abandonada: ReturnType<typeof vi.fn>
+  let soltar: (valor: HandoffResolution) => void
+
+  beforeEach(async () => {
+    abandonada = vi.fn()
+    // Se limpia entre pruebas: si no, la segunda suelta la promesa de la primera
+    // y su propia llamada se queda esperando para siempre.
+    soltar = undefined as unknown as typeof soltar
+    propio = new LocalEventServer({
+      token: TOKEN,
+      ports: [0],
+      onEvent,
+      // Se queda esperando indefinidamente, como una entrega de verdad.
+      onHandoff: () =>
+        new Promise((resolve) => {
+          soltar = resolve
+        }),
+      onHandoffAbandoned: abandonada,
+    })
+    const address = await propio.start()
+    url = `http://${address.host}:${address.port}/handoffs`
+  })
+
+  afterEach(async () => {
+    await propio.stop()
+  })
+
+  const entrega = {
+    requestId: 'req-12345678',
+    sessionId: null,
+    cwd: 'C:/proyecto',
+    message: 'He terminado. ¿Sigo?',
+    timestamp: '2026-08-06T10:00:00Z',
+  }
+
+  it('avisa con la petición entera al cortarse la conexión', async () => {
+    const controller = new AbortController()
+    const llamada = fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-torre-token': TOKEN },
+      body: JSON.stringify(entrega),
+      signal: controller.signal,
+    }).catch(() => null)
+
+    // Se espera a que el receptor tenga la petición en la mano.
+    await vi.waitUntil(() => soltar !== undefined, { timeout: 2_000 })
+
+    controller.abort()
+    await llamada
+
+    // Llega la petición entera, para poder identificar CUÁL se retira.
+    await vi.waitFor(() => expect(abandonada).toHaveBeenCalledWith(entrega))
+  })
+
+  it('no avisa cuando la respuesta sí llegó a tiempo', async () => {
+    const llamada = fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-torre-token': TOKEN },
+      body: JSON.stringify(entrega),
+    })
+
+    await vi.waitUntil(() => soltar !== undefined, { timeout: 2_000 })
+    soltar({ outcome: 'reply', reply: 'sigue', reason: 'contestaste' })
+
+    const res = await llamada
+    expect(res.status).toBe(200)
+
+    // La conexión se cierra después de contestar, y eso NO es abandono: si lo
+    // fuera, cada respuesta correcta retiraría un aviso que ya no existe.
+    await new Promise((r) => setTimeout(r, 50))
+    expect(abandonada).not.toHaveBeenCalled()
   })
 })

@@ -1,117 +1,105 @@
 import type { Task } from '@torre/contracts'
-import {
-  officeLabel,
-  PROVIDER_COLORS,
-  PROVIDER_LABELS,
-  STATUS_GLYPHS,
-  STATUS_LABELS,
-} from '@torre/domain'
-import { WorkPulse } from '../../components/Indicators.js'
+import { officeLabel, PROVIDER_LABELS, STATUS_LABELS } from '@torre/domain'
+import { Robot, type RobotSize } from './Robot.js'
 
 interface WorkerProps {
   task: Task
-  /** Posición absoluta dentro de la planta, en porcentaje. */
-  left: number
-  top: number
+  /** Nave donde está. Decide el tamaño de la celda y qué adornos lleva. */
+  bay: RobotSize
+  /** Puesto dentro de la nave, empezando en 0. Se enseña como 01, 02, 03… */
+  slot: number
   onSelect: (task: Task) => void
 }
 
+/** Puestos numerados como en el diseño: 01, 02… 10. */
+const numero = (slot: number) => String(slot + 1).padStart(2, '0')
+
 /**
- * Un trabajador = una tarea delegada.
+ * Una celda de la fábrica: un puesto con su robot.
  *
- * Figura geométrica sin rostro (opción A del diseño): legible a 20 px, y
- * trivial de portar a un motor gráfico más adelante porque cada trabajador es
- * solo `{id, plataforma, estado, x, y}`.
+ * Un robot = una tarea delegada.
  *
- * **La ropa es la herramienta**: naranja Claude, verde ChatGPT. Con dos
- * herramientas funcionando de verdad, el color por fin separa algo que importa
- * —de un vistazo sabes quién lleva cada trabajo—.
- *
- * El ESTADO va por otro camino y nunca depende solo del tono: cada uno lleva
- * glifo, globo de texto y su sitio en la planta. Así los dos datos conviven sin
- * pisarse, y quitando el color la pantalla sigue leyéndose entera.
+ * **La celda entera se puede pulsar**, no solo el robot. Es deliberado y costó
+ * encontrarlo: la planta anterior iba inclinada en 3D, y el clic caía donde
+ * decía la caja del botón y no donde se veía la figura. Ningún muñeco se podía
+ * pulsar con el ratón durante semanas, con los tests en verde. Aquí no hay
+ * inclinación, pero la lección se queda: el manejador va en el contenedor.
  */
-export function Worker({ task, left, top, onSelect }: WorkerProps) {
-  const color = PROVIDER_COLORS[task.provider]
+export function Worker({ task, bay, slot, onSelect }: WorkerProps) {
   const { status } = task
+  const etiqueta = officeLabel(task)
 
   return (
-    /*
-     * El clic vive AQUÍ, en el contenedor, y no solo en los botones de dentro.
-     *
-     * La planta va inclinada y a cada muñeco se le aplica la contrarrotación
-     * que lo endereza. Eso mueve los botones donde se VEN, pero el navegador
-     * sigue registrando el clic sobre este contenedor: al pulsar la figura, el
-     * ratón caía en el hueco y no pasaba nada. Ni un error, ni una pista.
-     *
-     * Los botones de dentro se quedan —son los que hacen que esto funcione con
-     * el teclado y con un lector de pantalla—, y su clic burbujea hasta aquí.
-     * Seleccionar dos veces la misma tarea no tiene ningún efecto añadido.
-     */
     <div
-      className="worker"
+      className={`bay bay--${bay}`}
       data-status={status}
       data-task-id={task.id}
       data-testid="office-worker"
-      style={{ left: `${left}%`, top: `${top}%` }}
       onClick={() => onSelect(task)}
     >
-      {/* Contrarrotación: la planta está inclinada, las personas no. */}
-      <div className="worker__upright">
-        {status === 'waiting_user' && (
-          <span className="bubble bubble--wait" data-testid="worker-bubble">
-            ▲ ?
+      {/* Chapa del puesto: número y el color de la herramienta. */}
+      <span className="bay__plate">
+        <span className="bay__plate-dot" />
+        <span className="bay__plate-num">{numero(slot)}</span>
+      </span>
+
+      {bay === 'work' && (
+        <>
+          <span className="bay__bolt bay__bolt--tl" />
+          <span className="bay__bolt bay__bolt--tr" />
+          <span className="bay__bolt bay__bolt--bl" />
+          <span className="bay__bolt bay__bolt--br" />
+        </>
+      )}
+
+      {bay === 'delivery' && <span className="bay__check">✓</span>}
+
+      <span className="bay__stage">
+        {bay === 'backlog' && <span className="bay__pod" />}
+        <span className="bay__floor" />
+        <span className="bay__halo" />
+
+        {/*
+          El globo de estado. Solo sale cuando hay algo que decir, y dice el
+          estado de verdad —nunca lo que la herramienta está «pensando»: eso no
+          lo sabemos ni lo queremos saber.
+        */}
+        {(status === 'waiting_user' || status === 'failed' || status === 'unknown') && (
+          <span className="bay__bubble" data-testid="worker-bubble">
+            {status === 'waiting_user' ? '⧗' : status === 'failed' ? '⚠' : '?'}
           </span>
         )}
-        {status === 'completed' && <span className="bubble bubble--done">▤ Informe</span>}
-        {status === 'failed' && <span className="bubble bubble--fail">✕ Error</span>}
-        {status === 'unknown' && <span className="bubble bubble--unknown">? Sin señal</span>}
-        {status === 'running' && <WorkPulse />}
-        {status === 'queued' && <span className="bubble bubble--queued">◔ En cola</span>}
 
         <button
           type="button"
           className="worker__figure"
-          onClick={() => onSelect(task)}
           title={`${task.title} — ${STATUS_LABELS[status]}`}
           aria-label={`${task.title}. ${PROVIDER_LABELS[task.provider]}${
             task.account ? `, cuenta ${task.account}` : ''
           }. Estado: ${STATUS_LABELS[status]}. Abrir ficha.`}
+          onClick={(evento) => {
+            // El contenedor ya lo abre. Se corta aquí para no llamar dos veces.
+            evento.stopPropagation()
+            onSelect(task)
+          }}
         >
-          <span className="worker__head" style={{ borderColor: color }} />
-          <span className="worker__body" style={{ background: color }} />
+          <Robot task={task} size={bay} phase={slot % 5} />
         </button>
+      </span>
 
-        {/*
-          La etiqueta lleva el PROYECTO, no el título entero: es lo que
-          distingue a un muñeco de otro. El título completo sigue estando en el
-          texto emergente y en la ficha, así que no se pierde nada.
-        */}
-        <button
-          type="button"
-          className="worker__tag"
-          onClick={() => onSelect(task)}
-          title={task.title}
-          tabIndex={-1}
-        >
-          <span className="worker__tag-glyph" aria-hidden="true">
-            {STATUS_GLYPHS[status]}
-          </span>
-          <span className="worker__tag-title">{officeLabel(task)}</span>
-        </button>
-
-        {/*
-          La cuenta, cuando la hay. Va en su propia línea y en pequeño: con
-          varios chats de cuentas distintas abiertos a la vez, es lo único que
-          distingue un muñeco de otro. Sin cuenta no se dibuja nada, para no
-          dejar un hueco en quien no la usa.
-        */}
-        {task.account && (
-          <span className="worker__cuenta" title={`Cuenta: ${task.account}`}>
-            {task.account}
-          </span>
-        )}
-      </div>
+      {/*
+        En la nave de trabajo, bajo cada robot va el NOMBRE DEL PROYECTO.
+        El diseño ponía ahí una frase del tipo «Analizando requisitos», pero eso
+        exigiría saber qué está haciendo la herramienta por dentro, y esta
+        aplicación no lee conversaciones. El proyecto sí lo sabemos, y además es
+        lo que distingue un robot de otro.
+      */}
+      {bay === 'work' && (
+        <span className="bay__label" title={task.title}>
+          {etiqueta}
+          {task.account && <span className="bay__account">{task.account}</span>}
+        </span>
+      )}
     </div>
   )
 }

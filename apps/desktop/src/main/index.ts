@@ -1,13 +1,21 @@
 import { statSync } from 'node:fs'
 import { join } from 'node:path'
 import { app, BrowserWindow, session, shell } from 'electron'
-import { IPC, type DevInfo, type PendingPermission, type Task } from '@torre/contracts'
+import {
+  IPC,
+  type DevInfo,
+  type PendingHandoff,
+  type PendingPermission,
+  type Task,
+} from '@torre/contracts'
 import { HookActivityLog } from './hooks/hook-activity-log.js'
 import { HookInstaller } from './hooks/hook-installer.js'
 import { SessionLinker } from './hooks/session-linker.js'
 import { SessionStatusService } from './hooks/session-status-service.js'
 import { IntakeService } from './intake/intake-service.js'
 import { WebActivityService } from './intake/web-activity-service.js'
+import { HandoffRegistry } from './handoff/handoff-registry.js'
+import { HandoffService } from './handoff/handoff-service.js'
 import { PermissionRegistry } from './permissions/permission-registry.js'
 import { PermissionService } from './permissions/permission-service.js'
 import { SqliteTaskRepository } from './db/sqlite-task-repository.js'
@@ -69,10 +77,17 @@ let eventServer: LocalEventServer | null = null
 let devInfo: DevInfo | null = null
 let sweepTimer: NodeJS.Timeout | null = null
 let permissionRegistry: PermissionRegistry | null = null
+let handoffRegistry: HandoffRegistry | null = null
 
 function broadcastTasks(tasks: Task[]): void {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send(IPC.tasksChanged, tasks)
+  }
+}
+
+function broadcastHandoffs(pending: PendingHandoff[]): void {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send(IPC.handoffsChanged, pending)
   }
 }
 
@@ -200,6 +215,25 @@ async function bootstrap(): Promise<void> {
     taskService: service,
     activity: hookActivity,
   })
+  /*
+   * Fin de turno: enseñar lo que Claude te contestó y poder responderle (D24).
+   *
+   * Mismo trato que los permisos: vive SOLO en memoria, así que el texto de la
+   * conversación no toca el disco en ningún momento. El tiempo de espera sale
+   * de los ajustes y se puede cambiar en caliente.
+   */
+  handoffRegistry = new HandoffRegistry({
+    timeoutMs: settings.get().replyWaitSeconds * 1000,
+    onChange: broadcastHandoffs,
+  })
+  const handoffService = new HandoffService({
+    registry: handoffRegistry,
+    linker,
+    taskService: service,
+    getSettings: () => settings.get(),
+    activity: hookActivity,
+  })
+
   const sessionStatus = new SessionStatusService(linker, service, hookActivity)
   // Altas que llegan de fuera (extensión de navegador). No duplica tareas.
   const intakeService = new IntakeService({ taskService: service })
@@ -213,6 +247,8 @@ async function bootstrap(): Promise<void> {
     token,
     onEvent: (raw) => service.ingestEvent(raw),
     onPermission: (raw) => permissionService.request(raw),
+    onHandoff: (raw) => handoffService.request(raw),
+    onHandoffAbandoned: (raw) => handoffService.abandon(raw),
     onSession: (raw) => sessionStatus.apply(raw),
     onIntake: (raw) => intakeService.register(raw),
     onWebActivity: (raw) => webActivityService.apply(raw),
@@ -275,6 +311,8 @@ async function bootstrap(): Promise<void> {
     settings,
     permissions: permissionService,
     registry: permissionRegistry,
+    handoffs: handoffService,
+    handoffRegistry,
     hooks: hookInstaller,
     hookActivity,
     dataDirectory: userDataDir,
@@ -322,6 +360,9 @@ app.on('before-quit', () => {
   // Se libera todo permiso pendiente antes de cerrar: si no, la sesión de
   // Claude Code que esperaba se quedaría colgada hasta agotar su propio tiempo.
   permissionRegistry?.releaseAll()
+  // Y todo turno retenido: si no, Claude Code se quedaría esperando a una
+  // ventana que ya no existe hasta agotar su propio tiempo.
+  handoffRegistry?.releaseAll()
   void eventServer?.stop()
   repository?.close()
 })

@@ -78,6 +78,56 @@ export function SettingsView({
         </label>
       </section>
 
+      {/*
+        Esta tarjeta dice dos veces lo mismo a propósito: que Claude ESPERA.
+        Es la única opción de toda la aplicación que le cuesta tiempo a una
+        herramienta, y quien la enciende tiene que saberlo antes, no después.
+      */}
+      <section className="card">
+        <h2 className="card__title">Contestar sin abrir la terminal</h2>
+        <div className="switches">
+          <Toggle
+            label="Responderle a Claude Code desde la Torre"
+            hint="Al terminar un turno, te enseña lo que te ha dicho"
+            checked={settings.replyFromTower}
+            testId="toggle-reply"
+            onChange={(value) => onUpdate({ replyFromTower: value })}
+          />
+        </div>
+        <p className="card__text">
+          Cuando Claude Code acaba un turno, la Torre te enseña <strong>su respuesta entera</strong>{' '}
+          y una caja para seguir hablándole. Si escribes, el turno no termina: sigue con lo que le
+          hayas dicho, sin que hayas tocado la terminal.
+        </p>
+        {settings.replyFromTower && (
+          <label className="field" data-testid="reply-wait-field">
+            <span className="field__label">Claude espera tu respuesta hasta</span>
+            <select
+              className="input"
+              value={String(settings.replyWaitSeconds)}
+              data-testid="reply-wait"
+              onChange={(event) => onUpdate({ replyWaitSeconds: Number(event.target.value) })}
+            >
+              <option value="15">15 segundos</option>
+              <option value="30">30 segundos</option>
+              <option value="60">1 minuto</option>
+              <option value="120">2 minutos</option>
+              <option value="180">3 minutos</option>
+            </select>
+            <span className="field__hint">
+              Este tiempo <strong>Claude está parado</strong>, no es un aviso que puedas mirar
+              luego. Si estás trabajando en la terminal y no miras la Torre, cada turno tardará
+              esto de más en cerrarse. Cuando se agota, termina como siempre.
+            </span>
+          </label>
+        )}
+        <p className="card__text card__text--muted">
+          Ni lo que te contesta ni lo que escribes se guardan en ningún sitio: viven en memoria
+          mientras el aviso está en pantalla y desaparecen al cerrarlo. No entran en la base de
+          datos, ni en el historial, ni en el CSV.
+        </p>
+      </section>
+
       <section className="card">
         <h2 className="card__title">Pérdida de contacto</h2>
         <p className="card__text">

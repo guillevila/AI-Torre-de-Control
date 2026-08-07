@@ -458,3 +458,90 @@ por presencia es detectar el andamiaje, no el estado.
 
 **Contexto:** El vigilante de la extensión y cualquier detección futura sobre
 una interfaz que no controlamos.
+
+## 2026-08-06 — Un canal nuevo hereda los relojes del viejo, y no encajan
+
+**Qué pasó.** Al construir el fin de turno con respuesta (D24), el evento `Stop`
+ya estaba enganchado desde hacía semanas con un tope de **10 segundos**, que era
+de sobra para lo único que hacía entonces: mandar un aviso y salir. La función
+nueva necesita retener ese evento hasta tres minutos. Claude Code habría matado
+el enlace a los 10 segundos, mucho antes de que diera tiempo a leer nada — y la
+respuesta se habría perdido justo después de escribirla.
+
+**Causa raíz.** Se miró el canal nuevo y no la configuración que ya existía. El
+número estaba puesto para el uso viejo, y nadie lo revisó al cambiar el uso.
+
+**Lección.** Cuando una función nueva usa una tubería que ya existe, hay que
+**listar todos los límites que la gobiernan** —tiempos, tamaños, reintentos— y
+comprobarlos uno a uno contra el uso nuevo. Aquí eran tres relojes en tres
+sitios distintos (Torre, enlace, Claude Code) y solo funcionan si están
+ordenados de dentro afuera. Quedan escritos juntos en el contrato, con el aviso
+de que tocar uno obliga a repasar los otros dos.
+
+---
+
+## 2026-08-06 — Lo que revienta no siempre lo dice el código de salida
+
+**Qué pasó.** El enlace empezó a fallar con código `3221226505`. Solo con ese
+número no había forma de saber nada: parecía un fallo de la lógica nueva. El
+ayudante de pruebas capturaba la salida estándar pero **no la de error**, así
+que la causa real estaba escrita en un sitio que nadie leía. Al capturarla,
+apareció en una línea: `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)`
+— Node se estrellaba al salir porque `fetch` dejaba una conexión viva en el pozo
+al hacer dos peticiones seguidas.
+
+**Causa raíz.** El ayudante se escribió cuando el enlace solo hacía una llamada y
+nunca fallaba de forma rara. La ceguera no molestó hasta que hubo algo que ver.
+
+**Lección.** Un proceso que se lanza desde una prueba tiene que traerse **las dos
+salidas**, siempre. Es el mismo error de fondo que ya costó dos fallos mudos en
+este canal: no mirar lo que el sistema estaba diciendo. Y para un script que
+vive segundos y termina con `process.exit()`, `node:http` con `agent: false` es
+más seguro que `fetch`: no reutiliza conexiones, así que no queda nada a medio
+cerrar.
+
+## 2026-08-06 — Una salvaguarda que nunca se disparó, y nadie lo notó
+
+**Qué pasó.** El receptor local tenía desde hacía semanas una protección para
+cuando quien pregunta se marcha a media espera: escuchaba el cierre de la
+petición y dejaba de contestar. **No funcionó ni un solo día.** `req` emite
+«close» en cuanto termina de llegar el cuerpo —no cuando el cliente se va—, y
+encima el escuchador se registraba *después* de leer el cuerpo, así que el aviso
+ya había pasado y no se disparaba nunca.
+
+No se notó porque su único efecto era intentar escribir en una conexión muerta,
+cosa que no da ningún error visible. Salió a la luz al necesitarla de verdad: en
+el fin de turno, un aviso que se queda en pantalla te invita a **escribir** una
+respuesta que ya no puede llegar a ningún sitio.
+
+**Causa raíz.** Se escribió una protección para un caso que no se sabía
+reproducir, y se dio por buena porque el código «se leía bien». Ninguna prueba
+la ejercitaba: todas comprobaban el camino feliz.
+
+**Lección.** Una salvaguarda sin una prueba que la dispare **no es una
+salvaguarda, es un comentario**. Si se escribe un `if` para un caso raro, hay que
+provocar ese caso: aquí bastó un `AbortController` y un servidor de verdad. Y
+cuando el comportamiento de una librería es el eje de la protección, se
+comprueba a mano en 20 líneas antes de confiar en cómo suena el nombre del
+evento — `req.close` y `res.close` suenan igual y significan cosas distintas.
+
+## 2026-08-06 — Quitar una pieza de la pantalla rompe lo que la usaba
+
+**Qué pasó.** Al pasar la Oficina a pantalla completa se dejó de dibujar la
+cabecera. Con ella desapareció el campo de búsqueda, y el atajo `⌘K` se quedó
+mudo: seguía cambiando la sección por detrás, pero no pasaba nada visible ni
+salía ningún aviso. Los tres controles del CI en verde, porque **ninguna prueba
+pulsaba ese atajo desde ahí**. Lo cazó el guardián al integrar, no las pruebas.
+
+**Causa raíz.** Se pensó en lo que la fábrica tenía que enseñar, no en lo que
+dejaba de existir para el resto de la aplicación. Un elemento que se quita de la
+pantalla sigue teniendo consumidores —atajos, referencias, focos— y esos no dan
+error de compilación: `searchRef.current?.focus()` con `null` no falla, no hace
+nada.
+
+**Lección.** Al quitar un elemento de la interfaz, **buscar quién lo referencia
+antes de darlo por hecho**: `ref`s, atajos de teclado y `data-testid`. Y al
+arreglarlo, comprobar que la prueba nueva **falla de verdad sin el arreglo** —
+aquí se comprobó quitando la línea y viéndola caer. Una prueba que pasa con y
+sin el arreglo no prueba nada, que es la misma lección que la salvaguarda del
+receptor, ahora desde el otro lado.

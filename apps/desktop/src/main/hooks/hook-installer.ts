@@ -40,9 +40,13 @@ const HOOKED_EVENTS = [
   },
   {
     event: 'Stop',
-    timeoutSeconds: 10,
+    // Más que la espera de la Torre (180 s como mucho) y que la del propio
+    // script (190 s), para que el que se rinda primero sea siempre el más
+    // interno. Con los 10 s que tenía antes, Claude Code mataba el enlace a
+    // media espera y la respuesta se perdía nada más escribirla.
+    timeoutSeconds: 210,
     summary:
-      'Cuando Claude Code termine un turno, la tarea pasa a «terminada» y va a la mesa de entregas, esperando que la revises.',
+      'Cuando Claude Code termine un turno, la tarea pasa a «terminada» y va a la mesa de entregas, esperando que la revises. Si enciendes «contestar desde la Torre» en Ajustes, además te enseña lo que te ha dicho y espera tu respuesta.',
   },
   {
     event: 'Notification',

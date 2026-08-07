@@ -1,0 +1,1973 @@
+/*
+ * Oficina Fábrica — la vista de oficina.
+ *
+ * Implementa el documento de diseño del mismo nombre. Es la única pantalla
+ * oscura de la aplicación, y es deliberado: una sala de control se mira, no se
+ * lee. El resto de la aplicación sigue siendo papel cálido.
+ *
+ * Por eso los colores viven AQUÍ y no en tokens.css: aquel es el sistema de la
+ * oficina de papel, y mezclarlos haría que tocar uno rompiera el otro.
+ *
+ * Regla que se mantiene igual que en el resto: ningún estado se distingue solo
+ * por el tono. Cada uno lleva además glifo, posición —en qué nave está— y
+ * movimiento.
+ */
+
+/*
+ * Pantalla completa: sin barra lateral y sin cabecera.
+ *
+ * Se quitan también los márgenes del contenedor de contenido, para que la nave
+ * llegue hasta el borde. Una sala de control con marco alrededor deja de
+ * parecer una sala de control.
+ */
+.app--fabrica .main,
+.app--fabrica .content {
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.app--fabrica .content {
+  height: 100%;
+  min-height: 0;
+}
+
+.app--fabrica .factory {
+  border-radius: 0;
+}
+
+.factory {
+  --f-bg: #0b0e10;
+  --f-panel-hi: #14181b;
+  --f-panel-lo: #0d1012;
+  --f-line: #22282c;
+  --f-line-soft: #2a3236;
+  --f-ink: #e6e9ea;
+  --f-ink-2: #cfd6d8;
+  --f-ink-3: #8b959a;
+  --f-ink-4: #6f7c81;
+  --f-teal: #3ad6c8;
+  --f-green: #7ee04a;
+  --f-amber: #ffbe5c;
+  --f-red: #ff6a52;
+  --f-blue: #6bd7ff;
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  height: 100%;
+  padding: 14px;
+  border-radius: var(--r4);
+  color: var(--f-ink);
+  background-color: var(--f-bg);
+  background-image:
+    radial-gradient(80% 60% at 30% 0%, rgba(58, 214, 200, 0.07), rgba(0, 0, 0, 0) 60%),
+    radial-gradient(60% 60% at 92% 30%, rgba(126, 224, 74, 0.06), rgba(0, 0, 0, 0) 62%),
+    linear-gradient(180deg, #0d1113, #080a0b);
+  /*
+   * Se desplaza si no cabe, en lugar de aplastarse.
+   *
+   * La fábrica tiene muchas alturas fijas —cabecera, consola, cápsulas,
+   * leyenda— y sumadas pasan de la ventana MÍNIMA de la aplicación, que mide
+   * 620 px de alto. Con `hidden` la zona de trabajo se quedaba sin sitio, los
+   * robots colapsaban a cero y no se podían ni pulsar: lo cazó el servidor de
+   * integración, que abre una ventana más baja que la de un escritorio normal.
+   *
+   * Una barra de desplazamiento es fea; una nave sin robots es un fallo.
+   */
+  overflow: auto;
+}
+
+.factory .mono {
+  font-family: var(--font-mono);
+}
+
+/* ── Paneles ─────────────────────────────────────────────────────────────── */
+
+.fpanel {
+  display: flex;
+  align-items: center;
+  border-radius: 10px;
+  background: linear-gradient(180deg, var(--f-panel-hi), var(--f-panel-lo));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 10px 26px -18px #000,
+    0 0 0 1px var(--f-line);
+}
+
+.fbadge {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.fbadge--warm {
+  color: var(--f-amber);
+  background: #2a2110;
+  box-shadow: inset 0 0 0 1px #4d3d1c;
+}
+
+.fbadge--cool {
+  color: var(--f-blue);
+  background: #0e1f28;
+  box-shadow: inset 0 0 0 1px #1d3d4d;
+}
+
+/* ── Cabecera ────────────────────────────────────────────────────────────── */
+
+.factory__top {
+  display: flex;
+  flex: 0 0 74px;
+  gap: 12px;
+  height: 74px;
+}
+
+/*
+ * La cabecera cede en este orden: primero la marca, luego entregas, y los
+ * contadores nunca. Son el dato, lo demás es rótulo — y antes se cortaba justo
+ * el número, que es lo único que se mira de un vistazo.
+ */
+.factory__brand {
+  flex: 0 1 auto;
+  min-width: 0;
+  gap: 14px;
+  padding: 0 18px;
+  overflow: hidden;
+}
+
+/* Sin esto el texto no encoge y desborda el panel en lugar de recortarse. */
+.factory__brand-text {
+  min-width: 0;
+  overflow: hidden;
+}
+
+/*
+ * El rótulo se recorta con puntos suspensivos en vez de quedar cortado a
+ * cuchillo por el borde del panel. En una ventana estrecha se lee «TORRE DE
+ * CON…», que se entiende; cortado por la mitad, no.
+ */
+.factory__brand-name,
+.factory__brand-sub {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.factory__brand-name {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.factory__brand-sub {
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--f-ink-3);
+}
+
+.factory__counters {
+  flex: 0 0 auto;
+  gap: 22px;
+  padding: 0 22px;
+}
+
+.factory__working {
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--f-ink-2);
+  white-space: nowrap;
+}
+
+.factory__working .mono {
+  color: #fff;
+}
+
+.fmark {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 14px;
+  color: var(--f-ink-2);
+  white-space: nowrap;
+}
+
+.fmark__dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+}
+
+.factory__delivery-head {
+  flex: 1 2 560px;
+  min-width: 0;
+  gap: 14px;
+  padding: 0 18px;
+  overflow: hidden;
+}
+
+.factory__delivery-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.factory__delivery-name {
+  display: block;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.factory__delivery-sub {
+  display: block;
+  margin-top: 1px;
+  font-size: 12.5px;
+  color: var(--f-ink-3);
+  white-space: nowrap;
+}
+
+.factory__delivery-count {
+  font-size: 21px;
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* La rueda de ajustes: discreta hasta que la buscas. */
+.factory__gear {
+  flex: 0 0 62px;
+  justify-content: center;
+  border: 0;
+  color: var(--f-ink-3);
+  font-size: 21px;
+  cursor: pointer;
+  transition: color 140ms ease;
+}
+
+.factory__gear:hover {
+  color: var(--f-teal);
+}
+
+.factory__delivery-check {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 50%;
+  color: var(--f-green);
+  font-size: 15px;
+  box-shadow:
+    inset 0 0 0 2px var(--f-green),
+    0 0 14px -2px rgba(126, 224, 74, 0.5);
+}
+
+/* El robot del logotipo y la caja de entregas: adorno, sin estado. */
+
+.brandbot {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #232a2e, #14181b);
+  box-shadow: inset 0 0 0 1px #2f373c;
+}
+
+.brandbot__visor {
+  position: absolute;
+  left: 8px;
+  top: 11px;
+  width: 24px;
+  height: 16px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #cfd6d8, #9aa4a8);
+}
+
+.brandbot__screen {
+  position: absolute;
+  left: 11px;
+  top: 15px;
+  width: 18px;
+  height: 8px;
+  border-radius: 4px;
+  background: #0c1012;
+}
+
+.brandbot__eye {
+  position: absolute;
+  top: 17px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #7fe8ff;
+  box-shadow: 0 0 6px #7fe8ff;
+}
+
+.brandbot__eye--l { left: 14px; }
+.brandbot__eye--r { left: 22px; }
+
+.brandbot__antenna {
+  position: absolute;
+  left: 19px;
+  top: 5px;
+  width: 2px;
+  height: 6px;
+  background: #6b7478;
+}
+
+.brandbot__bulb {
+  position: absolute;
+  left: 17px;
+  top: 2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f2803f;
+  box-shadow: 0 0 8px rgba(242, 128, 63, 0.8);
+}
+
+.crate {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+}
+
+.crate__box {
+  position: absolute;
+  left: 2px;
+  top: 8px;
+  width: 30px;
+  height: 22px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #e8edee, #b6c0c3);
+}
+
+.crate__lid {
+  position: absolute;
+  left: 2px;
+  top: 4px;
+  width: 30px;
+  height: 8px;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(180deg, #fbfdfd, #d3dbdd);
+}
+
+.crate__tape {
+  position: absolute;
+  left: 14px;
+  top: 4px;
+  width: 6px;
+  height: 26px;
+  background: #8b959a;
+}
+
+/* ── Reparto de las naves ────────────────────────────────────────────────── */
+
+/*
+ * Las naves nunca bajan de aquí.
+ *
+ * Es lo que garantiza que un robot quepa entero —mide 74 px— con su chapa, su
+ * etiqueta y sitio para pulsarlo. Por debajo, la fábrica prefiere desplazarse.
+ */
+.factory__floor {
+  display: flex;
+  flex: 1;
+  gap: 12px;
+  min-height: 560px;
+}
+
+.factory__left,
+.factory__right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.factory__left { flex: 1; min-width: 0; }
+.factory__right { flex: 0 1 600px; min-width: 0; }
+
+.fzone {
+  position: relative;
+  border-radius: 12px;
+  background-color: #101416;
+  box-shadow:
+    0 0 0 1px var(--f-line),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.fzone--work {
+  flex: 1;
+  /* 78 de rótulo + dos filas de 150 + su hueco + 16: lo que ocupan sus celdas.
+     Menos que esto y el contenido se sale de la caja. */
+  min-height: 406px;
+  /* 78 y no 66: las chapas de puesto sobresalen por arriba y rozaban el rótulo. */
+  padding: 78px 16px 16px;
+  background-image:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.02) 0 1px, rgba(0, 0, 0, 0) 1px 46px),
+    linear-gradient(180deg, rgba(58, 214, 200, 0.05), rgba(0, 0, 0, 0) 40%);
+}
+
+.fzone--delivery {
+  flex: 1;
+  min-height: 302px;
+  padding: 16px;
+  background-image: linear-gradient(180deg, rgba(126, 224, 74, 0.05), rgba(0, 0, 0, 0) 40%);
+}
+
+.fzone--backlog {
+  flex: 0 0 250px;
+  height: 250px;
+  padding: 14px;
+  background-image: linear-gradient(180deg, rgba(107, 215, 255, 0.05), rgba(0, 0, 0, 0) 45%);
+}
+
+.fzone__head {
+  position: absolute;
+  left: 14px;
+  top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 9px 18px 9px 14px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #171c1f, #0e1214);
+  box-shadow:
+    0 0 0 1px var(--f-line-soft),
+    0 12px 24px -16px #000;
+}
+
+.fzone__glyph {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 15px;
+}
+
+.fzone__glyph--work {
+  color: var(--f-teal);
+  box-shadow: inset 0 0 0 1.5px rgba(58, 214, 200, 0.55);
+}
+
+.fzone__title {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.fzone__sub {
+  display: block;
+  margin-top: 1px;
+  font-size: 12px;
+  color: var(--f-ink-3);
+}
+
+/*
+ * Las filas se fijan, no se reparten.
+ *
+ * Con `grid-auto-rows: 1fr` una sola fila ocupaba TODO el alto disponible, así
+ * que con tres entregas los robots quedaban perdidos en una celda gigantesca.
+ * La nave tiene un aforo conocido —diez arriba, diez en entregas, cinco en el
+ * backlog—, así que las filas se declaran y una celda mide siempre igual esté
+ * llena o vacía.
+ */
+.fgrid {
+  display: grid;
+  height: 100%;
+  grid-template-columns: repeat(5, 1fr);
+  align-content: start;
+}
+
+/*
+ * Cada fila tiene un suelo: el que necesita el robot para caber entero.
+ *
+ * Con `minmax(0, 1fr)` una ventana baja dejaba filas de 100 px, y la figura
+ * —74 px, más el hueco de la etiqueta— se salía por arriba y tapaba el rótulo
+ * de la zona. Ahora la fila no baja de ahí y, si no cabe, la fábrica se
+ * desplaza: preferible a un robot montado sobre un título.
+ */
+.fgrid--work {
+  gap: 12px;
+  grid-template-rows: repeat(2, minmax(150px, 1fr));
+}
+
+.fgrid--delivery {
+  gap: 10px;
+  grid-template-rows: repeat(2, minmax(132px, 1fr));
+}
+
+.fgrid--backlog {
+  gap: 10px;
+  grid-template-rows: minmax(96px, 1fr);
+}
+
+.factory__empty {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  transform: translate(-50%, -50%);
+  max-width: 36ch;
+  margin: 0;
+  text-align: center;
+  color: var(--f-ink-3);
+  font-size: 13px;
+}
+
+.factory__empty--small { top: 50%; font-size: 12px; }
+
+/* ── Una celda ───────────────────────────────────────────────────────────── */
+
+.bay {
+  position: relative;
+  cursor: pointer;
+  border-radius: 9px;
+}
+
+.bay--work {
+  background-color: #141a1d;
+  background-image: linear-gradient(180deg, #1c2226, rgba(16, 21, 24, 0));
+  box-shadow:
+    0 0 0 1px #262e33,
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 14px 30px -22px #000;
+}
+
+.bay--delivery,
+.bay--backlog {
+  border-radius: 8px;
+  background: linear-gradient(180deg, #171d20, #0e1214);
+  box-shadow:
+    0 0 0 1px #242c30,
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.bay:hover {
+  box-shadow:
+    0 0 0 1px var(--f-line-soft),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 14px 30px -20px #000;
+}
+
+/* La chapa del puesto, con el color de la herramienta. */
+.bay__plate {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 11px;
+  border-radius: 7px;
+  background: linear-gradient(180deg, #1b2124, #0f1315);
+  box-shadow:
+    0 0 0 1px #2f373c,
+    0 8px 16px -10px #000;
+}
+
+.bay--work .bay__plate { left: -2px; top: -13px; }
+.bay--delivery .bay__plate,
+.bay--backlog .bay__plate {
+  left: 50%;
+  top: 6px;
+  transform: translateX(-50%);
+  padding: 3px 9px;
+}
+
+.bay__plate-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--robot-dot, var(--f-ink-3));
+  box-shadow: 0 0 8px var(--robot-dot, var(--f-ink-3));
+}
+
+.bay__plate-num {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: #d6dcde;
+}
+
+.bay__bolt {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #3b4348;
+}
+
+.bay__bolt--tl { left: 8px; top: 8px; }
+.bay__bolt--tr { right: 8px; top: 8px; }
+.bay__bolt--bl { left: 8px; bottom: 44px; }
+.bay__bolt--br { right: 8px; bottom: 44px; }
+
+.bay__check {
+  position: absolute;
+  left: 50%;
+  top: 32px;
+  transform: translateX(-50%);
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 11px;
+  color: var(--f-green);
+  box-shadow:
+    inset 0 0 0 1.5px rgba(126, 224, 74, 0.75),
+    0 0 12px -3px rgba(126, 224, 74, 0.6);
+}
+
+.bay__stage {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+}
+
+.bay--work .bay__stage { top: 20px; bottom: 52px; }
+.bay--delivery .bay__stage { top: 58px; bottom: 10px; }
+.bay--backlog .bay__stage { top: 30px; bottom: 8px; }
+
+/* Suelo y halo: el halo respira siempre, marca que la celda está viva. */
+.bay__floor {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 20px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #2a3136, #12171a);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.bay--delivery .bay__floor {
+  left: 4px;
+  right: 4px;
+  height: 16px;
+  box-shadow:
+    inset 0 0 0 1px var(--f-green),
+    0 0 18px -4px rgba(126, 224, 74, 0.55);
+}
+
+.bay--backlog .bay__floor { display: none; }
+
+.bay__halo {
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  bottom: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    var(--robot-glow, rgba(58, 214, 200, 0.5)),
+    rgba(0, 0, 0, 0) 70%
+  );
+  animation: robot-breathe 3.2s ease-in-out infinite;
+}
+
+/* La cápsula del backlog: duermen dentro, con su barrido de escáner. */
+.bay__pod {
+  position: absolute;
+  inset: 0;
+  border-radius: 30px 30px 8px 8px;
+  overflow: hidden;
+  background: linear-gradient(
+    180deg,
+    rgba(107, 215, 255, 0.16),
+    rgba(20, 30, 36, 0.9) 55%,
+    rgba(10, 14, 16, 0.95)
+  );
+  box-shadow:
+    inset 0 0 0 1px #2a3a42,
+    inset 0 0 22px -6px rgba(107, 215, 255, 0.45);
+}
+
+.bay__pod::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 12px;
+  background: linear-gradient(180deg, rgba(107, 215, 255, 0.35), rgba(107, 215, 255, 0));
+  animation: robot-scan 4.6s linear infinite;
+}
+
+/*
+ * El globo va POR ENCIMA del robot, no sobre su cabeza.
+ *
+ * Pegado al borde superior de la celda tapaba la cara, que es justo donde están
+ * los ojos —la otra señal de que algo va mal—. Dos señales tapándose la una a
+ * la otra no son dos señales.
+ */
+.bay__bubble {
+  position: absolute;
+  left: 50%;
+  top: -14px;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: #0f1315;
+  color: var(--robot-eye, var(--f-amber));
+  box-shadow: 0 0 0 1.5px currentColor;
+}
+
+.bay__label {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  padding: 7px 9px;
+  border-radius: 6px;
+  background: #0b0f11;
+  box-shadow: inset 0 0 0 1px #1e2427;
+  text-align: center;
+  font-size: 11.5px;
+  line-height: 1.25;
+  color: #a9b2b6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bay__account {
+  display: block;
+  margin-top: 2px;
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--f-ink-4);
+}
+
+.worker__figure {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+/* ── El robot ────────────────────────────────────────────────────────────── */
+
+.robot {
+  position: relative;
+  display: block;
+  animation: var(--robot-bob, none);
+}
+
+.robot--work { width: 76px; height: 74px; }
+.robot--delivery { width: 64px; height: 62px; }
+.robot--backlog { width: 56px; height: 52px; }
+
+.robot__body,
+.robot__head {
+  position: absolute;
+  background: linear-gradient(180deg, var(--robot-body, #b9c1c4), var(--robot-shade, #6f787c));
+}
+
+.robot__body {
+  left: 11%;
+  top: 41%;
+  width: 79%;
+  height: 46%;
+  border-radius: 12px 12px 8px 8px;
+  box-shadow:
+    inset 0 -6px 10px -6px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.robot__head {
+  left: 18%;
+  top: 3%;
+  width: 63%;
+  height: 46%;
+  border-radius: 12px;
+  box-shadow:
+    inset 0 -5px 9px -5px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.robot__arm {
+  position: absolute;
+  top: 46%;
+  width: 16%;
+  height: 35%;
+  border-radius: 6px;
+  background: linear-gradient(180deg, var(--robot-shade, #6f787c), #2b3134);
+}
+
+.robot__arm--left { left: 0; }
+.robot__arm--right { right: 0; }
+
+.robot__belt {
+  position: absolute;
+  left: 39%;
+  top: 54%;
+  width: 21%;
+  height: 11%;
+  border-radius: 4px;
+  background: #10161a;
+  box-shadow: inset 0 0 6px var(--robot-eye, #7fe8ff);
+}
+
+.robot__visor {
+  position: absolute;
+  left: 25%;
+  top: 13%;
+  width: 50%;
+  height: 24%;
+  border-radius: 9px;
+  background: linear-gradient(180deg, #0b1013, #05080a);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.robot__eye {
+  position: absolute;
+  top: 20%;
+  width: 10.5%;
+  height: 11%;
+  border-radius: 50%;
+  background: var(--robot-eye, #7fe8ff);
+  box-shadow: 0 0 10px var(--robot-eye, #7fe8ff);
+  animation: var(--robot-swap-a, none);
+  animation-delay: var(--robot-phase, 0s);
+}
+
+.robot__eye--left { left: 33%; }
+.robot__eye--right { left: 57%; }
+
+/* Mientras trabaja, los ojos alternan con el símbolo de código. */
+.robot__code {
+  position: absolute;
+  left: 25%;
+  top: 13%;
+  width: 50%;
+  height: 24%;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: -0.5px;
+  color: var(--robot-eye, #7fe8ff);
+  text-shadow: 0 0 8px var(--robot-eye, #7fe8ff);
+  opacity: 0;
+  animation: var(--robot-swap-b, none);
+  animation-delay: var(--robot-phase, 0s);
+}
+
+.robot__ear {
+  position: absolute;
+  top: 16%;
+  width: 10.5%;
+  height: 19%;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #8d979b, #4d5559);
+}
+
+.robot__ear--left { left: 10%; }
+.robot__ear--right { right: 10%; }
+
+.robot__antenna {
+  position: absolute;
+  left: 48%;
+  top: -8%;
+  width: 2px;
+  height: 12%;
+  background: #6b7478;
+}
+
+.robot__bulb {
+  position: absolute;
+  left: 43%;
+  top: -15%;
+  width: 10.5%;
+  height: 11%;
+  border-radius: 50%;
+  background: var(--robot-dot, var(--f-ink-3));
+  box-shadow: 0 0 10px var(--robot-dot, var(--f-ink-3));
+}
+
+.robot__spark {
+  position: absolute;
+  right: -6%;
+  top: 35%;
+  width: 6.5%;
+  height: 7%;
+  border-radius: 50%;
+  background: var(--f-amber);
+  box-shadow: 0 0 8px #ffa32b;
+  animation: var(--robot-spark, none);
+}
+
+.robot__zzz {
+  position: absolute;
+  left: 78%;
+  top: -18%;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--f-blue);
+  animation: robot-zzz 3.2s ease-out infinite;
+}
+
+.robot__zzz span { font-size: 9px; }
+
+/* ── Consola ─────────────────────────────────────────────────────────────── */
+
+.fconsole {
+  position: relative;
+  /* Cede altura antes que la nave: el dato manda sobre el resumen. */
+  flex: 0 1 306px;
+  min-height: 236px;
+  padding: 58px 20px 16px;
+  border-radius: 12px;
+  background-color: #0f1315;
+  background-image: linear-gradient(180deg, rgba(58, 214, 200, 0.06), rgba(0, 0, 0, 0) 45%);
+  box-shadow:
+    0 0 0 1px var(--f-line),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* El rótulo de la consola es un botón: lleva al detalle de todo. */
+.fconsole__head {
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  transform: translateX(-50%);
+  z-index: 2;
+  padding: 4px 18px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+
+.fconsole__head:hover {
+  background: rgba(58, 214, 200, 0.08);
+}
+
+.fconsole__head:hover .fconsole__sub {
+  color: var(--f-teal);
+}
+
+.fconsole__title {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+}
+
+.fconsole__sub {
+  display: block;
+  margin-top: 1px;
+  font-size: 12px;
+  color: var(--f-ink-3);
+}
+
+.fconsole__panels {
+  display: flex;
+  gap: 14px;
+  height: 100%;
+  perspective: 1400px;
+}
+
+.fcard {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #0c1c20, #071114);
+  box-shadow:
+    inset 0 0 0 1px #1d3a40,
+    0 0 34px -18px var(--f-teal);
+}
+
+/* Los laterales se giran un poco: la consola envuelve al que la mira. */
+.fcard--left { transform: rotateY(7deg); }
+.fcard--right { transform: rotateY(-7deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .fcard--left,
+  .fcard--right {
+    transform: none;
+  }
+}
+
+.fcard__label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  color: var(--f-teal);
+}
+
+.fcard__rows {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.frow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #b6c0c3;
+}
+
+.frow__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.frow__value {
+  margin-left: auto;
+  color: #fff;
+}
+
+.fcard__totals {
+  margin-top: 14px;
+  padding-top: 12px;
+  box-shadow: inset 0 1px 0 rgba(58, 214, 200, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.ftotal {
+  display: flex;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  color: #7f8c90;
+}
+
+.ftotal__value {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--f-ink);
+}
+
+.ftotal__value--warm { color: var(--f-amber); }
+
+.fcard__pulse {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.fdonut {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  flex: 0 0 84px;
+  border-radius: 50%;
+}
+
+.fdonut__value {
+  position: absolute;
+  inset: 11px;
+  border-radius: 50%;
+  background: #081114;
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+  color: #fff;
+}
+
+.fcard__foot {
+  margin-top: 6px;
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  color: #7f8c90;
+  text-align: right;
+}
+
+.fpending {
+  margin-top: 12px;
+}
+
+.fpending__status {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--f-amber);
+}
+
+.fpending__title {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--f-ink-2);
+}
+
+.fcard__calm {
+  margin-top: 16px;
+  font-size: 12px;
+  color: #7f8c90;
+}
+
+.fbtn {
+  margin-top: 14px;
+  margin-left: auto;
+  display: block;
+  padding: 7px 16px;
+  border: 0;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #2ac0b3, #148f86);
+  color: #04211f;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 18px -10px rgba(42, 192, 179, 0.9);
+}
+
+.fbtn:hover {
+  background: linear-gradient(180deg, #37d6c7, #17a49a);
+}
+
+.fconsole__strip {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: repeating-linear-gradient(90deg, #1b2124 0 10px, #0e1214 10px 14px);
+}
+
+/* ── Backlog ─────────────────────────────────────────────────────────────── */
+
+.factory__backlog-head {
+  flex: 0 0 66px;
+  height: 66px;
+  gap: 14px;
+  padding: 0 18px;
+}
+
+.moon {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px #4a5459;
+}
+
+.moon__shape {
+  position: absolute;
+  left: 9px;
+  top: 6px;
+  width: 13px;
+  height: 17px;
+  border-radius: 0 60% 60% 60%;
+  background: #c8d0d3;
+}
+
+.factory__backlog-text { flex: 1; min-width: 0; }
+
+.factory__backlog-name {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.factory__backlog-mode {
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: #9aa4a8;
+}
+
+.factory__backlog-sub {
+  display: block;
+  margin-top: 1px;
+  font-size: 12px;
+  color: var(--f-ink-3);
+}
+
+.factory__backlog-count {
+  font-size: 19px;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.factory__zzz {
+  font-size: 13px;
+  color: var(--f-blue);
+}
+
+.factory__zzz span { font-size: 10px; }
+
+/* ── Leyenda ─────────────────────────────────────────────────────────────── */
+
+.factory__legend {
+  flex: 0 0 50px;
+  height: 50px;
+  gap: 22px;
+  padding: 0 22px;
+  overflow-x: auto;
+}
+
+.factory__legend-sep {
+  width: 1px;
+  height: 24px;
+  flex: 0 0 1px;
+  background: var(--f-line);
+}
+
+.flegend {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+  color: #9aa4a8;
+  white-space: nowrap;
+}
+
+.flegend__ring {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px #6e7a7f;
+}
+
+.flegend__ico--run { color: var(--f-teal); font-size: 14px; }
+.flegend__ico--wait { color: var(--f-amber); font-size: 13px; }
+.flegend__ico--fail { color: var(--f-red); font-size: 13px; }
+
+.flegend__check,
+.flegend__box {
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  font-size: 9px;
+  color: var(--f-green);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--f-green);
+}
+
+.flegend__box {
+  border-radius: 3px;
+  color: var(--f-blue);
+  box-shadow: inset 0 0 0 1.5px var(--f-blue);
+}
+
+/* ── Ventanas estrechas ──────────────────────────────────────────────────── */
+
+/*
+ * La fábrica se APILA en lugar de aplastarse.
+ *
+ * El diseño está pensado para 1600 px de ancho. La aplicación se puede abrir a
+ * 900, y ahí las dos columnas se comprimían hasta que los rótulos se montaban
+ * unos sobre otros y la consola quedaba en tiras verticales ilegibles.
+ *
+ * A partir de estos anchos, cada bloque pasa a ocupar todo el ancho y la
+ * fábrica se recorre hacia abajo. Se ve menos de golpe, pero se lee todo — que
+ * es de lo que va una sala de control.
+ */
+
+@media (max-width: 1240px) {
+  .factory__floor {
+    flex-direction: column;
+    /* Sin `auto`, el reparto de alturas de cuando iban en fila se aplicaba a la
+       columna: la izquierda se quedaba con una caja pequeña y su contenido
+       desbordaba POR ENCIMA de la derecha, que se comía los clics del robot. */
+    flex: 0 0 auto;
+    min-height: 0;
+  }
+
+  /* Cada bloque mide lo que ocupa su contenido, y la fábrica se desplaza. */
+  .factory__left,
+  .factory__right {
+    flex: 0 0 auto;
+  }
+
+  .fzone--delivery {
+    min-height: 302px;
+  }
+}
+
+@media (max-width: 1060px) {
+  /* La cabecera se parte en dos filas antes que recortar los contadores. */
+  .factory__top {
+    flex: 0 0 auto;
+    height: auto;
+    flex-wrap: wrap;
+  }
+
+  .factory__brand,
+  .factory__counters,
+  .factory__delivery-head {
+    flex: 1 1 320px;
+    min-height: 64px;
+  }
+
+  /* La consola en columna: tres tarjetas anchas se leen; tres tiras, no. */
+  .fconsole {
+    flex: 0 0 auto;
+    min-height: 0;
+    padding-bottom: 22px;
+  }
+
+  .fconsole__panels {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .fcard--left,
+  .fcard--right {
+    transform: none;
+  }
+}
+
+/* ── Movimiento ──────────────────────────────────────────────────────────── */
+
+@keyframes robot-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2.5px); }
+}
+
+@keyframes robot-spark {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.9; }
+  100% { transform: translate(6px, -14px) scale(0.2); opacity: 0; }
+}
+
+@keyframes robot-breathe {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.85; }
+}
+
+@keyframes robot-zzz {
+  0% { transform: translate(0, 0); opacity: 0; }
+  25% { opacity: 0.9; }
+  100% { transform: translate(9px, -20px); opacity: 0; }
+}
+
+@keyframes robot-scan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(400%); }
+}
+
+@keyframes robot-swap-a {
+  0%, 40% { opacity: 1; }
+  48%, 92% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes robot-swap-b {
+  0%, 40% { opacity: 0; transform: scale(0.86); }
+  48%, 92% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.86); }
+}
+
+/*
+ * Quien pide menos movimiento, no ve ninguno.
+ *
+ * Aquí importa más que en el resto de la aplicación: la fábrica tiene muchas
+ * piezas moviéndose a la vez, y ninguna información depende de ellas — el
+ * estado se lee igual por la nave, el glifo y el color.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .robot,
+  .robot__eye,
+  .robot__code,
+  .robot__spark,
+  .robot__zzz,
+  .bay__halo,
+  .bay__pod::after {
+    animation: none !important;
+  }
+}
+
+/* ══ Ajustes, en ventana flotante ═════════════════════════════════════════ */
+
+/*
+ * Los ajustes se abren encima de lo que estés mirando, en el estilo de la
+ * fábrica.
+ *
+ * El truco es que NO se reestiliza componente por componente: se reescriben
+ * aquí dentro los tokens de la oficina de papel. Todo lo que hay dentro
+ * —tarjetas, interruptores, desplegables, el instalador de Claude Code— está
+ * escrito con `var(--surface)`, `var(--ink)`, `var(--line)`… así que cambia
+ * solo, y un ajuste que se añada mañana nacerá ya oscuro sin tocar nada.
+ *
+ * Es también la razón de que la paleta clara viva en tokens y no en cada
+ * regla: hoy se cobra ese trabajo.
+ */
+
+.setdlg-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: rgba(4, 6, 7, 0.66);
+  backdrop-filter: blur(3px);
+}
+
+/*
+ * La paleta oscura, para las superficies de opciones.
+ *
+ * La comparten los ajustes y el receptor local de eventos, que se abre desde
+ * dentro de ellos: una ventana negra que escupe una hoja color papel se lee
+ * como un fallo, no como otra pantalla.
+ */
+.setdlg,
+.detail--oscuro {
+  /* ── Papel y tinta, en oscuro ─────────────────────────────────────────── */
+  --paper-deep: #090c0e;
+  --paper: #0b0e10;
+  --surface: #161b1e;
+  --surface-sunken: #0e1214;
+  --line: #262d31;
+  --line-strong: #333c41;
+  --line-soft: #1c2225;
+
+  --ink: #e6e9ea;
+  --ink-2: #c3cbce;
+  --ink-3: #8b959a;
+  --ink-4: #6f7c81;
+
+  /* La acción primaria pasa a ser el verde azulado de la sala de control. */
+  --command: #3ad6c8;
+  --command-strong: #2bb3a7;
+  --command-hover: #4ae3d5;
+  --command-soft: #1f5f5a;
+
+  /*
+   * Los estados conservan su significado y su glifo; solo se oscurecen los
+   * fondos. Un verde claro de papel sobre panel negro no se lee.
+   */
+  --running: #6fe0c4;
+  --running-bg: rgba(58, 214, 200, 0.12);
+  --running-line: rgba(58, 214, 200, 0.3);
+
+  --waiting: #ffbe5c;
+  --waiting-bg: rgba(255, 190, 92, 0.12);
+  --waiting-line: rgba(255, 190, 92, 0.32);
+  --waiting-ink: #e0aa5e;
+
+  --completed: #7ee04a;
+  --completed-bg: rgba(126, 224, 74, 0.12);
+  --completed-line: rgba(126, 224, 74, 0.3);
+
+  --failed: #ff8a75;
+  --failed-bg: rgba(255, 106, 82, 0.13);
+  --failed-line: rgba(255, 106, 82, 0.33);
+
+  --unknown: #c9b98f;
+  --unknown-bg: rgba(201, 185, 143, 0.12);
+  --unknown-line: rgba(201, 185, 143, 0.3);
+
+  --queued: #a8a4d8;
+  --queued-bg: rgba(168, 164, 216, 0.12);
+  --queued-line: rgba(168, 164, 216, 0.3);
+
+  --reviewed: #9fb3bc;
+  --reviewed-bg: rgba(159, 179, 188, 0.12);
+  --reviewed-line: rgba(159, 179, 188, 0.3);
+
+  --draft: #8f9a9e;
+  --draft-bg: rgba(143, 154, 158, 0.12);
+  /* Doble uso: es también el carril de un interruptor apagado. */
+  --draft-line: #333c41;
+
+  --archived: #7d878b;
+  --archived-bg: rgba(125, 135, 139, 0.1);
+  --archived-line: #333c41;
+
+  --e1: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --e2: 0 14px 30px -14px rgba(0, 0, 0, 0.8);
+  --e3: 0 40px 80px -24px rgba(0, 0, 0, 0.85);
+}
+
+.setdlg {
+  width: 980px;
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  color: var(--ink);
+  border: 1px solid var(--f-line, #22282c);
+  border-radius: 16px;
+  background-color: #0b0e10;
+  background-image:
+    radial-gradient(90% 70% at 20% 0%, rgba(58, 214, 200, 0.09), rgba(0, 0, 0, 0) 60%),
+    linear-gradient(180deg, #0e1214, #090b0c);
+  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.9);
+  overflow: hidden;
+}
+
+.setdlg__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 0 0 auto;
+  padding: 18px 22px;
+  border-bottom: 1px solid #22282c;
+  background: linear-gradient(180deg, #14181b, #101416);
+}
+
+.setdlg__glyph {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  border-radius: 11px;
+  border: 1px solid rgba(58, 214, 200, 0.32);
+  background: rgba(58, 214, 200, 0.1);
+  color: #3ad6c8;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.setdlg__titles {
+  min-width: 0;
+  flex: 1;
+}
+
+.setdlg__title {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #e6e9ea;
+}
+
+.setdlg__sub {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #8b959a;
+}
+
+.setdlg__close {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid #2a3236;
+  background: #12171a;
+  color: #cfd6d8;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--tap), color var(--tap), border-color var(--tap);
+}
+
+.setdlg__close:hover {
+  background: #1a2124;
+  border-color: #3ad6c8;
+  color: #3ad6c8;
+}
+
+.setdlg__close:focus-visible {
+  outline: 2px solid #3ad6c8;
+  outline-offset: 2px;
+}
+
+.setdlg__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 22px;
+}
+
+.setdlg__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  padding: 14px 22px;
+  border-top: 1px solid #22282c;
+  background: linear-gradient(180deg, #101416, #0c0f11);
+}
+
+.setdlg__note {
+  margin: 0;
+  font-size: 12px;
+  color: #8b959a;
+}
+
+/*
+ * Dentro de la ventana, las tarjetas se separan del fondo con un borde algo
+ * más marcado: en papel bastaba la sombra, y sobre negro la sombra no se ve.
+ */
+.setdlg .card {
+  border-color: #262d31;
+  box-shadow: none;
+}
+
+.setdlg .codeblock {
+  border-color: #262d31;
+  color: #a9b3b7;
+}
+
+/*
+ * El interruptor encendido ya toma su color de `--running`, redefinido arriba.
+ * La bolita sí hay que decirla: hereda de `--surface`, que en oscuro es casi
+ * del color del panel, y desaparecería dentro del carril apagado.
+ */
+.setdlg .switch__knob {
+  background: #0b0e10;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+/*
+ * En pantallas estrechas la rejilla de dos columnas de los ajustes no cabe
+ * dentro de la ventana, y una tarjeta de 300 px con un desplegable dentro se
+ * vuelve ilegible antes que útil.
+ */
+@media (max-width: 900px) {
+  .setdlg-overlay {
+    padding: 0;
+  }
+
+  .setdlg {
+    border-radius: 0;
+    border: none;
+    width: 100%;
+  }
+
+  .setdlg .settings {
+    grid-template-columns: 1fr;
+  }
+}
+
+/*
+ * La única excepción a lo de arriba.
+ *
+ * El carril del selector segmentado lleva un color escrito a mano en lugar de
+ * un token —el único de toda la hoja de la oficina de papel—, así que es
+ * también lo único que no se oscurece solo. No se toca allí: cambiarlo
+ * alteraría el aspecto de la aplicación clara, que funciona bien. Se corrige
+ * aquí, donde molesta.
+ */
+.setdlg .segmented {
+  background: #0b0e10;
+  border-color: #2a3236;
+}
+
+.setdlg .segmented button[data-active='true'] {
+  background: rgba(58, 214, 200, 0.16);
+  color: #7fe9dd;
+  box-shadow: none;
+}
+
+/*
+ * Barra de desplazamiento oscura. La del sistema es blanca, y en una ventana
+ * negra se lee como una raya luminosa pegada al borde.
+ */
+.setdlg__body::-webkit-scrollbar {
+  width: 12px;
+}
+
+.setdlg__body::-webkit-scrollbar-track {
+  background: #0b0e10;
+}
+
+.setdlg__body::-webkit-scrollbar-thumb {
+  background: #2a3236;
+  border: 3px solid #0b0e10;
+  border-radius: 999px;
+}
+
+.setdlg__body::-webkit-scrollbar-thumb:hover {
+  background: #3a464b;
+}
+
+/*
+ * El receptor local, en oscuro.
+ *
+ * Los tokens de arriba se encargan de casi todo; aquí solo van las dos cosas
+ * que la hoja clara escribió con color fijo —el borde de la hoja lateral— y la
+ * barra de desplazamiento, que el sistema pinta blanca.
+ */
+.detail--oscuro {
+  /*
+   * La tinta, explícita.
+   *
+   * Buena parte del panel —el título, los valores de estado y dirección— no
+   * declara color: hereda. Sin esta línea heredaba la tinta oscura de la
+   * aplicación clara y quedaba negro sobre negro: el título desaparecía del
+   * todo. Los tokens redefinidos no bastan cuando nadie los pide.
+   */
+  color: var(--ink);
+  border-left-color: #22282c;
+  box-shadow: -24px 0 60px -30px rgba(0, 0, 0, 0.9);
+}
+
+/* Un comando que hay que copiar a mano se lee, no se adivina. */
+.detail--oscuro .command__text {
+  color: var(--ink-2);
+}
+
+.detail--oscuro .segmented {
+  background: #0b0e10;
+  border-color: #2a3236;
+}
+
+.detail--oscuro .segmented button[data-active='true'] {
+  background: rgba(58, 214, 200, 0.16);
+  color: #7fe9dd;
+  box-shadow: none;
+}
+
+.detail--oscuro .detail__body::-webkit-scrollbar {
+  width: 12px;
+}
+
+.detail--oscuro .detail__body::-webkit-scrollbar-track {
+  background: #0b0e10;
+}
+
+.detail--oscuro .detail__body::-webkit-scrollbar-thumb {
+  background: #2a3236;
+  border: 3px solid #0b0e10;
+  border-radius: 999px;
+}
+
+/* ══ Fin de turno: contestarle sin abrir la terminal (D24) ════════════════ */
+
+/*
+ * Manda sobre todo lo demás de la pantalla, y por eso está por encima incluso
+ * de la ventana de Ajustes: mientras se ve, Claude Code está PARADO esperando.
+ * Es la única ventana de la aplicación que le cuesta tiempo a alguien.
+ *
+ * Va en el estilo de la sala de control aunque aparezca sobre la parte clara.
+ * Es deliberado: esto no es una pantalla más, es el canal en vivo con la
+ * herramienta, y se distingue de un vistazo de cualquier otra cosa.
+ */
+.handoff-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: rgba(4, 6, 7, 0.72);
+  backdrop-filter: blur(3px);
+}
+
+.handoff {
+  width: 860px;
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  color: #e6e9ea;
+  border: 1px solid #2a3236;
+  border-radius: 16px;
+  background-color: #0b0e10;
+  background-image:
+    radial-gradient(90% 70% at 20% 0%, rgba(58, 214, 200, 0.1), rgba(0, 0, 0, 0) 60%),
+    linear-gradient(180deg, #0e1214, #090b0c);
+  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.9);
+  overflow: hidden;
+}
+
+.handoff__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 0 0 auto;
+  padding: 16px 20px;
+  border-bottom: 1px solid #22282c;
+  background: linear-gradient(180deg, #14181b, #101416);
+}
+
+.handoff__titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.handoff__title {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 700;
+  color: #e6e9ea;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.handoff__sub {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: #8b959a;
+}
+
+/*
+ * La cuenta atrás se ve siempre, y en rojo cuando aprieta.
+ *
+ * No es decoración: es el tiempo que le queda a Claude parado. Quien está
+ * escribiendo una respuesta larga necesita saber que se le acaba antes de
+ * perderla, no después.
+ */
+.handoff__clock {
+  flex: 0 0 auto;
+  min-width: 54px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-align: center;
+  color: var(--f-teal, #3ad6c8);
+  background: rgba(58, 214, 200, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(58, 214, 200, 0.3);
+}
+
+.handoff__clock[data-urgent='true'] {
+  color: #ff8a75;
+  background: rgba(255, 106, 82, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 106, 82, 0.4);
+}
+
+/* Lo que te ha contestado, entero y con su forma original. */
+.handoff__message {
+  flex: 1 1 auto;
+  min-height: 96px;
+  margin: 0;
+  padding: 18px 20px;
+  overflow: auto;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: #cfd6d8;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.handoff__message::-webkit-scrollbar {
+  width: 12px;
+}
+
+.handoff__message::-webkit-scrollbar-track {
+  background: #0b0e10;
+}
+
+.handoff__message::-webkit-scrollbar-thumb {
+  background: #2a3236;
+  border: 3px solid #0b0e10;
+  border-radius: 999px;
+}
+
+.handoff__reply {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid #22282c;
+  background: linear-gradient(180deg, #101416, #0c0f11);
+}
+
+.handoff__box {
+  width: 100%;
+  resize: vertical;
+  font: inherit;
+  font-size: 13.5px;
+  line-height: 1.5;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #2a3236;
+  background: #0b0e10;
+  color: #e6e9ea;
+}
+
+.handoff__box::placeholder {
+  color: #6f7c81;
+}
+
+.handoff__box:focus-visible {
+  outline: none;
+  border-color: #3ad6c8;
+  box-shadow: 0 0 0 3px rgba(58, 214, 200, 0.16);
+}
+
+.handoff__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/*
+ * Los botones vienen de la hoja clara y allí toman el color de los tokens. Aquí
+ * no hay ventana que los redefina, así que se dicen a mano — son solo dos.
+ */
+.handoff__actions .btn--primary {
+  background: #3ad6c8;
+  border-color: #2bb3a7;
+  color: #06222a;
+  font-weight: 700;
+}
+
+.handoff__actions .btn--primary:hover:not(:disabled) {
+  background: #4ae3d5;
+}
+
+.handoff__actions .btn--ghost {
+  background: #12171a;
+  border-color: #2a3236;
+  color: #cfd6d8;
+}
+
+.handoff__actions .btn--ghost:hover:not(:disabled) {
+  background: #1a2124;
+}
+
+.handoff__note {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 10px 20px 14px;
+  font-size: 11.5px;
+  color: #6f7c81;
+  border-top: 1px solid #161b1e;
+  background: #090b0c;
+}
+
+@media (max-width: 900px) {
+  .handoff-overlay {
+    padding: 0;
+  }
+
+  .handoff {
+    width: 100%;
+    border: none;
+    border-radius: 0;
+  }
+}

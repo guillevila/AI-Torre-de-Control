@@ -2,6 +2,7 @@ import type { Provider, Task } from './task.js'
 import type { RecentActivityEntry, StatusHistoryEntry } from './history.js'
 import type { Settings } from './settings.js'
 import type { PendingPermission, PermissionDecision } from './permissions.js'
+import type { PendingHandoff } from './handoff.js'
 
 /**
  * Canales de comunicación entre el proceso principal de Electron (que tiene
@@ -42,6 +43,13 @@ export const IPC = {
   /** Renderer → main: transmitir tu decisión a la herramienta que pregunta. */
   permissionsDecide: 'permissions:decide',
 
+  /** Renderer → main: finales de turno que esperan tu respuesta (D24). */
+  handoffsList: 'handoffs:list',
+  /** Renderer → main: contestarle a Claude Code sin abrir la terminal. */
+  handoffsReply: 'handoffs:reply',
+  /** Renderer → main: dejar que termine el turno sin decirle nada. */
+  handoffsRelease: 'handoffs:release',
+
   /** Renderer → main: ¿está instalado el enlace con Claude Code? */
   hookStatus: 'hook:status',
   /** Renderer → main: enseñar el cambio EXACTO antes de tocar nada (D13). */
@@ -58,6 +66,8 @@ export const IPC = {
   tasksChanged: 'tasks:changed',
   /** Main → renderer: la lista de permisos pendientes ha cambiado. */
   permissionsChanged: 'permissions:changed',
+  /** Main → renderer: la lista de finales de turno pendientes ha cambiado. */
+  handoffsChanged: 'handoffs:changed',
 } as const
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC]
@@ -193,6 +203,10 @@ export interface TorreBridge {
     decision: PermissionDecision,
   ) => Promise<IpcResult<null>>
 
+  listHandoffs: () => Promise<IpcResult<PendingHandoff[]>>
+  replyHandoff: (requestId: string, text: string) => Promise<IpcResult<null>>
+  releaseHandoff: (requestId: string) => Promise<IpcResult<null>>
+
   hookStatus: () => Promise<IpcResult<HookStatus>>
   hookPreview: () => Promise<IpcResult<HookPreview>>
   hookInstall: () => Promise<IpcResult<HookStatus>>
@@ -205,4 +219,6 @@ export interface TorreBridge {
   onTasksChanged: (listener: (tasks: Task[]) => void) => () => void
   /** Suscripción a los permisos que esperan una decisión tuya. */
   onPermissionsChanged: (listener: (pending: PendingPermission[]) => void) => () => void
+  /** Suscripción a los finales de turno que esperan tu respuesta (D24). */
+  onHandoffsChanged: (listener: (pending: PendingHandoff[]) => void) => () => void
 }

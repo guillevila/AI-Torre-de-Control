@@ -3,7 +3,7 @@
 > Documento vivo. Claude lo actualiza cuando cambia algo técnico relevante.
 > Si quieres saber cómo está construido el proyecto, lee esto.
 
-**Última actualización:** 2026-08-03 — sistema de diseño completo (Sprint 002)
+**Última actualización:** 2026-08-06 — contestarle a Claude Code desde la Torre (D24)
 **Mantenedor:** Claude (con validación del dueño del proyecto)
 
 ---
@@ -100,6 +100,8 @@ ai-torre-de-control/
 │     │  │  └─ endpoint.ts             Clave local y fichero de conexión
 │     │  ├─ hooks/                  Enlace con Claude Code (instalador y señales)
 │     │  ├─ permissions/            Permisos en memoria, nunca en disco (D20)
+│     │  ├─ handoff/                Fin de turno: enseña la respuesta y recoge
+│     │  │                          la tuya. También en memoria (D24)
 │     │  ├─ intake/                 Altas que llegan de fuera (extensión)
 │     │  ├─ notifications/
 │     │  │  ├─ notifier.ts             Lógica de avisos (sin Electron: testeable)
@@ -108,15 +110,15 @@ ai-torre-de-control/
 │     │  ├─ system/open-external.ts    Apertura validada de enlaces
 │     │  └─ ipc/handlers.ts            Canales hacia la interfaz
 │     │  └─ settings/               Ajustes locales en JSON
-│     ├─ src/preload/index.ts       Puente seguro (14 operaciones, ni una más)
+│     ├─ src/preload/index.ts       Puente seguro (26 operaciones, ni una más)
 │     ├─ src/renderer/              Interfaz React
 │     │  ├─ App.tsx                 Sección, capas y composición
 │     │  ├─ hooks/useTasks.ts       ÚNICA fuente de datos de la interfaz
 │     │  ├─ views/                  Torre · Atención · Tareas · Historial · Ajustes
-│     │  ├─ views/office/           La planta de oficina por zonas
+│     │  ├─ views/office/           La fábrica: naves, celdas y robots
 │     │  ├─ components/             Barra lateral, cabecera, ficha, alta rápida
 │     │  ├─ assets/fonts/           Las tres tipografías, empaquetadas
-│     │  └─ styles/                 tokens.css (el sistema de diseño) + app.css
+│     │  └─ styles/                 tokens.css + app.css (papel) · factory.css (oficina)
 │     ├─ e2e/                       Prueba de interfaz
 │     └─ scripts/launch.mjs         Arrancador (neutraliza ELECTRON_RUN_AS_NODE)
 │  └─ extension/                    Extensión de Chrome (JS de navegador, sin compilar)

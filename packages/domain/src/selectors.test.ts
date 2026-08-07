@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   attentionQueue,
+  bayOf,
   EMPTY_FILTERS,
+  factoryFloor,
   filterTasks,
   groupOf,
   groupTasks,
@@ -13,7 +15,7 @@ import {
   summarise,
   zoneOf,
 } from './selectors.js'
-import { PROVIDERS } from '@torre/contracts'
+import { PROVIDERS, TASK_STATUSES } from '@torre/contracts'
 import { makeTask } from './test-fixtures.js'
 
 const at = (iso: string) => ({ lastActivityAt: iso, createdAt: iso })
@@ -321,5 +323,68 @@ describe('color de cada herramienta', () => {
     for (const provider of PROVIDERS) {
       expect(PROVIDER_COLORS[provider]).toMatch(/^#[0-9A-Fa-f]{6}$/)
     }
+  })
+})
+
+/**
+ * El reparto por naves de la fábrica.
+ *
+ * La oficina pasa a tener tres naves en vez de seis zonas, así que hay estados
+ * que comparten sitio. Lo que no puede pasar es que alguno se quede sin nave y
+ * desaparezca de la pantalla sin que nadie se entere.
+ */
+describe('reparto por naves de la fábrica', () => {
+  it('todo lo que sigue vivo tiene su nave', () => {
+    // Un estado sin nave desaparecería de la pantalla sin que nadie se entere.
+    for (const status of TASK_STATUSES) {
+      if (status === 'archived') continue
+      expect(bayOf(status)).not.toBeNull()
+    }
+  })
+
+  it('lo archivado sale de la fábrica', () => {
+    expect(bayOf('archived')).toBeNull()
+  })
+
+  it('la nave de trabajo recoge lo vivo, incluido lo que aún no arrancó', () => {
+    for (const status of ['draft', 'queued', 'running', 'waiting_user', 'failed', 'unknown'] as const) {
+      expect(bayOf(status)).toBe('work')
+    }
+  })
+
+  it('terminada va a entregas y revisada al backlog', () => {
+    expect(bayOf('completed')).toBe('delivery')
+    expect(bayOf('reviewed')).toBe('backlog')
+  })
+
+  it('lo que no cabe se CUENTA, no se esconde', () => {
+    // Recortar en silencio haría creer que la fábrica está más vacía de lo que
+    // está, que es justo la falsa sensación que esta aplicación evita.
+    const muchas = Array.from({ length: 14 }, (_, i) =>
+      makeTask({ id: `t${i}`, status: 'running' }),
+    )
+    const planta = factoryFloor(muchas)
+
+    expect(planta.work).toHaveLength(10)
+    expect(planta.hidden.work).toBe(4)
+  })
+
+  it('dentro de cada nave manda la urgencia', () => {
+    const planta = factoryFloor([
+      makeTask({ id: 'a', status: 'running' }),
+      makeTask({ id: 'b', status: 'waiting_user' }),
+      makeTask({ id: 'c', status: 'queued' }),
+    ])
+    // Lo que te reclama va primero: es lo que se mira antes.
+    expect(planta.work[0]?.id).toBe('b')
+  })
+
+  it('las archivadas no ocupan sitio en ninguna nave', () => {
+    const planta = factoryFloor([
+      makeTask({ id: 'viva', status: 'running' }),
+      makeTask({ id: 'fuera', status: 'archived' }),
+    ])
+    expect(planta.work).toHaveLength(1)
+    expect(planta.work[0]?.id).toBe('viva')
   })
 })

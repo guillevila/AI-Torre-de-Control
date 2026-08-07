@@ -195,7 +195,11 @@ test('la vertical completa funciona de principio a fin', async () => {
   await expect(detail).toBeVisible()
   await expect(detail).toContainText('https://chatgpt.com/c/abc-123')
   await detail.getByRole('button', { name: 'Cerrar' }).click()
-  await page.getByTestId('view-operations').click()
+  // De la fábrica se sale por su consola de mando: es pantalla completa y no
+  // tiene cabecera con el conmutador. Es lo que la hace parecer una sala de
+  // control y no una pestaña más.
+  await page.getByTestId('factory-tower').click()
+  await page.getByTestId('nav-tasks').click()
 
   // ── 8. Un evento local real cambia el estado ──────────────────────────────
   const taskId = await row.getAttribute('data-task-id')
@@ -251,6 +255,11 @@ test('los ajustes se guardan y gobiernan los avisos', async () => {
   // Silenciar los avisos de tarea terminada.
   await page.getByTestId('switch-toggle-completed').click()
   await expect(page.getByTestId('toggle-completed')).not.toBeChecked()
+
+  // Los ajustes son una ventana encima, no una sección: se cierran y te dejan
+  // donde estabas. Sin cerrarla, el fondo no se puede pulsar.
+  await page.getByTestId('settings-close').click()
+  await expect(page.getByTestId('settings-dialog')).toBeHidden()
 
   await page.getByTestId('nav-tasks').click()
   const taskId = await page.getByTestId('task-row').getAttribute('data-task-id')
@@ -366,7 +375,7 @@ test('pinchar un muñeco de la oficina abre su ficha', async () => {
   await page.getByTestId('confirm-delete').click()
   await expect(muneco).toBeHidden()
 
-  await page.getByTestId('view-operations').click()
+  await page.getByTestId('factory-tower').click()
 })
 
 test('los datos siguen ahí después de cerrar y volver a abrir', async () => {
@@ -385,4 +394,84 @@ test('los datos siguen ahí después de cerrar y volver a abrir', async () => {
   // Y el historial también sobrevive.
   await row.getByTestId('open-detail').click()
   await expect(page.getByTestId('history-list').locator('li').first()).toBeVisible()
+})
+
+/**
+ * La fábrica es pantalla completa, y sus dos salidas funcionan.
+ *
+ * Al quitar la barra lateral y la cabecera, esas dos puertas son lo ÚNICO que
+ * queda para salir de la oficina. Si una se rompe, el usuario se queda
+ * encerrado en una pantalla sin menús — y eso no lo cazaría ninguna prueba que
+ * solo mire que la vista se pinta.
+ */
+test('la fábrica ocupa la pantalla y sus dos salidas llevan a alguna parte', async () => {
+  // Las pruebas comparten la misma aplicación abierta: si una anterior dejó
+  // una ficha encima, aquí estorba. Escape es lo que pulsaría una persona.
+  await page.keyboard.press('Escape')
+  await page.getByTestId('view-office').click()
+  await expect(page.getByTestId('office-view')).toBeVisible()
+
+  // Sin barra lateral ni cabecera: la nave llega hasta el borde.
+  await expect(page.getByTestId('nav-tower')).toBeHidden()
+
+  // La consola de mando lleva al detalle de todo.
+  await page.getByTestId('factory-tower').click()
+  await expect(page.getByTestId('tower-view')).toBeVisible()
+  await expect(page.getByTestId('nav-tower')).toBeVisible()
+
+  // Y la rueda abre los ajustes ENCIMA de la nave, sin sacarte de ella: es la
+  // diferencia entre tocar un interruptor y perder la sala de control.
+  await page.getByTestId('view-office').click()
+  await page.getByTestId('factory-settings').click()
+  await expect(page.getByTestId('settings-dialog')).toBeVisible()
+  await expect(page.getByTestId('settings-view')).toBeVisible()
+  await expect(page.getByTestId('office-view')).toBeVisible()
+
+  // Y dentro está TODO, incluido el receptor local, que antes colgaba fuera.
+  await page.getByTestId('open-dev-panel').click()
+  await expect(page.getByTestId('dev-panel')).toBeVisible()
+  await page.getByTestId('dev-panel').getByRole('button', { name: 'Cerrar' }).click()
+  // Al cerrarlo se vuelve a los ajustes, no a la pantalla de fondo.
+  await expect(page.getByTestId('settings-dialog')).toBeVisible()
+
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('settings-dialog')).toBeHidden()
+  await expect(page.getByTestId('office-view')).toBeVisible()
+})
+
+/**
+ * Buscar tiene que funcionar también desde la fábrica.
+ *
+ * Nació de una regresión que el CI no vio: al pasar la Oficina a pantalla
+ * completa dejó de dibujarse la cabecera, y con ella el campo de búsqueda. El
+ * atajo seguía cambiando la sección por detrás, pero no pasaba nada visible ni
+ * salía ningún aviso — el peor tipo de fallo, el que no se queja.
+ *
+ * Ninguna prueba pulsaba el atajo desde la fábrica. Por eso existe esta.
+ */
+test('buscar con el atajo saca de la fábrica y deja escribir', async () => {
+  await page.keyboard.press('Escape')
+
+  // La prueba anterior puede dejarnos dentro de la fábrica, y allí no hay barra
+  // lateral que pulsar. Se sale por su consola de mando antes de montar el
+  // escenario, para que esta prueba no dependa del orden en que se ejecute.
+  if (await page.getByTestId('office-view').isVisible()) {
+    await page.getByTestId('factory-tower').click()
+  }
+
+  await page.getByTestId('nav-tower').click()
+  await page.getByTestId('view-office').click()
+  await expect(page.getByTestId('office-view')).toBeVisible()
+
+  await page.keyboard.press('Control+k')
+
+  // Sale de la fábrica de verdad, no solo por dentro.
+  await expect(page.getByTestId('office-view')).toBeHidden()
+  await expect(page.getByTestId('nav-tasks')).toBeVisible()
+
+  // Y el campo no solo aparece: está enfocado, listo para teclear.
+  const buscador = page.getByTestId('search')
+  await expect(buscador).toBeFocused()
+  await page.keyboard.type('facturacion')
+  await expect(buscador).toHaveValue('facturacion')
 })

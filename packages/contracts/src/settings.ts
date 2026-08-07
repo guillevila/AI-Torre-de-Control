@@ -41,6 +41,25 @@ export const settingsSchema = z.object({
    */
   staleAfterMinutes: z.number().int().min(0).max(1440).default(30),
 
+  /**
+   * Contestarle a Claude Code desde la Torre al final de cada turno (D24).
+   *
+   * **Apagado de fábrica, y es deliberado.** Encenderlo hace que Claude espere
+   * al terminar cada turno por si quieres decirle algo. Esa espera es real: si
+   * estás trabajando en la terminal y no miras la Torre, Claude se queda
+   * parado hasta que se agote el tiempo de abajo. Quien lo enciende tiene que
+   * saber que lo enciende.
+   */
+  replyFromTower: z.boolean().default(false),
+
+  /**
+   * Segundos que Claude espera tu respuesta antes de terminar el turno.
+   *
+   * No es un aviso que se pierde: es tiempo que Claude está parado. Por eso el
+   * tope es corto comparado con lo que admite el propio enlace.
+   */
+  replyWaitSeconds: z.number().int().min(5).max(180).default(60),
+
   /** Vista con la que arranca la aplicación. */
   startView: z.enum(['operations', 'office']).default('operations'),
 

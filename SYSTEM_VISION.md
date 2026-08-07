@@ -82,6 +82,7 @@ El stack puede revisarse después del MVP únicamente si aparecen problemas demo
 | D21 | Si el usuario no responde a un permiso en 90 segundos, o la Torre está cerrada, la herramienta vuelve a preguntar por su vía normal | La Torre es un atajo, nunca un cuello de botella. Ninguna sesión puede quedarse colgada esperándola |
 | D22 | Existe el estado **`revisada`**: ya lo has mirado, no hay nada pendiente, pero el trabajo sigue vivo y vuelve a activarse solo al mandarle algo | Resuelve O8. Un proyecto de Claude Code no «termina»: descansa. Sin este estado había que elegir entre dejarlo como terminado —reclamando revisión para siempre— o archivarlo, que lo retira y hace aparecer un icono nuevo la próxima vez. Aprobada el 4 de agosto de 2026 |
 | D23 | Un proyecto de Claude Code tiene **un solo icono**, que se mueve entre estados. Nunca dos                                          | Es la promesa central de la oficina. Las sesiones se emparejan por carpeta —incluidas las subcarpetas— y una tarea en reposo se reutiliza en lugar de crear otra |
+| D24 | Al terminar un turno, la Torre puede **enseñar** la respuesta de Claude Code y dejarte contestarle, pero **nunca la guarda** | Amplía D20 a un segundo canal, sin tocar D5. D5 dice «no se **almacenarán**»: lo que vive en memoria y desaparece al cerrar el aviso no se almacena, igual que ya pasa con el comando completo de un permiso. Apagado de fábrica, porque retener el fin de turno deja a Claude Code parado esperando. Aprobada el 6 de agosto de 2026 |
 
 ---
 

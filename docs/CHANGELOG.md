@@ -10,6 +10,154 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Corregido — la detección de abandono del receptor no funcionaba
+
+El receptor local tenía desde hacía semanas una protección para cuando quien
+pregunta se marcha a media espera. **No se disparó ni un solo día.**
+
+`req` emite «close» en cuanto termina de llegar el cuerpo —no cuando el cliente
+se va—, y encima el escuchador se registraba *después* de leerlo, así que el
+aviso ya había pasado. El evento correcto es el de la **respuesta**: `res` emite
+«close» en los dos casos y se distinguen por `writableEnded`. Comprobado a mano
+contra un servidor real antes de tocar nada.
+
+No se notaba porque su único efecto era intentar escribir en una conexión
+muerta, que no da error visible. Con el fin de turno pasa a importar: un aviso
+que se queda en pantalla te invita a **escribir** una respuesta que ya no puede
+llegar a ningún sitio, y la Torre te diría que la ha mandado.
+
+Y no es un caso rebuscado: ocurre siempre que una sesión de Claude Code se abrió
+**antes** de actualizar el enlace. Conserva el tope viejo de 10 segundos y mata
+el proceso mientras el aviso cuenta hasta 60.
+
+La ruta de permisos tiene el mismo hueco, pero sus tiempos están ordenados y lo
+que se pierde es un clic, no un texto. Se deja como está a propósito: es un
+canal en producción y tocarlo pide su propia tanda de pruebas.
+
+### Añadido — contestarle a Claude Code sin abrir la terminal (D24)
+
+Cuando Claude Code termina un turno, la Torre te enseña **lo que te ha dicho**,
+entero, y una caja para seguir hablándole. Si escribes, el turno no termina:
+sigue con lo que le hayas dicho. Sin tocar la terminal.
+
+Las dos mitades existían y no las estábamos usando:
+
+- El evento de fin de turno trae un campo con **el texto final del turno ya
+  montado**. No hay que rebuscar en la transcripción — que además se escribe con
+  retraso y a menudo aún no tiene el último mensaje.
+- Ese mismo evento admite que el enlace **impida que el turno termine** y le pase
+  a Claude un motivo. Es el mismo patrón de retener-y-esperar que ya usaba el
+  canal de permisos.
+
+**Se enseña, no se guarda.** Es D20 aplicada a un segundo canal, y no reabre D5:
+esa decisión dice «no se **almacenarán**», y lo que vive en memoria y desaparece
+al cerrar el aviso no se almacena. Igual que ya pasa con el comando completo de
+un permiso. Ni la respuesta de Claude ni lo que tú escribes entran en la base de
+datos, ni en el historial, ni en el CSV, ni en el cuaderno de diagnóstico — hay
+una prueba que comprueba que el cuaderno recibe **cuántos** caracteres, nunca
+cuáles.
+
+**Apagado de fábrica, y no por prudencia genérica.** Mientras el aviso está en
+pantalla, Claude Code está *parado*. Es la única opción de toda la aplicación
+que le cuesta tiempo a una herramienta, así que Ajustes lo dice dos veces y el
+aviso enseña la cuenta atrás mientras corre.
+
+**Dos fallos reales encontrados construyéndolo:**
+
+- El evento de fin de turno estaba enganchado con **10 segundos** de tope. Claude
+  Code habría matado el enlace mucho antes de que diera tiempo a leer nada.
+  Ahora son tres relojes ordenados a propósito —Torre ≤180 s, enlace 190 s,
+  Claude Code 210 s— para que el que se rinda primero sea siempre el más interno.
+  Si se invirtieran, la respuesta se perdería justo después de escribirla.
+- Al hacer dos peticiones seguidas, el enlace **se estrellaba al salir** con un
+  fallo de libuv (`Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)`),
+  porque `fetch` dejaba una conexión viva en el pozo. Un enlace que revienta
+  viola su única regla innegociable. Ahora usa `node:http` sin reutilizar
+  conexiones. De paso, las pruebas capturan la salida de error del enlace: con
+  el código de salida a secas se veía un número enorme y ninguna pista.
+
+Lo que **no** cubre: «te espera». Ese evento no admite respuesta de vuelta según
+la documentación de Claude Code, y además ya está resuelto con la tarjeta de
+permisos. Esto es para cuando te ha entregado algo.
+
+### Cambiado — Ajustes es una ventana, no una pantalla
+
+Pulsar Ajustes te sacaba de donde estabas. Desde la fábrica eso era
+especialmente malo: la nave ocupa la pantalla entera, así que tocar un
+interruptor obligaba a abandonarla y volver. Y el panel dejaba fuera el
+**receptor local de eventos**, que colgaba aparte en una esquina: había que
+saber que existía.
+
+- **Se abre encima de lo que estés mirando** y se cierra dejándote justo ahí.
+  Da igual si vienes de la rueda de la fábrica o de la barra lateral: es la
+  misma ventana, y ya no hay ninguna forma de ver Ajustes a pantalla completa.
+- **Dentro está todo**, receptor local incluido. Y al cerrar el receptor se
+  vuelve a Ajustes, no a la pantalla de fondo.
+- **En el estilo de la sala de control**, oscuro, igual que la fábrica.
+
+Lo interesante es cómo: no se ha reestilizado componente por componente, se han
+**reescrito los tokens de color dentro de la ventana**. Todo lo que hay dentro
+—tarjetas, interruptores, desplegables, el instalador de Claude Code— estaba
+escrito con `var(--surface)`, `var(--ink)`… así que cambió solo, y un ajuste que
+se añada mañana nacerá ya oscuro sin tocar nada.
+
+Eso dejó a la vista los dos únicos sitios que no seguían esa disciplina: el
+carril del selector segmentado, con un color escrito a mano, y el panel del
+receptor, que heredaba la tinta en lugar de declararla —y se quedaba negro
+sobre negro—. Los dos corregidos.
+
+### Cambiado — la fábrica ocupa la pantalla entera
+
+La nave ya no comparte pantalla con la barra lateral ni con la cabecera. Una
+sala de control se mira de lejos, y los menús alrededor competían con lo único
+que hay que ver: quién trabaja y quién te espera. Además chocaban de lleno con
+el tema oscuro.
+
+- **Dos salidas, y están dentro de la propia fábrica**: la **rueda** de arriba a
+  la derecha lleva a Ajustes, y la **consola de mando** de abajo al detalle de
+  todo. Fuera de la fábrica la barra lateral vuelve, así que no hay forma de
+  quedarse encerrado — y hay una prueba de interfaz que recorre ambas puertas
+  precisamente porque, sin menús, romper una dejaría al usuario atrapado.
+- **Los permisos siguen apareciendo por encima**, en la fábrica igual que en el
+  resto de la aplicación. Comprobado con una petición real: la tarjeta manda
+  sobre la nave y la rueda sigue accesible.
+
+Nota honesta: con un permiso esperando, la nave se estrecha y hay que hacer
+scroll para ver la leyenda del pie. No se pierde nada, pero se aprieta.
+
+### Cambiado — la Oficina pasa a ser una fábrica
+
+Implementa el documento de diseño **«Oficina Fábrica»**. La planta de papel
+inclinada se sustituye por una nave oscura de sala de control, con un robot por
+tarea.
+
+- **Tres naves en vez de seis zonas**: zona de trabajo (lo que sigue vivo),
+  entregas (terminadas) y backlog (revisadas, durmiendo en cápsulas). El reparto
+  lo decide `factoryFloor` en el dominio, así que la lista y la oficina no
+  pueden discrepar (D10, D11).
+- **El robot comunica por tres canales independientes**: el color del cuerpo es
+  la herramienta, el de los ojos avisa de que algo va mal, y el movimiento dice
+  si trabaja de verdad. Quitando el color se sigue leyendo.
+- **Solo se mueve quien trabaja.** Nada de animación decorativa; y quien pide
+  menos movimiento en su sistema operativo no ve ninguno.
+- **Lo que no cabe se cuenta**, con un «+N fuera de vista» en cada nave.
+  Recortar en silencio haría creer que la fábrica está más vacía de lo que está.
+- Toda la figura se dibuja con degradados: **ni una imagen**, así que escala sin
+  pixelarse y no mete binarios en un repositorio público.
+
+**Dos cosas del diseño se dicen distinto, a propósito:**
+
+- Bajo cada robot iba una frase del tipo «Analizando requisitos». Eso exigiría
+  saber qué hace la herramienta por dentro, y esta aplicación no lee
+  conversaciones. En su lugar va el **nombre del proyecto**, que sí sabemos y
+  además distingue un robot de otro.
+- La consola traía un medidor de «PRODUCTIVIDAD 80%», que era un número
+  inventado. Se sustituye por dos datos que se calculan de verdad: la
+  **actividad real de las últimas 6 horas** —sacada del historial— y el
+  **porcentaje del trabajo que no te reclama nada**.
+
+Un dato inventado en una pantalla de control es peor que un hueco vacío: se cree.
+
 ### Añadido — varias cuentas de ChatGPT a la vez
 
 Nace de un uso real: tres chats de una cuenta y dos de otra, abiertos al mismo

@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { timingSafeEqual } from 'node:crypto'
 import type {
   EventIngestResult,
+  HandoffResolution,
   PermissionResolution,
   SessionUpdateResult,
   TaskIntakeResult,
@@ -47,6 +48,23 @@ export interface LocalEventServerOptions {
    * permisos configurados no debe fingir que los acepta.
    */
   onPermission?: (raw: unknown) => Promise<PermissionResolution>
+  /**
+   * Atiende el final de un turno de Claude Code (D24).
+   *
+   * Igual que los permisos, **no responde hasta que el usuario contesta** o se
+   * agota el tiempo: la conexión se queda abierta, y con ella el turno. Sin
+   * atendedor la ruta devuelve 404 en vez de fingir que la acepta.
+   */
+  onHandoff?: (raw: unknown) => Promise<HandoffResolution>
+  /**
+   * Claude Code dejó de esperar antes de que el usuario contestara.
+   *
+   * Pasa si se cierra la terminal, se corta la sesión, o Claude Code mata el
+   * enlace por su propio tope de tiempo. Sirve para retirar el aviso de la
+   * pantalla: dejarlo puesto invitaría a escribir una respuesta que ya no puede
+   * llegar a ninguna parte.
+   */
+  onHandoffAbandoned?: (raw: unknown) => void
   /**
    * Procesa un aviso de estado que no conoce el identificador de la tarea, solo
    * su carpeta y su sesión. Es lo que envía el enlace con Claude Code.
@@ -159,6 +177,7 @@ export class LocalEventServer {
 
     const isEvents = req.method === 'POST' && url === '/events'
     const isPermissions = req.method === 'POST' && url === '/permissions'
+    const isHandoffs = req.method === 'POST' && url === '/handoffs'
     const isSessions = req.method === 'POST' && url === '/sessions'
     const isIntake = req.method === 'POST' && url === '/tasks'
     const isWebActivity = req.method === 'POST' && url === '/web-activity'
@@ -168,6 +187,7 @@ export class LocalEventServer {
     const known =
       isEvents ||
       (isPermissions && this.options.onPermission) ||
+      (isHandoffs && this.options.onHandoff) ||
       (isSessions && this.options.onSession) ||
       (isIntake && this.options.onIntake) ||
       (isWebActivity && this.options.onWebActivity)
@@ -221,33 +241,82 @@ export class LocalEventServer {
           return send(res, result.accepted ? 200 : 422, result)
         }
 
-        // ── Permisos ─────────────────────────────────────────────────────────
-        // La respuesta se queda pendiente hasta que el usuario decide. Si quien
-        // preguntó se marcha antes (cierra la terminal, corta la sesión), se
-        // deja de esperar: nadie va a leer ya esa respuesta.
-        const handler = this.options.onPermission
+        // ── Las dos rutas que esperan a una persona ──────────────────────────
+        //
+        // Permisos y fin de turno funcionan igual: la respuesta se queda
+        // pendiente hasta que el usuario decide o escribe. Si quien preguntó se
+        // marcha antes —cierra la terminal, corta la sesión—, se deja de
+        // esperar: nadie va a leer ya esa respuesta.
+        //
+        // Cada una tiene su propia salida segura, y las dos significan lo mismo
+        // para quien esperaba: sigue por tu cuenta como si la Torre no existiera
+        // (D21).
+        const handler = isHandoffs ? this.options.onHandoff : this.options.onPermission
         if (!handler) return send(res, 404, { accepted: false, reason: 'Ruta no encontrada' })
 
+        const salidaSegura = (motivo: string) =>
+          isHandoffs
+            ? { outcome: 'release', reply: null, reason: motivo }
+            : { outcome: 'timeout', reason: motivo }
+
         let abandoned = false
-        req.once('close', () => {
+        let resolved = false
+
+        /*
+         * Se escucha el cierre de la RESPUESTA, no el de la petición.
+         *
+         * Esto estaba mal desde el principio y no se notaba. `req` emite
+         * «close» en cuanto termina de llegar el cuerpo —no cuando el cliente
+         * se marcha—, y encima aquí se registraba después de haberlo leído, así
+         * que el aviso ya había pasado y el escuchador no se disparaba nunca.
+         * Resultado: la detección de abandono no ha funcionado ni un solo día,
+         * y nadie lo vio porque su único efecto era intentar escribir en una
+         * conexión muerta, cosa que no da error visible.
+         *
+         * `res` emite «close» en los dos casos, y se distinguen por
+         * `writableEnded`: verdadero si la respuesta llegó a salir, falso si la
+         * conexión se cortó antes. Comprobado a mano contra un servidor real.
+         */
+        res.once('close', () => {
+          // La respuesta salió: cierre normal, no hay nada que hacer.
+          if (res.writableEnded) return
+
           abandoned = true
+
+          /*
+           * Quien esperaba se ha ido, y el aviso sigue en pantalla.
+           *
+           * Para un fin de turno eso es grave: la ventana te invita a escribir
+           * una respuesta que ya no puede llegar a ningún sitio, porque el
+           * proceso que escuchaba está muerto. Escribirla y perderla en
+           * silencio es peor que no haber podido escribirla.
+           *
+           * Así que se avisa para que la entrega se retire de la pantalla. La
+           * ruta de permisos tiene el mismo hueco, pero allí sus tiempos están
+           * ordenados —la Torre se rinde antes que nadie— y lo que se pierde es
+           * un clic, no un texto. Se deja como está a propósito: es un canal en
+           * producción y tocarlo pide su propia tanda de pruebas.
+           */
+          if (!resolved && isHandoffs) this.options.onHandoffAbandoned?.(parsed)
         })
 
         handler(parsed)
           .then((resolution) => {
+            resolved = true
             if (abandoned || res.writableEnded) return
             send(res, 200, resolution)
           })
           .catch((error: unknown) => {
             if (abandoned || res.writableEnded) return
-            // Ante cualquier fallo se devuelve `timeout`: es la salida segura,
-            // la que hace que la herramienta pregunte por su cuenta (D21).
-            send(res, 200, {
-              outcome: 'timeout',
-              reason: `La Torre no pudo atender la petición: ${
-                error instanceof Error ? error.message : 'error desconocido'
-              }`,
-            })
+            send(
+              res,
+              200,
+              salidaSegura(
+                `La Torre no pudo atender la petición: ${
+                  error instanceof Error ? error.message : 'error desconocido'
+                }`,
+              ),
+            )
           })
       })
       .catch((error: unknown) => {
