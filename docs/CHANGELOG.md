@@ -10,6 +10,30 @@
 
 > Los cambios en desarrollo van aquí hasta que se publican.
 
+### Corregido — la detección de abandono del receptor no funcionaba
+
+El receptor local tenía desde hacía semanas una protección para cuando quien
+pregunta se marcha a media espera. **No se disparó ni un solo día.**
+
+`req` emite «close» en cuanto termina de llegar el cuerpo —no cuando el cliente
+se va—, y encima el escuchador se registraba *después* de leerlo, así que el
+aviso ya había pasado. El evento correcto es el de la **respuesta**: `res` emite
+«close» en los dos casos y se distinguen por `writableEnded`. Comprobado a mano
+contra un servidor real antes de tocar nada.
+
+No se notaba porque su único efecto era intentar escribir en una conexión
+muerta, que no da error visible. Con el fin de turno pasa a importar: un aviso
+que se queda en pantalla te invita a **escribir** una respuesta que ya no puede
+llegar a ningún sitio, y la Torre te diría que la ha mandado.
+
+Y no es un caso rebuscado: ocurre siempre que una sesión de Claude Code se abrió
+**antes** de actualizar el enlace. Conserva el tope viejo de 10 segundos y mata
+el proceso mientras el aviso cuenta hasta 60.
+
+La ruta de permisos tiene el mismo hueco, pero sus tiempos están ordenados y lo
+que se pierde es un clic, no un texto. Se deja como está a propósito: es un
+canal en producción y tocarlo pide su propia tanda de pruebas.
+
 ### Añadido — contestarle a Claude Code sin abrir la terminal (D24)
 
 Cuando Claude Code termina un turno, la Torre te enseña **lo que te ha dicho**,
